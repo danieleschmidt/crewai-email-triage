@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "crewai-email-triage"
+version = "0.1.0"
+description = "Smart email assistant that classifies, prioritizes, summarizes, and drafts replies."
+authors = [{name = "Codex", email = "codex@example.com"}]
+readme = "README.md"
+requires-python = ">=3.8"
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
