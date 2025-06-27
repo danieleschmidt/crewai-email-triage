@@ -19,6 +19,11 @@ Incoming Email → Classifier Agent → Priority Agent → Summarizer Agent → 
                    Category         Urgency        Key Points      Draft Reply
 ```
 
+The ``triage_email`` function in ``pipeline.py`` exposes this workflow as a
+single call, returning the outputs of all agents as a dictionary. For bulk
+processing, ``triage_emails`` accepts a list of messages and returns a list of
+results.
+
 ## Quick Start
 
 ```bash
@@ -31,6 +36,20 @@ python setup.py --provider gmail
 # Run email triage
 python triage.py --inbox --limit 50
 ```
+
+
+### Quick Demo
+Run the pipeline on a single message or a list of messages:
+```bash
+python triage.py "Your message here"
+python triage.py --high-keywords urgent,asap "Important update"
+python triage.py --json "Check status"
+python - <<'EOF'
+from crewai_email_triage import triage_emails
+print(triage_emails(["first email", "second email"]))
+EOF
+```
+
 
 ## Agent Crew
 
