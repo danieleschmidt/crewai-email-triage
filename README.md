@@ -43,6 +43,7 @@ cat result.json
 # => {"category": "urgent", "priority": 10, ...}
 
 # One of --message, --stdin, --file, or --batch-file is required
+# These options are mutually exclusive
 
 # Or read the message from standard input
 echo "Quarterly report needed ASAP!" | python triage.py --stdin

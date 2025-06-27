@@ -98,3 +98,22 @@ def test_cli_requires_message():
     assert result.returncode == 2
     assert "one of --message" in result.stderr.lower()
 
+
+def test_cli_mutually_exclusive(tmp_path):
+    msg_file = tmp_path / "msg.txt"
+    msg_file.write_text("hello")
+    result = subprocess.run(
+        [
+            sys.executable,
+            "triage.py",
+            "--message",
+            "hi",
+            "--file",
+            str(msg_file),
+        ],
+        text=True,
+        capture_output=True,
+    )
+    assert result.returncode == 2
+    assert "mutually exclusive" in result.stderr.lower()
+
