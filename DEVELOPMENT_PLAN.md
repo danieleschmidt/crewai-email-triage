@@ -27,3 +27,13 @@
 - [ ] **Release:** Prepare `CHANGELOG.md` and tag the v1.0.0 release.
 
 ## Completed Tasks
+- Base Agent interface
+- ClassifierAgent for categorization
+- SummarizerAgent for concise summaries
+- ResponseAgent for drafting replies
+- PriorityAgent for urgency assessment
+- triage_email workflow to run agents in sequence
+- CLI script for triage pipeline
+- CLI keyword customization
+- Bulk processing helper for lists of emails
+- CLI JSON output option

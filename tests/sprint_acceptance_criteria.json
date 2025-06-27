@@ -26,5 +26,35 @@
       "success": "Valid input returns expected result.",
       "edge_case_invalid_input": "Gracefully handles empty or invalid input."
     }
+  },
+  "priority-agent": {
+    "description": "Develop PriorityAgent to assign urgency levels",
+    "cases": {
+      "success": "Valid input returns expected result.",
+      "edge_case_invalid_input": "Gracefully handles empty or invalid input."
+    }
+  },
+  "triage-workflow": {
+    "description": "Add triage_email function to orchestrate agents",
+    "cases": {
+      "success": "Valid input returns expected result.",
+      "edge_case_invalid_input": "Gracefully handles empty or invalid input."
+    }
+  },
+  "cli": {
+    "description": "Command line interface",
+    "cases": {
+      "success": "Valid input returns expected result.",
+      "edge_case_invalid_input": "Gracefully handles empty or invalid input.",
+      "custom_keywords": "Supports overriding priority keywords",
+      "json_output": "Can output results as JSON"
+    }
+  },
+  "bulk-processing": {
+    "description": "Process multiple emails in sequence",
+    "cases": {
+      "success": "Valid input returns expected result.",
+      "edge_case_invalid_input": "Gracefully handles empty or invalid input."
+    }
   }
 }
