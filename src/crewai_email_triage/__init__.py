@@ -5,6 +5,8 @@ from .agent import Agent
 from .classifier import ClassifierAgent
 from .summarizer import SummarizerAgent
 from .response import ResponseAgent
+from .priority import PriorityAgent
+from .pipeline import triage_email
 
 __all__ = [
     "process_email",
@@ -12,4 +14,6 @@ __all__ = [
     "ClassifierAgent",
     "SummarizerAgent",
     "ResponseAgent",
+    "PriorityAgent",
+    "triage_email",
 ]

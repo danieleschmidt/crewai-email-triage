@@ -24,12 +24,37 @@ Incoming Email → Classifier Agent → Priority Agent → Summarizer Agent → 
 ```bash
 # Install dependencies
 pip install -r requirements.txt
+# Install the package in editable mode
+pip install -e .
 
 # Configure email credentials
 python setup.py --provider gmail
 
-# Run email triage
-python triage.py --inbox --limit 50
+# Run email triage on a single message
+python triage.py --message "Quarterly report needed ASAP!"
+# => {"category": "urgent", "priority": 10, ...}
+
+# Pretty-print the result
+python triage.py --message "Quarterly report needed ASAP!" --pretty
+
+# Save the result to a file
+python triage.py --message "Quarterly report needed ASAP!" --output result.json
+cat result.json
+# => {"category": "urgent", "priority": 10, ...}
+
+# One of --message, --stdin, --file, or --batch-file is required
+# These options are mutually exclusive
+
+# Or read the message from standard input
+echo "Quarterly report needed ASAP!" | python triage.py --stdin
+
+# Or read the message from a file
+echo "Quarterly report needed ASAP!" > email.txt
+python triage.py --file email.txt
+
+# Process multiple messages from a file
+echo -e "Urgent meeting tomorrow!\nAnother message" > batch.txt
+python triage.py --batch-file batch.txt
 ```
 
 ## Agent Crew
@@ -39,10 +64,12 @@ python triage.py --inbox --limit 50
 - **Goal**: Accurately classify emails into categories (work, personal, spam, urgent, etc.)
 - **Tools**: Text analysis, sender reputation, keyword matching
 
-### Priority Agent  
+### Priority Agent
 - **Role**: Urgency Assessment Expert
 - **Goal**: Score emails by importance and time sensitivity
 - **Tools**: Deadline detection, sender importance, content analysis
+- **Heuristics**: "urgent" or all-caps text yields score 10; keywords like
+  "deadline" or an exclamation mark score 8; otherwise 5.
 
 ### Summarizer Agent
 - **Role**: Content Distillation Specialist
@@ -53,6 +80,17 @@ python triage.py --inbox --limit 50
 - **Role**: Communication Specialist
 - **Goal**: Draft appropriate replies maintaining tone and context
 - **Tools**: Template matching, tone analysis, personalization
+
+### Triage Pipeline
+Use ``triage_email`` to run all agents in sequence:
+
+```python
+from crewai_email_triage import triage_email
+
+result = triage_email("Quarterly report needed ASAP!")
+print(result)
+# {'category': 'urgent', 'priority': 10, 'summary': 'Quarterly report needed ASAP!', 'response': 'Thanks for your email'}
+```
 
 ## Configuration
 
@@ -105,6 +143,13 @@ python triage.py --folder "Important"
 ```bash
 # Review and approve actions
 python triage.py --interactive
+
+# Type a message and press Enter
+Quarterly report needed ASAP!
+{"category": "urgent", "priority": 10, "summary": "Quarterly report needed ASAP!", "response": "Thanks for your email"}
+
+# Submit an empty line to quit
+# Or press Ctrl+C
 
 # Generate reports
 python triage.py --report --date-range "last_week"
