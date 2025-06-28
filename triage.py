@@ -2,39 +2,45 @@ import argparse
 import json
 import sys
 
-from crewai_email_triage import triage_email
+from crewai_email_triage import __version__, triage_email
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run email triage")
     parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument(
         "--message",
         help="Email content to triage",
     )
-    parser.add_argument(
-        "--output",
-        type=argparse.FileType("w"),
-        help="Write JSON result to the given file",
+    group.add_argument(
+        "--stdin",
+        action="store_true",
+        help="Read message content from standard input",
     )
-    parser.add_argument(
+    group.add_argument(
+        "--file",
+        type=argparse.FileType("r"),
+        help="Read message content from a file",
+    )
+    group.add_argument(
+        "--batch-file",
+        type=argparse.FileType("r"),
+        help="Read multiple messages from a file, one per line",
+    )
+    group.add_argument(
         "--interactive",
         action="store_true",
         help="Run in interactive mode",
     )
     parser.add_argument(
-        "--stdin",
-        action="store_true",
-        help="Read message content from standard input",
-    )
-    parser.add_argument(
-        "--file",
-        type=argparse.FileType("r"),
-        help="Read message content from a file",
-    )
-    parser.add_argument(
-        "--batch-file",
-        type=argparse.FileType("r"),
-        help="Read multiple messages from a file, one per line",
+        "--output",
+        type=argparse.FileType("w"),
+        help="Write JSON result to the given file",
     )
     parser.add_argument(
         "--pretty",
@@ -65,20 +71,6 @@ def main() -> None:
         return
 
     message = args.message
-    sources = [
-        args.message is not None,
-        args.stdin,
-        args.file is not None,
-        args.batch_file is not None,
-    ]
-    if sum(1 for s in sources if s) > 1:
-        parser.error(
-            "--message, --stdin, --file, and --batch-file are mutually exclusive"
-        )
-    if not any(sources) and not args.interactive:
-        parser.error(
-            "one of --message, --stdin, --file, or --batch-file is required"
-        )
 
     output_data = None
     if args.batch_file:

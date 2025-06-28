@@ -42,7 +42,11 @@ python triage.py --message "Quarterly report needed ASAP!" --output result.json
 cat result.json
 # => {"category": "urgent", "priority": 10, ...}
 
-# One of --message, --stdin, --file, or --batch-file is required
+# Check the version
+python triage.py --version
+# => triage.py 0.1.0
+
+# Exactly one of --message, --stdin, --file, --batch-file, or --interactive is required
 # These options are mutually exclusive
 
 # Or read the message from standard input

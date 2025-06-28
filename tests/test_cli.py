@@ -2,6 +2,8 @@ import json
 import subprocess
 import sys
 
+from crewai_email_triage import __version__
+
 
 def test_cli_message():
     result = subprocess.run(
@@ -89,6 +91,16 @@ def test_cli_pretty():
     assert output["priority"] == 10
 
 
+def test_cli_version():
+    result = subprocess.run(
+        [sys.executable, "triage.py", "--version"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert result.stdout.strip() == f"triage.py {__version__}"
+
+
 def test_cli_requires_message():
     result = subprocess.run(
         [sys.executable, "triage.py"],
@@ -96,7 +108,11 @@ def test_cli_requires_message():
         text=True,
     )
     assert result.returncode == 2
-    assert "one of --message" in result.stderr.lower()
+    last_line = result.stderr.strip().splitlines()[-1]
+    assert (
+        last_line
+        == "triage.py: error: one of the arguments --message --stdin --file --batch-file --interactive is required"
+    )
 
 
 def test_cli_mutually_exclusive(tmp_path):
@@ -115,5 +131,23 @@ def test_cli_mutually_exclusive(tmp_path):
         capture_output=True,
     )
     assert result.returncode == 2
-    assert "mutually exclusive" in result.stderr.lower()
+    last_line = result.stderr.strip().splitlines()[-1]
+    assert (
+        last_line
+        == "triage.py: error: argument --file: not allowed with argument --message"
+    )
+
+
+def test_cli_interactive_exclusive():
+    result = subprocess.run(
+        [sys.executable, "triage.py", "--interactive", "--message", "hi"],
+        text=True,
+        capture_output=True,
+    )
+    assert result.returncode == 2
+    last_line = result.stderr.strip().splitlines()[-1]
+    assert (
+        last_line
+        == "triage.py: error: argument --message: not allowed with argument --interactive"
+    )
 
