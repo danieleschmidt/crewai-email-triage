@@ -3,6 +3,12 @@ import subprocess
 import sys
 
 from crewai_email_triage import __version__
+import importlib.util
+from pathlib import Path
+
+spec = importlib.util.spec_from_file_location("triage", Path(__file__).resolve().parents[1] / "triage.py")
+triage = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(triage)
 
 
 def test_cli_message():
@@ -26,15 +32,19 @@ def test_cli_output_file(tmp_path):
     assert output["priority"] == 10
 
 
-def test_cli_interactive():
-    proc = subprocess.Popen(
-        [sys.executable, "triage.py", "--interactive"],
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        text=True,
-    )
-    stdout, _ = proc.communicate("Urgent meeting tomorrow!\n\n")
-    lines = [line for line in stdout.splitlines() if line.strip().startswith("{")]
+def test_cli_interactive(monkeypatch, capsys):
+    inputs = ["Urgent meeting tomorrow!", ""]
+
+    def fake_input(prompt=""):
+        if not inputs:
+            raise EOFError
+        return inputs.pop(0)
+
+    monkeypatch.setattr("builtins.input", fake_input)
+    sys.argv = ["triage.py", "--interactive"]
+    triage.main()
+    captured = capsys.readouterr()
+    lines = [line for line in captured.out.splitlines() if line.strip().startswith("{")]
     output = json.loads(lines[-1])
     assert output["priority"] == 10
 
@@ -175,7 +185,7 @@ class Fake:
     def fetch_unread(self, max_messages=10):
         return ['Urgent meeting tomorrow!', 'hello']
 
-triage.GmailProvider = lambda u, p: Fake()
+triage.GmailProvider.from_env = classmethod(lambda cls: Fake())
 os.environ['GMAIL_USER'] = 'u'
 os.environ['GMAIL_PASSWORD'] = 'p'
 sys.argv = ['triage.py', '--gmail', '--max-messages', '2']

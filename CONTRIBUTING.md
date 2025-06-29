@@ -8,9 +8,13 @@ Thank you for taking the time to contribute!
    ```bash
    pip install -e .[test]
    ```
-3. Ensure the test suite passes:
+   Install pre-commit hooks:
    ```bash
-   pytest -q
+   pre-commit install
+   ```
+3. Ensure the test suite passes (runs in parallel by default):
+   ```bash
+   pytest -n auto -q
    ```
 4. Run static analysis:
    ```bash

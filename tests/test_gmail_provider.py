@@ -1,5 +1,6 @@
 from crewai_email_triage.provider import GmailProvider
 import imaplib
+import os
 
 class FakeIMAP:
     def __init__(self):
@@ -20,3 +21,13 @@ def test_fetch_unread(monkeypatch):
     client = GmailProvider('u', 'p')
     msgs = client.fetch_unread(max_messages=1)
     assert msgs == ['Urgent']
+
+
+def test_from_env(monkeypatch):
+    monkeypatch.setattr(imaplib, 'IMAP4_SSL', lambda server: FakeIMAP())
+    monkeypatch.setitem(os.environ, 'GMAIL_USER', 'u')
+    monkeypatch.setitem(os.environ, 'GMAIL_PASSWORD', 'p')
+    client = GmailProvider.from_env()
+    assert client.username == 'u'
+    assert client.password == 'p'
+    assert client.fetch_unread(1) == ['Urgent']

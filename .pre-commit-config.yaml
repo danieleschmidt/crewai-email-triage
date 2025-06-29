@@ -1,0 +1,15 @@
+repos:
+  - repo: https://github.com/PyCQA/ruff-pre-commit
+    rev: v0.4.7
+    hooks:
+      - id: ruff
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.8
+    hooks:
+      - id: bandit
+        args: [-r, src, -q]
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+
