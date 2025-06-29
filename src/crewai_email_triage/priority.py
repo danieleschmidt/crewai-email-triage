@@ -3,25 +3,7 @@
 from __future__ import annotations
 
 from .agent import Agent
-
-
-HIGH_URGENCY = {
-    "urgent",
-    "asap",
-    "immediately",
-    "right away",
-    "high priority",
-}
-
-MEDIUM_URGENCY = {
-    "soon",
-    "important",
-    "deadline",
-    "tomorrow",
-    "today",
-    "eod",
-    "end of day",
-}
+from . import config
 
 
 class PriorityAgent(Agent):
@@ -33,12 +15,14 @@ class PriorityAgent(Agent):
             return "priority: 0"
 
         normalized = content.lower()
+        high_urgency = set(config.CONFIG["priority"]["high_keywords"])
+        medium_urgency = set(config.CONFIG["priority"]["medium_keywords"])
 
-        if any(word in normalized for word in HIGH_URGENCY) or content.isupper():
-            score = 10
-        elif any(word in normalized for word in MEDIUM_URGENCY) or "!" in content:
-            score = 8
+        if any(word in normalized for word in high_urgency) or content.isupper():
+            score = config.CONFIG["priority"]["scores"]["high"]
+        elif any(word in normalized for word in medium_urgency) or "!" in content:
+            score = config.CONFIG["priority"]["scores"]["medium"]
         else:
-            score = 5
+            score = config.CONFIG["priority"]["scores"]["low"]
 
         return f"priority: {score}"

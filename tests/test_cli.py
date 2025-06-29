@@ -111,7 +111,7 @@ def test_cli_requires_message():
     last_line = result.stderr.strip().splitlines()[-1]
     assert (
         last_line
-        == "triage.py: error: one of the arguments --message --stdin --file --batch-file --interactive is required"
+        == "triage.py: error: one of the arguments --message --stdin --file --batch-file --interactive --gmail is required"
     )
 
 
@@ -151,3 +151,60 @@ def test_cli_interactive_exclusive():
         == "triage.py: error: argument --message: not allowed with argument --interactive"
     )
 
+
+def test_cli_verbose():
+    result = subprocess.run(
+        [sys.executable, "triage.py", "--message", "hello", "--verbose"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "Processed" in result.stderr
+
+
+def test_cli_gmail(tmp_path):
+    script = tmp_path / "run.py"
+    script.write_text(
+        """
+import importlib.util, sys, json, os
+spec = importlib.util.spec_from_file_location('triage', 'triage.py')
+triage = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(triage)
+
+class Fake:
+    def fetch_unread(self, max_messages=10):
+        return ['Urgent meeting tomorrow!', 'hello']
+
+triage.GmailProvider = lambda u, p: Fake()
+os.environ['GMAIL_USER'] = 'u'
+os.environ['GMAIL_PASSWORD'] = 'p'
+sys.argv = ['triage.py', '--gmail', '--max-messages', '2']
+triage.main()
+"""
+    )
+    result = subprocess.run([sys.executable, str(script)], capture_output=True, text=True, check=True)
+    output = json.loads(result.stdout)
+    assert len(output) == 2
+    assert output[0]["priority"] == 10
+
+
+def test_cli_custom_config(tmp_path):
+    cfg = {
+        "classifier": {"urgent": ["urgent"]},
+        "priority": {
+            "scores": {"high": 99, "medium": 50, "low": 1},
+            "high_keywords": ["urgent"],
+            "medium_keywords": []
+        },
+    }
+    cfg_path = tmp_path / "cfg.json"
+    cfg_path.write_text(json.dumps(cfg))
+
+    result = subprocess.run(
+        [sys.executable, "triage.py", "--message", "urgent", "--config", str(cfg_path)],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    output = json.loads(result.stdout)
+    assert output["priority"] == 99
