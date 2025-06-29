@@ -7,7 +7,6 @@ import json
 import logging
 import sys
 
-import os
 from crewai_email_triage.pipeline import METRICS, triage_batch
 
 from crewai_email_triage import __version__, triage_email, GmailProvider
@@ -81,11 +80,7 @@ def _read_single_message(args: argparse.Namespace) -> str:
 
 
 def _read_gmail(max_messages: int) -> list[str]:
-    user = os.environ.get("GMAIL_USER")
-    password = os.environ.get("GMAIL_PASSWORD")
-    if not user or not password:
-        raise RuntimeError("GMAIL_USER and GMAIL_PASSWORD must be set")
-    client = GmailProvider(user, password)
+    client = GmailProvider.from_env()
     return client.fetch_unread(max_messages)
 
 

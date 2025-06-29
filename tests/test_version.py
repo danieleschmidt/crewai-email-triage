@@ -14,4 +14,5 @@ def test_version_fallback(monkeypatch):
     assert crewai_email_triage.__version__ == "0.1.0"
 
     importlib.reload(crewai_email_triage)
+    assert crewai_email_triage.__version__ == "0.1.0"
 

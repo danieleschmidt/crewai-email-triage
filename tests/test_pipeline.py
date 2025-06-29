@@ -29,3 +29,14 @@ def test_triage_batch_matches_single():
     assert batch == single
     assert METRICS["processed"] == len(msgs)
     assert METRICS["total_time"] > 0
+
+
+def test_triage_batch_parallel_matches_single():
+    msgs = ["Urgent meeting tomorrow!", "hello"]
+    single = [triage_email(m) for m in msgs]
+    METRICS["processed"] = 0
+    METRICS["total_time"] = 0.0
+    batch = triage_batch(msgs, parallel=True, max_workers=2)
+    assert batch == single
+    assert METRICS["processed"] == len(msgs)
+

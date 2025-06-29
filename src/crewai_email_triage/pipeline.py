@@ -5,7 +5,9 @@ from __future__ import annotations
 import logging
 import time
 
-from typing import Iterable, List, Dict
+from typing import Iterable, List, Dict, Optional
+
+from concurrent.futures import ThreadPoolExecutor
 
 from .classifier import ClassifierAgent
 from .priority import PriorityAgent
@@ -66,18 +68,44 @@ def triage_email(content: str | None) -> Dict[str, str | int]:
     return result
 
 
-def triage_batch(messages: Iterable[str]) -> List[Dict[str, str | int]]:
-    """Process ``messages`` reusing agent instances."""
+def triage_batch(
+    messages: Iterable[str],
+    parallel: bool = False,
+    max_workers: Optional[int] = None,
+) -> List[Dict[str, str | int]]:
+    """Process ``messages`` reusing agent instances.
+
+    Parameters
+    ----------
+    messages:
+        Iterable of message strings to triage.
+    parallel:
+        If ``True`` process messages concurrently using a thread pool.
+    max_workers:
+        Optional maximum number of worker threads.
+    """
+
     start = time.perf_counter()
     classifier = ClassifierAgent()
     prioritizer = PriorityAgent()
     summarizer = SummarizerAgent()
     responder = ResponseAgent()
 
-    results = [
-        _triage_single(m, classifier, prioritizer, summarizer, responder)
-        for m in messages
-    ]
+    if parallel:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            results = list(
+                executor.map(
+                    lambda m: _triage_single(
+                        m, classifier, prioritizer, summarizer, responder
+                    ),
+                    messages,
+                )
+            )
+    else:
+        results = [
+            _triage_single(m, classifier, prioritizer, summarizer, responder)
+            for m in messages
+        ]
 
     METRICS["processed"] += len(results)
     METRICS["total_time"] += time.perf_counter() - start

@@ -7,6 +7,7 @@ Smart assistant that classifies, prioritizes, summarizes and drafts replies for 
 - **Multi-Agent Pipeline**: classifier, priority scorer, summarizer and response generator
 - **Configurable Keywords**: edit `default_config.json`, set `CREWAI_CONFIG`, or use `--config`
 - **Batch Processing**: reuse agents to handle multiple messages
+- **Parallel Batch**: ``triage_batch(messages, parallel=True)`` for concurrency
 - **Gmail Integration**: fetch unread messages via IMAP
 - **Verbose Metrics**: `--verbose` flag shows processing statistics
 
@@ -40,6 +41,15 @@ python triage.py --message "ASAP reply needed" --config mycfg.json
 ## Development
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and commit guidelines.
+Install pre-commit hooks to catch lint and secret issues before committing:
+
+```bash
+pre-commit install
+```
+Run tests in parallel with pytest:
+```bash
+pytest -n auto -q
+```
 
 ## License
 
