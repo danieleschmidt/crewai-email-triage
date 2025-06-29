@@ -1,11 +1,21 @@
+"""Command line interface for the email triage pipeline."""
+
+from __future__ import annotations
+
 import argparse
 import json
+import logging
 import sys
 
-from crewai_email_triage import __version__, triage_email
+import os
+from crewai_email_triage.pipeline import METRICS, triage_batch
+
+from crewai_email_triage import __version__, triage_email, GmailProvider
+from crewai_email_triage.config import set_config
 
 
-def main() -> None:
+def build_parser() -> argparse.ArgumentParser:
+    """Return the CLI argument parser."""
     parser = argparse.ArgumentParser(description="Run email triage")
     parser.add_argument(
         "--version",
@@ -13,19 +23,12 @@ def main() -> None:
         version=f"%(prog)s {__version__}",
     )
     group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--message", help="Email content to triage")
     group.add_argument(
-        "--message",
-        help="Email content to triage",
+        "--stdin", action="store_true", help="Read message content from standard input"
     )
     group.add_argument(
-        "--stdin",
-        action="store_true",
-        help="Read message content from standard input",
-    )
-    group.add_argument(
-        "--file",
-        type=argparse.FileType("r"),
-        help="Read message content from a file",
+        "--file", type=argparse.FileType("r"), help="Read message content from a file"
     )
     group.add_argument(
         "--batch-file",
@@ -33,66 +36,90 @@ def main() -> None:
         help="Read multiple messages from a file, one per line",
     )
     group.add_argument(
-        "--interactive",
-        action="store_true",
-        help="Run in interactive mode",
+        "--interactive", action="store_true", help="Run in interactive mode"
+    )
+    group.add_argument(
+        "--gmail", action="store_true", help="Process unread Gmail messages"
     )
     parser.add_argument(
-        "--output",
-        type=argparse.FileType("w"),
-        help="Write JSON result to the given file",
+        "--output", type=argparse.FileType("w"), help="Write JSON result to the given file"
     )
-    parser.add_argument(
-        "--pretty",
-        action="store_true",
-        help="Pretty-print JSON output",
-    )
+    parser.add_argument("--pretty", action="store_true", help="Pretty-print JSON output")
+    parser.add_argument("--verbose", action="store_true", help="Enable debug logging")
+    parser.add_argument("--config", help="Path to configuration JSON file")
+    parser.add_argument("--max-messages", type=int, default=10, help="Maximum Gmail messages to process")
+    return parser
+
+
+def _dump(data: object, pretty: bool) -> str:
+    return json.dumps(data, indent=2 if pretty else None)
+
+
+def _run_interactive(pretty: bool) -> None:
+    while True:
+        try:
+            sys.stderr.write("message> ")
+            sys.stderr.flush()
+            line = input()
+        except EOFError:
+            break
+        except KeyboardInterrupt:
+            sys.stderr.write("\n")
+            break
+        if not line:
+            break
+        print(_dump(triage_email(line), pretty))
+
+
+def _read_single_message(args: argparse.Namespace) -> str:
+    if args.stdin:
+        return sys.stdin.read()
+    if args.file:
+        with args.file as fh:
+            return fh.read()
+    return args.message
+
+
+def _read_gmail(max_messages: int) -> list[str]:
+    user = os.environ.get("GMAIL_USER")
+    password = os.environ.get("GMAIL_PASSWORD")
+    if not user or not password:
+        raise RuntimeError("GMAIL_USER and GMAIL_PASSWORD must be set")
+    client = GmailProvider(user, password)
+    return client.fetch_unread(max_messages)
+
+
+def main() -> None:
+    parser = build_parser()
     args = parser.parse_args()
+    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
+
+    if args.config:
+        set_config(args.config)
 
     if args.interactive:
-        while True:
-            try:
-                sys.stderr.write("message> ")
-                sys.stderr.flush()
-                line = input()
-            except EOFError:
-                break
-            except KeyboardInterrupt:
-                sys.stderr.write("\n")
-                break
-            if not line:
-                break
-            print(
-                json.dumps(
-                    triage_email(line),
-                    indent=2 if args.pretty else None,
-                )
-            )
+        _run_interactive(args.pretty)
+        logging.info("Processed %d message(s)", METRICS["processed"])
         return
 
-    message = args.message
-
-    output_data = None
-    if args.batch_file:
-        messages = [line.strip() for line in args.batch_file if line.strip()]
-        args.batch_file.close()
-        results = [triage_email(msg) for msg in messages]
-        output_data = json.dumps(results, indent=2 if args.pretty else None)
+    if args.gmail:
+        messages = _read_gmail(args.max_messages)
+        output = _dump(triage_batch(messages), args.pretty)
+    elif args.batch_file:
+        with args.batch_file as fh:
+            messages = [line.strip() for line in fh if line.strip()]
+        output = _dump(triage_batch(messages), args.pretty)
     else:
-        if args.stdin:
-            message = sys.stdin.read()
-        elif args.file:
-            message = args.file.read()
-            args.file.close()
-
-        result = triage_email(message)
-        output_data = json.dumps(result, indent=2 if args.pretty else None)
+        message = _read_single_message(args)
+        output = _dump(triage_email(message), args.pretty)
 
     if args.output:
-        args.output.write(output_data + "\n")
-        args.output.close()
+        with args.output as fh:
+            fh.write(output + "\n")
     else:
-        print(output_data)
+        print(output)
+
+    logging.info("Processed %d message(s) in %.3fs", METRICS["processed"], METRICS["total_time"])
 
 
 if __name__ == "__main__":

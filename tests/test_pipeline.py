@@ -1,4 +1,5 @@
-from crewai_email_triage import triage_email
+from crewai_email_triage import triage_email, triage_batch
+from crewai_email_triage.pipeline import METRICS
 
 
 def test_success():
@@ -17,3 +18,14 @@ def test_edge_case_invalid_input():
         "summary": "summary:",
         "response": "response:",
     }
+
+
+def test_triage_batch_matches_single():
+    msgs = ["Urgent meeting tomorrow!", "hello"]
+    single = [triage_email(m) for m in msgs]
+    METRICS["processed"] = 0
+    METRICS["total_time"] = 0.0
+    batch = triage_batch(msgs)
+    assert batch == single
+    assert METRICS["processed"] == len(msgs)
+    assert METRICS["total_time"] > 0

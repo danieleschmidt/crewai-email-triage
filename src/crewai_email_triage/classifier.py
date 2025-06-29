@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .agent import Agent
+from . import config
 
 
 class ClassifierAgent(Agent):
@@ -13,10 +14,7 @@ class ClassifierAgent(Agent):
         if not content:
             return "category: unknown"
         text = content.lower()
-        if "urgent" in text:
-            return "category: urgent"
-        if "unsubscribe" in text or "spam" in text:
-            return "category: spam"
-        if "meeting" in text or "schedule" in text:
-            return "category: work"
+        for category, keywords in config.CONFIG["classifier"].items():
+            if any(word in text for word in keywords):
+                return f"category: {category}"
         return "category: general"

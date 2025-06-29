@@ -1,0 +1,26 @@
+{
+  "classifier": {
+    "urgent": ["urgent"],
+    "spam": ["unsubscribe", "spam"],
+    "work": ["meeting", "schedule"]
+  },
+  "priority": {
+    "scores": {"high": 10, "medium": 8, "low": 5},
+    "high_keywords": [
+      "urgent",
+      "asap",
+      "immediately",
+      "right away",
+      "high priority"
+    ],
+    "medium_keywords": [
+      "soon",
+      "important",
+      "deadline",
+      "tomorrow",
+      "today",
+      "eod",
+      "end of day"
+    ]
+  }
+}

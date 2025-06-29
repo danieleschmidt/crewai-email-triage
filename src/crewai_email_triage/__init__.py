@@ -10,7 +10,8 @@ from .classifier import ClassifierAgent
 from .summarizer import SummarizerAgent
 from .response import ResponseAgent
 from .priority import PriorityAgent
-from .pipeline import triage_email
+from .pipeline import triage_email, triage_batch
+from .provider import GmailProvider
 
 
 
@@ -38,5 +39,7 @@ __all__ = [
     "ResponseAgent",
     "PriorityAgent",
     "triage_email",
+    "triage_batch",
+    "GmailProvider",
     "__version__",
 ]
