@@ -15,6 +15,7 @@ from .priority import PriorityAgent
 from .summarizer import SummarizerAgent
 from .response import ResponseAgent
 from .logging_utils import get_logger, LoggingContext, set_request_id
+from .sanitization import sanitize_email_content, SanitizationConfig
 
 logger = get_logger(__name__)
 METRICS = {"processed": 0, "total_time": 0.0}
@@ -53,6 +54,33 @@ def _triage_single(
             "response": "No content to process",
         })
         return result
+    
+    # Content sanitization
+    try:
+        sanitization_result = sanitize_email_content(content)
+        content = sanitization_result.sanitized_content
+        
+        # Log sanitization results
+        if sanitization_result.threats_detected:
+            logger.warning("Security threats detected and sanitized",
+                          extra={'threats': sanitization_result.threats_detected,
+                                'modifications': sanitization_result.modifications_made,
+                                'original_length': sanitization_result.original_length,
+                                'sanitized_length': sanitization_result.sanitized_length})
+        
+        # Update result with sanitization info if threats were found
+        if not sanitization_result.is_safe:
+            result["sanitization_warnings"] = sanitization_result.threats_detected
+        
+        logger.debug("Content sanitization completed",
+                    extra={'threats_count': len(sanitization_result.threats_detected),
+                          'processing_time_ms': sanitization_result.processing_time_ms})
+                          
+    except Exception as e:
+        logger.error("Content sanitization failed",
+                    extra={'error': str(e)})
+        # Continue with original content if sanitization fails
+        result["sanitization_warnings"] = ["sanitization_failed"]
     
     try:
         # Classification with error handling

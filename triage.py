@@ -49,6 +49,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--structured-logs", action="store_true", help="Output structured JSON logs")
     parser.add_argument("--config", help="Path to configuration JSON file")
     parser.add_argument("--max-messages", type=int, default=10, help="Maximum Gmail messages to process")
+    parser.add_argument("--disable-sanitization", action="store_true", help="Disable content sanitization (not recommended)")
+    parser.add_argument("--sanitization-level", choices=['basic', 'standard', 'strict'], default='standard', 
+                       help="Content sanitization level (default: standard)")
     return parser
 
 
