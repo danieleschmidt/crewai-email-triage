@@ -11,6 +11,7 @@ from crewai_email_triage.pipeline import METRICS, triage_batch
 
 from crewai_email_triage import __version__, triage_email, GmailProvider
 from crewai_email_triage.config import set_config
+from crewai_email_triage.logging_utils import setup_structured_logging, LoggingContext
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -45,8 +46,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--pretty", action="store_true", help="Pretty-print JSON output")
     parser.add_argument("--verbose", action="store_true", help="Enable debug logging")
+    parser.add_argument("--structured-logs", action="store_true", help="Output structured JSON logs")
     parser.add_argument("--config", help="Path to configuration JSON file")
     parser.add_argument("--max-messages", type=int, default=10, help="Maximum Gmail messages to process")
+    parser.add_argument("--disable-sanitization", action="store_true", help="Disable content sanitization (not recommended)")
+    parser.add_argument("--sanitization-level", choices=['basic', 'standard', 'strict'], default='standard', 
+                       help="Content sanitization level (default: standard)")
     return parser
 
 
@@ -87,7 +92,10 @@ def _read_gmail(max_messages: int) -> list[str]:
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
-    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
+    
+    # Setup logging
+    log_level = logging.DEBUG if args.verbose else logging.INFO
+    setup_structured_logging(level=log_level, structured=args.structured_logs)
 
     if args.config:
         set_config(args.config)
@@ -97,16 +105,17 @@ def main() -> None:
         logging.info("Processed %d message(s)", METRICS["processed"])
         return
 
-    if args.gmail:
-        messages = _read_gmail(args.max_messages)
-        output = _dump(triage_batch(messages), args.pretty)
-    elif args.batch_file:
-        with args.batch_file as fh:
-            messages = [line.strip() for line in fh if line.strip()]
-        output = _dump(triage_batch(messages), args.pretty)
-    else:
-        message = _read_single_message(args)
-        output = _dump(triage_email(message), args.pretty)
+    with LoggingContext(operation="cli_operation"):
+        if args.gmail:
+            messages = _read_gmail(args.max_messages)
+            output = _dump(triage_batch(messages), args.pretty)
+        elif args.batch_file:
+            with args.batch_file as fh:
+                messages = [line.strip() for line in fh if line.strip()]
+            output = _dump(triage_batch(messages), args.pretty)
+        else:
+            message = _read_single_message(args)
+            output = _dump(triage_email(message), args.pretty)
 
     if args.output:
         with args.output as fh:
