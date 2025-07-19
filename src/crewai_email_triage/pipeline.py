@@ -16,6 +16,7 @@ from .summarizer import SummarizerAgent
 from .response import ResponseAgent
 from .logging_utils import get_logger, LoggingContext, set_request_id
 from .sanitization import sanitize_email_content, SanitizationConfig
+from .agent_responses import parse_agent_response, extract_value_from_response
 
 logger = get_logger(__name__)
 METRICS = {"processed": 0, "total_time": 0.0}
@@ -86,10 +87,19 @@ def _triage_single(
         # Classification with error handling
         try:
             cat_result = classifier.run(content)
-            cat = cat_result.replace("category: ", "") if cat_result else "unknown"
-            result["category"] = cat
-            logger.debug("Classification completed", 
-                        extra={'category': cat, 'agent': 'classifier'})
+            cat_response = parse_agent_response(cat_result, "classifier")
+            
+            if cat_response.success:
+                result["category"] = cat_response.category
+                logger.debug("Classification completed", 
+                            extra={'category': cat_response.category, 
+                                  'agent': 'classifier',
+                                  'processing_time_ms': cat_response.processing_time_ms})
+            else:
+                result["category"] = "classification_error"
+                logger.error("Classification parsing failed",
+                            extra={'error': cat_response.error_message, 
+                                  'raw_output': cat_result, 'agent': 'classifier'})
         except Exception as e:
             logger.error("Classification failed", 
                         extra={'error': str(e), 'agent': 'classifier'})
@@ -98,48 +108,68 @@ def _triage_single(
         # Priority scoring with error handling
         try:
             pri_result = prioritizer.run(content)
-            pri = pri_result.replace("priority: ", "") if pri_result else "0"
-            try:
-                priority_score = int(pri)
-                # Validate priority range
-                if not (0 <= priority_score <= 10):
-                    logger.warning("Priority score %d out of range, capping", priority_score)
-                    priority_score = max(0, min(10, priority_score))
-            except ValueError:
-                logger.warning("Invalid priority score '%s', using default", pri)
-                priority_score = 0
-            result["priority"] = priority_score
-            logger.debug("priority=%s", priority_score)
+            pri_response = parse_agent_response(pri_result, "priority")
+            
+            if pri_response.success:
+                result["priority"] = pri_response.priority_score
+                logger.debug("Priority scoring completed", 
+                            extra={'priority_score': pri_response.priority_score,
+                                  'agent': 'priority',
+                                  'processing_time_ms': pri_response.processing_time_ms,
+                                  'reasoning': pri_response.reasoning})
+            else:
+                result["priority"] = 0
+                logger.error("Priority parsing failed",
+                            extra={'error': pri_response.error_message,
+                                  'raw_output': pri_result, 'agent': 'priority'})
         except Exception as e:
-            logger.error("Priority scoring failed: %s", str(e))
+            logger.error("Priority scoring failed", 
+                        extra={'error': str(e), 'agent': 'priority'})
             result["priority"] = 0
     
         # Summarization with error handling
         try:
             summary_result = summarizer.run(content)
-            summary = summary_result.replace("summary: ", "") if summary_result else "Summary unavailable"
-            # Validate summary length
-            if len(summary) > 500:
-                summary = summary[:497] + "..."
-                logger.debug("Truncated long summary")
-            result["summary"] = summary
-            logger.debug("summary=%s", summary)
+            summary_response = parse_agent_response(summary_result, "summarizer")
+            
+            if summary_response.success:
+                result["summary"] = summary_response.summary
+                logger.debug("Summarization completed", 
+                            extra={'summary_length': len(summary_response.summary) if summary_response.summary else 0,
+                                  'word_count': summary_response.word_count,
+                                  'agent': 'summarizer',
+                                  'processing_time_ms': summary_response.processing_time_ms})
+            else:
+                result["summary"] = "Summarization failed"
+                logger.error("Summarization parsing failed",
+                            extra={'error': summary_response.error_message,
+                                  'raw_output': summary_result, 'agent': 'summarizer'})
         except Exception as e:
-            logger.error("Summarization failed: %s", str(e))
+            logger.error("Summarization failed", 
+                        extra={'error': str(e), 'agent': 'summarizer'})
             result["summary"] = "Summarization failed"
     
         # Response generation with error handling
         try:
             response_result = responder.run(content)
-            response = response_result.replace("response: ", "") if response_result else "Unable to generate response"
-            # Validate response length
-            if len(response) > 1000:
-                response = response[:997] + "..."
-                logger.debug("Truncated long response")
-            result["response"] = response
-            logger.debug("response=%s", response)
+            response_response = parse_agent_response(response_result, "responder")
+            
+            if response_response.success:
+                result["response"] = response_response.response_text
+                logger.debug("Response generation completed", 
+                            extra={'response_length': len(response_response.response_text) if response_response.response_text else 0,
+                                  'response_type': response_response.response_type,
+                                  'tone': response_response.tone,
+                                  'agent': 'responder',
+                                  'processing_time_ms': response_response.processing_time_ms})
+            else:
+                result["response"] = "Response generation failed"
+                logger.error("Response generation parsing failed",
+                            extra={'error': response_response.error_message,
+                                  'raw_output': response_result, 'agent': 'responder'})
         except Exception as e:
-            logger.error("Response generation failed: %s", str(e))
+            logger.error("Response generation failed", 
+                        extra={'error': str(e), 'agent': 'responder'})
             result["response"] = "Response generation failed"
             
     except Exception as e:

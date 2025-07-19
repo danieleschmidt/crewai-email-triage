@@ -13,6 +13,10 @@ from .priority import PriorityAgent
 from .pipeline import triage_email, triage_batch
 from .provider import GmailProvider
 from .sanitization import sanitize_email_content, EmailSanitizer, SanitizationConfig
+from .agent_responses import (
+    AgentResponse, ClassificationResponse, PriorityResponse, 
+    SummaryResponse, ResponseGenerationResponse, parse_agent_response
+)
 
 
 
@@ -45,5 +49,11 @@ __all__ = [
     "sanitize_email_content",
     "EmailSanitizer",
     "SanitizationConfig",
+    "AgentResponse",
+    "ClassificationResponse",
+    "PriorityResponse",
+    "SummaryResponse",
+    "ResponseGenerationResponse",
+    "parse_agent_response",
     "__version__",
 ]
