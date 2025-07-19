@@ -25,26 +25,95 @@ def _triage_single(
     summarizer: SummarizerAgent,
     responder: ResponseAgent,
 ) -> Dict[str, str | int]:
-    """Run ``content`` through provided agents and return result."""
-    cat = classifier.run(content).replace("category: ", "")
-    logger.debug("category=%s", cat)
-    pri = prioritizer.run(content).replace("priority: ", "")
-    try:
-        priority_score = int(pri)
-    except ValueError:
-        priority_score = 0
-    logger.debug("priority=%s", priority_score)
-    summary = summarizer.run(content).replace("summary: ", "")
-    logger.debug("summary=%s", summary)
-    response = responder.run(content).replace("response: ", "")
-    logger.debug("response=%s", response)
-
-    return {
-        "category": cat,
-        "priority": priority_score,
-        "summary": summary,
-        "response": response,
+    """Run ``content`` through provided agents and return result.
+    
+    Returns a result with default values if any agent fails.
+    Logs errors but doesn't raise exceptions to ensure batch processing continues.
+    """
+    result = {
+        "category": "unknown",
+        "priority": 0,
+        "summary": "Processing failed",
+        "response": "Unable to process message",
     }
+    
+    # Input validation
+    if content is None or not isinstance(content, str):
+        logger.warning("Invalid content provided: %s", type(content))
+        return result
+    
+    if not content.strip():
+        logger.warning("Empty content provided")
+        result.update({
+            "category": "empty",
+            "summary": "Empty message",
+            "response": "No content to process",
+        })
+        return result
+    
+    try:
+        # Classification with error handling
+        try:
+            cat_result = classifier.run(content)
+            cat = cat_result.replace("category: ", "") if cat_result else "unknown"
+            result["category"] = cat
+            logger.debug("category=%s", cat)
+        except Exception as e:
+            logger.error("Classification failed: %s", str(e))
+            result["category"] = "classification_error"
+    
+        # Priority scoring with error handling
+        try:
+            pri_result = prioritizer.run(content)
+            pri = pri_result.replace("priority: ", "") if pri_result else "0"
+            try:
+                priority_score = int(pri)
+                # Validate priority range
+                if not (0 <= priority_score <= 10):
+                    logger.warning("Priority score %d out of range, capping", priority_score)
+                    priority_score = max(0, min(10, priority_score))
+            except ValueError:
+                logger.warning("Invalid priority score '%s', using default", pri)
+                priority_score = 0
+            result["priority"] = priority_score
+            logger.debug("priority=%s", priority_score)
+        except Exception as e:
+            logger.error("Priority scoring failed: %s", str(e))
+            result["priority"] = 0
+    
+        # Summarization with error handling
+        try:
+            summary_result = summarizer.run(content)
+            summary = summary_result.replace("summary: ", "") if summary_result else "Summary unavailable"
+            # Validate summary length
+            if len(summary) > 500:
+                summary = summary[:497] + "..."
+                logger.debug("Truncated long summary")
+            result["summary"] = summary
+            logger.debug("summary=%s", summary)
+        except Exception as e:
+            logger.error("Summarization failed: %s", str(e))
+            result["summary"] = "Summarization failed"
+    
+        # Response generation with error handling
+        try:
+            response_result = responder.run(content)
+            response = response_result.replace("response: ", "") if response_result else "Unable to generate response"
+            # Validate response length
+            if len(response) > 1000:
+                response = response[:997] + "..."
+                logger.debug("Truncated long response")
+            result["response"] = response
+            logger.debug("response=%s", response)
+        except Exception as e:
+            logger.error("Response generation failed: %s", str(e))
+            result["response"] = "Response generation failed"
+            
+    except Exception as e:
+        logger.error("Unexpected error in triage processing: %s", str(e))
+        # result already has default error values
+
+    return result
 
 
 def triage_email(content: str | None) -> Dict[str, str | int]:
