@@ -14,8 +14,9 @@ from .classifier import ClassifierAgent
 from .priority import PriorityAgent
 from .summarizer import SummarizerAgent
 from .response import ResponseAgent
+from .logging_utils import get_logger, LoggingContext, set_request_id
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 METRICS = {"processed": 0, "total_time": 0.0}
 
 
@@ -40,7 +41,8 @@ def _triage_single(
     
     # Input validation
     if content is None or not isinstance(content, str):
-        logger.warning("Invalid content provided: %s", type(content))
+        logger.warning("Invalid content provided", 
+                      extra={'content_type': str(type(content))})
         return result
     
     if not content.strip():
@@ -58,9 +60,11 @@ def _triage_single(
             cat_result = classifier.run(content)
             cat = cat_result.replace("category: ", "") if cat_result else "unknown"
             result["category"] = cat
-            logger.debug("category=%s", cat)
+            logger.debug("Classification completed", 
+                        extra={'category': cat, 'agent': 'classifier'})
         except Exception as e:
-            logger.error("Classification failed: %s", str(e))
+            logger.error("Classification failed", 
+                        extra={'error': str(e), 'agent': 'classifier'})
             result["category"] = "classification_error"
     
         # Priority scoring with error handling
@@ -119,23 +123,33 @@ def _triage_single(
 
 def triage_email(content: str | None) -> Dict[str, str | int]:
     """Run email ``content`` through all agents and collect results."""
-    start = time.perf_counter()
-    classifier = ClassifierAgent()
-    prioritizer = PriorityAgent()
-    summarizer = SummarizerAgent()
-    responder = ResponseAgent()
-    result = _triage_single(
-        content,
-        classifier=classifier,
-        prioritizer=prioritizer,
-        summarizer=summarizer,
-        responder=responder,
-    )
+    with LoggingContext(operation="triage_single_email"):
+        start = time.perf_counter()
+        classifier = ClassifierAgent()
+        prioritizer = PriorityAgent()
+        summarizer = SummarizerAgent()
+        responder = ResponseAgent()
+        
+        logger.info("Starting email triage", 
+                   extra={'content_length': len(content) if content else 0})
+        
+        result = _triage_single(
+            content,
+            classifier=classifier,
+            prioritizer=prioritizer,
+            summarizer=summarizer,
+            responder=responder,
+        )
 
-    METRICS["processed"] += 1
-    METRICS["total_time"] += time.perf_counter() - start
+        elapsed = time.perf_counter() - start
+        METRICS["processed"] += 1
+        METRICS["total_time"] += elapsed
+        
+        logger.info("Email triage completed", 
+                   extra={'duration': elapsed, 'category': result.get('category'),
+                         'priority': result.get('priority')})
 
-    return result
+        return result
 
 
 def _create_triage_worker() -> partial:
@@ -154,6 +168,8 @@ def _create_triage_worker() -> partial:
 
 def _process_message_with_new_agents(message: str) -> Dict[str, str | int]:
     """Process a single message with fresh agent instances for thread safety."""
+    # Set a new request ID for this worker thread
+    set_request_id()
     return _triage_single(
         message,
         ClassifierAgent(),
@@ -185,40 +201,45 @@ def triage_batch(
     List[Dict[str, str | int]]
         List of triage results, one per input message.
     """
-    start = time.perf_counter()
-    messages_list = list(messages)  # Convert to list for len() and indexing
-    
-    if not messages_list:
-        logger.info("No messages to process")
-        return []
-    
-    logger.info("Processing %d messages (parallel=%s)", len(messages_list), parallel)
-
-    if parallel:
-        # In parallel mode, each worker gets fresh agent instances to avoid thread safety issues
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            results = list(executor.map(_process_message_with_new_agents, messages_list))
-    else:
-        # In sequential mode, reuse the same agent instances for efficiency
-        classifier = ClassifierAgent()
-        prioritizer = PriorityAgent()
-        summarizer = SummarizerAgent()
-        responder = ResponseAgent()
+    with LoggingContext(operation="triage_batch"):
+        start = time.perf_counter()
+        messages_list = list(messages)  # Convert to list for len() and indexing
         
-        results = [
-            _triage_single(m, classifier, prioritizer, summarizer, responder)
-            for m in messages_list
-        ]
+        if not messages_list:
+            logger.info("No messages to process")
+            return []
+        
+        logger.info("Starting batch processing", 
+                   extra={'message_count': len(messages_list), 'parallel': parallel,
+                         'max_workers': max_workers})
 
-    elapsed = time.perf_counter() - start
-    METRICS["processed"] += len(results)
-    METRICS["total_time"] += elapsed
-    
-    # Calculate performance metrics
-    avg_time_per_message = elapsed / len(messages_list) if messages_list else 0
-    messages_per_second = len(messages_list) / elapsed if elapsed > 0 else 0
-    
-    logger.info("Processed %d messages in %.3fs (%.3fs/msg, %.1f msg/s)", 
-                len(messages_list), elapsed, avg_time_per_message, messages_per_second)
+        if parallel:
+            # In parallel mode, each worker gets fresh agent instances to avoid thread safety issues
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                results = list(executor.map(_process_message_with_new_agents, messages_list))
+        else:
+            # In sequential mode, reuse the same agent instances for efficiency
+            classifier = ClassifierAgent()
+            prioritizer = PriorityAgent()
+            summarizer = SummarizerAgent()
+            responder = ResponseAgent()
+            
+            results = [
+                _triage_single(m, classifier, prioritizer, summarizer, responder)
+                for m in messages_list
+            ]
 
-    return results
+        elapsed = time.perf_counter() - start
+        METRICS["processed"] += len(results)
+        METRICS["total_time"] += elapsed
+        
+        # Calculate performance metrics
+        avg_time_per_message = elapsed / len(messages_list) if messages_list else 0
+        messages_per_second = len(messages_list) / elapsed if elapsed > 0 else 0
+        
+        logger.info("Batch processing completed", 
+                   extra={'message_count': len(messages_list), 'duration': elapsed,
+                         'avg_time_per_message': avg_time_per_message,
+                         'messages_per_second': messages_per_second})
+
+        return results
