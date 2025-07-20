@@ -9,7 +9,7 @@ import unicodedata
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Set
 import logging
-from functools import lru_cache
+# Removed lru_cache import due to security concerns with caching sensitive email content
 
 logger = logging.getLogger(__name__)
 
@@ -100,9 +100,12 @@ class EmailSanitizer:
         }
         return patterns
     
-    @lru_cache(maxsize=1000)
     def sanitize(self, content: str) -> SanitizationResult:
         """Sanitize email content and detect threats.
+        
+        SECURITY NOTE: This method intentionally does NOT use caching (e.g., @lru_cache)
+        to prevent sensitive email content, including PII, from being stored in memory.
+        Each sanitization call processes content fresh to maintain data privacy.
         
         Parameters
         ----------

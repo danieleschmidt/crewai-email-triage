@@ -21,3 +21,10 @@ All notable changes to this project will be documented in this file.
 - CLI options for metrics export (--export-metrics, --metrics-port)
 - Agent-level performance tracking and sanitization metrics
 - Backward compatibility with legacy METRICS dict
+
+## [0.4.1] - 2024-07-20 (Security Fix)
+- **SECURITY**: Fixed critical vulnerability in email sanitization caching
+- Removed @lru_cache decorator from sanitize method to prevent PII exposure
+- Added security documentation and tests for sanitization
+- Maintained excellent performance (28k+ emails/sec) without caching
+- Updated test suite to verify no sensitive data caching
