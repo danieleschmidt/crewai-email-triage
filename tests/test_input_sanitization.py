@@ -242,19 +242,52 @@ class TestEmailSanitizer:
         assert any('script' in pattern for pattern in sanitizer.threat_patterns)
         assert any('javascript' in pattern for pattern in sanitizer.threat_patterns)
 
-    def test_sanitizer_caching(self):
-        """Test that sanitization results are cached for performance."""
+    def test_sanitizer_no_caching_for_security(self):
+        """Test that sensitive content is not cached for security reasons."""
         sanitizer = EmailSanitizer()
-        content = "Test content for caching"
         
-        # First call
-        result1 = sanitizer.sanitize(content)
+        # Process content with sensitive information
+        sensitive_content = "Credit card: 4532-1234-5678-9012, SSN: 123-45-6789"
         
-        # Second call should use cache
-        result2 = sanitizer.sanitize(content)
+        # Multiple calls to sanitize
+        result1 = sanitizer.sanitize(sensitive_content)
+        result2 = sanitizer.sanitize(sensitive_content)
         
+        # Results should be consistent but method should not cache sensitive data
         assert result1.sanitized_content == result2.sanitized_content
         assert result1.threats_detected == result2.threats_detected
+        
+        # Verify no cache_info method exists (no LRU caching)
+        assert not hasattr(sanitizer.sanitize, 'cache_info'), \
+            "Sanitize method should not have caching to prevent PII exposure"
+
+    def test_sanitizer_specific_exception_handling(self):
+        """Test that sanitizer handles specific exception types appropriately."""
+        sanitizer = EmailSanitizer()
+        
+        # Test Unicode handling - create content with potential encoding issues
+        unicode_content = "Test content with unicode: \u0080\u0081\u0082"
+        result = sanitizer.sanitize(unicode_content)
+        
+        # Should handle without crashing
+        assert result is not None
+        assert result.sanitized_content is not None
+        
+        # Test very large content (to test memory handling path)
+        large_content = "x" * 100000
+        result = sanitizer.sanitize(large_content)
+        
+        # Should handle without crashing and apply length limits
+        assert result is not None
+        assert len(result.sanitized_content) <= sanitizer.config.max_length
+        
+        # Test complex regex patterns
+        complex_content = "Content with regex challenges: " + "(?(" * 10 + ")"
+        result = sanitizer.sanitize(complex_content)
+        
+        # Should handle without regex errors
+        assert result is not None
+        assert result.sanitized_content is not None
 
     def test_sanitizer_metrics_tracking(self):
         """Test that sanitizer tracks processing metrics."""
