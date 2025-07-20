@@ -18,10 +18,23 @@ from .logging_utils import get_logger, LoggingContext, set_request_id
 from .sanitization import sanitize_email_content, SanitizationConfig
 from .agent_responses import parse_agent_response, extract_value_from_response
 from .metrics_export import get_metrics_collector
+from .retry_utils import retry_with_backoff, RetryConfig
 
 logger = get_logger(__name__)
 METRICS = {"processed": 0, "total_time": 0.0}  # Backward compatibility
 _metrics_collector = get_metrics_collector()
+
+# Global retry configuration for agent operations
+_retry_config = RetryConfig.from_env()
+
+
+def _run_agent_with_retry(agent, content: str, agent_type: str):
+    """Run an agent with retry logic for network/connection failures."""
+    @retry_with_backoff(_retry_config)
+    def _agent_operation():
+        return agent.run(content)
+    
+    return _agent_operation()
 
 
 def _handle_agent_exception(e: Exception, agent_type: str) -> str:
@@ -135,7 +148,7 @@ def _triage_single(
     try:
         # Classification with error handling
         try:
-            cat_result = classifier.run(content)
+            cat_result = _run_agent_with_retry(classifier, content, "classifier")
             cat_response = parse_agent_response(cat_result, "classifier")
             
             _metrics_collector.increment_counter("classifier_operations")
@@ -158,7 +171,7 @@ def _triage_single(
     
         # Priority scoring with error handling
         try:
-            pri_result = prioritizer.run(content)
+            pri_result = _run_agent_with_retry(prioritizer, content, "priority")
             pri_response = parse_agent_response(pri_result, "priority")
             
             _metrics_collector.increment_counter("priority_operations")
@@ -182,7 +195,7 @@ def _triage_single(
     
         # Summarization with error handling
         try:
-            summary_result = summarizer.run(content)
+            summary_result = _run_agent_with_retry(summarizer, content, "summarizer")
             summary_response = parse_agent_response(summary_result, "summarizer")
             
             _metrics_collector.increment_counter("summarizer_operations")
@@ -206,7 +219,7 @@ def _triage_single(
     
         # Response generation with error handling
         try:
-            response_result = responder.run(content)
+            response_result = _run_agent_with_retry(responder, content, "responder")
             response_response = parse_agent_response(response_result, "responder")
             
             _metrics_collector.increment_counter("responder_operations")

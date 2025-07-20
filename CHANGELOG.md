@@ -52,3 +52,12 @@ All notable changes to this project will be documented in this file.
 - Improved agent operation error handling (Timeout, JSON, Connection errors)
 - Enhanced pipeline critical error logging with context and stack traces
 - Added specific metrics for different exception types to improve monitoring
+
+## [0.4.5] - 2024-07-20 (Network Retry Logic)
+- **RELIABILITY**: Implemented comprehensive retry logic with exponential backoff
+- Added configurable retry utilities with exponential backoff and jitter
+- Applied retry logic to all IMAP operations (connect, authenticate, search, fetch)
+- Added retry logic to all agent operations (classifier, priority, summarizer, responder)
+- Environment-configurable retry parameters (attempts, delays, backoff factors)
+- Comprehensive retry logging and failure metrics tracking
+- Prevents temporary network failures from causing data loss or processing failures
