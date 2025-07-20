@@ -264,34 +264,54 @@ def _triage_single(
     
     Returns a result with default values if any agent fails.
     Logs errors but doesn't raise exceptions to ensure batch processing continues.
+    Implements graceful degradation: individual agent failures don't prevent others from running.
     """
     # Input validation
     is_valid, result = _validate_input(content)
     if not is_valid:
         return result
     
+    # Content sanitization with graceful degradation
     try:
-        # Content sanitization
         content = _sanitize_content(content, result)
-        
-        # Run all agents
-        _run_classifier(classifier, content, result)
-        _run_priority_agent(prioritizer, content, result)
-        _run_summarizer(summarizer, content, result)
-        _run_responder(responder, content, result)
-            
     except Exception as e:
-        _metrics_collector.increment_counter("pipeline_critical_errors")
-        logger.error("Unexpected error in triage processing: %s", str(e), 
+        _metrics_collector.increment_counter("sanitization_critical_errors")
+        logger.error("Critical sanitization failure, proceeding with original content: %s", str(e), 
                     exc_info=True,
                     extra={
                         'content_length': len(content) if content else 0,
-                        'partial_result': {k: v for k, v in result.items() if k in ['category', 'priority']},
-                        'error_type': 'pipeline_critical'
+                        'error_type': 'sanitization_critical'
                     })
-        # result already has default error values
+        # Continue with original content if sanitization fails completely
+        result["sanitization_warnings"] = ["sanitization_failed"]
+    
+    # Run all agents with individual isolation to prevent cascade failures
+    _run_agent_with_isolation(lambda: _run_classifier(classifier, content, result), "classifier")
+    _run_agent_with_isolation(lambda: _run_priority_agent(prioritizer, content, result), "priority")
+    _run_agent_with_isolation(lambda: _run_summarizer(summarizer, content, result), "summarizer")
+    _run_agent_with_isolation(lambda: _run_responder(responder, content, result), "responder")
 
     return result
+
+
+def _run_agent_with_isolation(agent_func, agent_name: str) -> None:
+    """Run an agent function with isolation to prevent cascading failures.
+    
+    If the agent function throws an unhandled exception, it logs the error
+    but doesn't prevent other agents from running.
+    """
+    try:
+        agent_func()
+    except Exception as e:
+        _metrics_collector.increment_counter(f"{agent_name}_critical_errors")
+        logger.error("Critical error in %s agent, continuing with other agents: %s", 
+                    agent_name, str(e), 
+                    exc_info=True,
+                    extra={
+                        'agent': agent_name,
+                        'error_type': f'{agent_name}_critical'
+                    })
+        # Don't re-raise - let other agents continue
 
 
 def triage_email(content: str | None) -> Dict[str, str | int]:
