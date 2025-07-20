@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import time
 
 from typing import Iterable, List, Dict, Optional
@@ -15,8 +14,8 @@ from .priority import PriorityAgent
 from .summarizer import SummarizerAgent
 from .response import ResponseAgent
 from .logging_utils import get_logger, LoggingContext, set_request_id
-from .sanitization import sanitize_email_content, SanitizationConfig
-from .agent_responses import parse_agent_response, extract_value_from_response
+from .sanitization import sanitize_email_content
+from .agent_responses import parse_agent_response
 from .metrics_export import get_metrics_collector
 from .retry_utils import retry_with_backoff, RetryConfig
 
@@ -77,17 +76,11 @@ def _handle_agent_exception(e: Exception, agent_type: str) -> str:
         return f"{agent_type}_error"
 
 
-def _triage_single(
-    content: str | None,
-    classifier: ClassifierAgent,
-    prioritizer: PriorityAgent,
-    summarizer: SummarizerAgent,
-    responder: ResponseAgent,
-) -> Dict[str, str | int]:
-    """Run ``content`` through provided agents and return result.
+def _validate_input(content: str | None) -> tuple[bool, Dict[str, str | int]]:
+    """Validate input content and return validation result.
     
-    Returns a result with default values if any agent fails.
-    Logs errors but doesn't raise exceptions to ensure batch processing continues.
+    Returns:
+        tuple: (is_valid, result_dict) where result_dict contains error info if invalid
     """
     result = {
         "category": "unknown",
@@ -96,11 +89,10 @@ def _triage_single(
         "response": "Unable to process message",
     }
     
-    # Input validation
     if content is None or not isinstance(content, str):
         logger.warning("Invalid content provided", 
                       extra={'content_type': str(type(content))})
-        return result
+        return False, result
     
     if not content.strip():
         logger.warning("Empty content provided")
@@ -109,12 +101,20 @@ def _triage_single(
             "summary": "Empty message",
             "response": "No content to process",
         })
-        return result
+        return False, result
+        
+    return True, result
+
+
+def _sanitize_content(content: str, result: Dict[str, str | int]) -> str:
+    """Sanitize email content and update result with any warnings.
     
-    # Content sanitization
+    Returns:
+        str: Sanitized content (or original if sanitization fails)
+    """
     try:
         sanitization_result = sanitize_email_content(content)
-        content = sanitization_result.sanitized_content
+        sanitized_content = sanitization_result.sanitized_content
         
         # Record sanitization metrics
         _metrics_collector.increment_counter("sanitization_operations")
@@ -137,6 +137,8 @@ def _triage_single(
         logger.debug("Content sanitization completed",
                     extra={'threats_count': len(sanitization_result.threats_detected),
                           'processing_time_ms': sanitization_result.processing_time_ms})
+        
+        return sanitized_content
                           
     except Exception as e:
         _metrics_collector.increment_counter("sanitization_errors")
@@ -144,103 +146,139 @@ def _triage_single(
                     extra={'error': str(e)})
         # Continue with original content if sanitization fails
         result["sanitization_warnings"] = ["sanitization_failed"]
+        return content
+
+
+def _run_classifier(classifier: ClassifierAgent, content: str, result: Dict[str, str | int]) -> None:
+    """Run classifier agent and update result."""
+    try:
+        cat_result = _run_agent_with_retry(classifier, content, "classifier")
+        cat_response = parse_agent_response(cat_result, "classifier")
+        
+        _metrics_collector.increment_counter("classifier_operations")
+        if cat_response.success:
+            result["category"] = cat_response.category
+            _metrics_collector.record_histogram("classifier_time_seconds", cat_response.processing_time_ms / 1000.0)
+            logger.debug("Classification completed", 
+                        extra={'category': cat_response.category, 
+                              'agent': 'classifier',
+                              'processing_time_ms': cat_response.processing_time_ms})
+        else:
+            result["category"] = "classification_error"
+            _metrics_collector.increment_counter("classifier_errors")
+            logger.error("Classification parsing failed",
+                        extra={'error': cat_response.error_message, 
+                              'raw_output': cat_result, 'agent': 'classifier'})
+    except Exception as e:
+        error_category = _handle_agent_exception(e, "classifier")
+        result["category"] = error_category
+
+
+def _run_priority_agent(prioritizer: PriorityAgent, content: str, result: Dict[str, str | int]) -> None:
+    """Run priority agent and update result."""
+    try:
+        pri_result = _run_agent_with_retry(prioritizer, content, "priority")
+        pri_response = parse_agent_response(pri_result, "priority")
+        
+        _metrics_collector.increment_counter("priority_operations")
+        if pri_response.success:
+            result["priority"] = pri_response.priority_score
+            _metrics_collector.record_histogram("priority_time_seconds", pri_response.processing_time_ms / 1000.0)
+            logger.debug("Priority scoring completed", 
+                        extra={'priority_score': pri_response.priority_score,
+                              'agent': 'priority',
+                              'processing_time_ms': pri_response.processing_time_ms,
+                              'reasoning': pri_response.reasoning})
+        else:
+            result["priority"] = 0
+            _metrics_collector.increment_counter("priority_errors")
+            logger.error("Priority parsing failed",
+                        extra={'error': pri_response.error_message,
+                              'raw_output': pri_result, 'agent': 'priority'})
+    except Exception as e:
+        _handle_agent_exception(e, "priority")
+        result["priority"] = 0
+
+
+def _run_summarizer(summarizer: SummarizerAgent, content: str, result: Dict[str, str | int]) -> None:
+    """Run summarizer agent and update result."""
+    try:
+        summary_result = _run_agent_with_retry(summarizer, content, "summarizer")
+        summary_response = parse_agent_response(summary_result, "summarizer")
+        
+        _metrics_collector.increment_counter("summarizer_operations")
+        if summary_response.success:
+            result["summary"] = summary_response.summary
+            _metrics_collector.record_histogram("summarizer_time_seconds", summary_response.processing_time_ms / 1000.0)
+            logger.debug("Summarization completed", 
+                        extra={'summary_length': len(summary_response.summary) if summary_response.summary else 0,
+                              'word_count': summary_response.word_count,
+                              'agent': 'summarizer',
+                              'processing_time_ms': summary_response.processing_time_ms})
+        else:
+            result["summary"] = "Summarization failed"
+            _metrics_collector.increment_counter("summarizer_errors")
+            logger.error("Summarization parsing failed",
+                        extra={'error': summary_response.error_message,
+                              'raw_output': summary_result, 'agent': 'summarizer'})
+    except Exception as e:
+        _handle_agent_exception(e, "summarizer")
+        result["summary"] = "Summarization failed"
+
+
+def _run_responder(responder: ResponseAgent, content: str, result: Dict[str, str | int]) -> None:
+    """Run responder agent and update result."""
+    try:
+        response_result = _run_agent_with_retry(responder, content, "responder")
+        response_response = parse_agent_response(response_result, "responder")
+        
+        _metrics_collector.increment_counter("responder_operations")
+        if response_response.success:
+            result["response"] = response_response.response_text
+            _metrics_collector.record_histogram("responder_time_seconds", response_response.processing_time_ms / 1000.0)
+            logger.debug("Response generation completed", 
+                        extra={'response_length': len(response_response.response_text) if response_response.response_text else 0,
+                              'response_type': response_response.response_type,
+                              'tone': response_response.tone,
+                              'agent': 'responder',
+                              'processing_time_ms': response_response.processing_time_ms})
+        else:
+            result["response"] = "Response generation failed"
+            _metrics_collector.increment_counter("responder_errors")
+            logger.error("Response generation parsing failed",
+                        extra={'error': response_response.error_message,
+                              'raw_output': response_result, 'agent': 'responder'})
+    except Exception as e:
+        _handle_agent_exception(e, "responder")
+        result["response"] = "Response generation failed"
+
+
+def _triage_single(
+    content: str | None,
+    classifier: ClassifierAgent,
+    prioritizer: PriorityAgent,
+    summarizer: SummarizerAgent,
+    responder: ResponseAgent,
+) -> Dict[str, str | int]:
+    """Run ``content`` through provided agents and return result.
+    
+    Returns a result with default values if any agent fails.
+    Logs errors but doesn't raise exceptions to ensure batch processing continues.
+    """
+    # Input validation
+    is_valid, result = _validate_input(content)
+    if not is_valid:
+        return result
     
     try:
-        # Classification with error handling
-        try:
-            cat_result = _run_agent_with_retry(classifier, content, "classifier")
-            cat_response = parse_agent_response(cat_result, "classifier")
-            
-            _metrics_collector.increment_counter("classifier_operations")
-            if cat_response.success:
-                result["category"] = cat_response.category
-                _metrics_collector.record_histogram("classifier_time_seconds", cat_response.processing_time_ms / 1000.0)
-                logger.debug("Classification completed", 
-                            extra={'category': cat_response.category, 
-                                  'agent': 'classifier',
-                                  'processing_time_ms': cat_response.processing_time_ms})
-            else:
-                result["category"] = "classification_error"
-                _metrics_collector.increment_counter("classifier_errors")
-                logger.error("Classification parsing failed",
-                            extra={'error': cat_response.error_message, 
-                                  'raw_output': cat_result, 'agent': 'classifier'})
-        except Exception as e:
-            error_category = _handle_agent_exception(e, "classifier")
-            result["category"] = error_category
-    
-        # Priority scoring with error handling
-        try:
-            pri_result = _run_agent_with_retry(prioritizer, content, "priority")
-            pri_response = parse_agent_response(pri_result, "priority")
-            
-            _metrics_collector.increment_counter("priority_operations")
-            if pri_response.success:
-                result["priority"] = pri_response.priority_score
-                _metrics_collector.record_histogram("priority_time_seconds", pri_response.processing_time_ms / 1000.0)
-                logger.debug("Priority scoring completed", 
-                            extra={'priority_score': pri_response.priority_score,
-                                  'agent': 'priority',
-                                  'processing_time_ms': pri_response.processing_time_ms,
-                                  'reasoning': pri_response.reasoning})
-            else:
-                result["priority"] = 0
-                _metrics_collector.increment_counter("priority_errors")
-                logger.error("Priority parsing failed",
-                            extra={'error': pri_response.error_message,
-                                  'raw_output': pri_result, 'agent': 'priority'})
-        except Exception as e:
-            _handle_agent_exception(e, "priority")
-            result["priority"] = 0
-    
-        # Summarization with error handling
-        try:
-            summary_result = _run_agent_with_retry(summarizer, content, "summarizer")
-            summary_response = parse_agent_response(summary_result, "summarizer")
-            
-            _metrics_collector.increment_counter("summarizer_operations")
-            if summary_response.success:
-                result["summary"] = summary_response.summary
-                _metrics_collector.record_histogram("summarizer_time_seconds", summary_response.processing_time_ms / 1000.0)
-                logger.debug("Summarization completed", 
-                            extra={'summary_length': len(summary_response.summary) if summary_response.summary else 0,
-                                  'word_count': summary_response.word_count,
-                                  'agent': 'summarizer',
-                                  'processing_time_ms': summary_response.processing_time_ms})
-            else:
-                result["summary"] = "Summarization failed"
-                _metrics_collector.increment_counter("summarizer_errors")
-                logger.error("Summarization parsing failed",
-                            extra={'error': summary_response.error_message,
-                                  'raw_output': summary_result, 'agent': 'summarizer'})
-        except Exception as e:
-            _handle_agent_exception(e, "summarizer")
-            result["summary"] = "Summarization failed"
-    
-        # Response generation with error handling
-        try:
-            response_result = _run_agent_with_retry(responder, content, "responder")
-            response_response = parse_agent_response(response_result, "responder")
-            
-            _metrics_collector.increment_counter("responder_operations")
-            if response_response.success:
-                result["response"] = response_response.response_text
-                _metrics_collector.record_histogram("responder_time_seconds", response_response.processing_time_ms / 1000.0)
-                logger.debug("Response generation completed", 
-                            extra={'response_length': len(response_response.response_text) if response_response.response_text else 0,
-                                  'response_type': response_response.response_type,
-                                  'tone': response_response.tone,
-                                  'agent': 'responder',
-                                  'processing_time_ms': response_response.processing_time_ms})
-            else:
-                result["response"] = "Response generation failed"
-                _metrics_collector.increment_counter("responder_errors")
-                logger.error("Response generation parsing failed",
-                            extra={'error': response_response.error_message,
-                                  'raw_output': response_result, 'agent': 'responder'})
-        except Exception as e:
-            _handle_agent_exception(e, "responder")
-            result["response"] = "Response generation failed"
+        # Content sanitization
+        content = _sanitize_content(content, result)
+        
+        # Run all agents
+        _run_classifier(classifier, content, result)
+        _run_priority_agent(prioritizer, content, result)
+        _run_summarizer(summarizer, content, result)
+        _run_responder(responder, content, result)
             
     except Exception as e:
         _metrics_collector.increment_counter("pipeline_critical_errors")
@@ -266,7 +304,7 @@ def triage_email(content: str | None) -> Dict[str, str | int]:
         responder = ResponseAgent()
         
         logger.info("Starting email triage", 
-                   extra={'content_length': len(content) if content else 0})
+                   extra={'content_length': len(content) if isinstance(content, str) else 0})
         
         result = _triage_single(
             content,
