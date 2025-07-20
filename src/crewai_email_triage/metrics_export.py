@@ -181,19 +181,90 @@ class MetricsEndpoint:
         
         class MetricsHandler(BaseHTTPRequestHandler):
             def do_GET(self):
-                if self.path == config.export_path:
-                    metrics_output = exporter.export()
-                    self.send_response(200)
+                """Handle GET requests with proper validation and security headers."""
+                try:
+                    # Validate path
+                    if self.path == config.export_path:
+                        metrics_output = exporter.export()
+                        self.send_response(200)
+                        self._send_security_headers()
+                        self.send_header("Content-Type", "text/plain; charset=utf-8")
+                        self.send_header("Content-Length", str(len(metrics_output.encode("utf-8"))))
+                        self.end_headers()
+                        self.wfile.write(metrics_output.encode("utf-8"))
+                    elif self.path == "/health":
+                        # Basic health check endpoint
+                        health_response = '{"status": "healthy", "service": "email-triage-metrics"}\n'
+                        self.send_response(200)
+                        self._send_security_headers()
+                        self.send_header("Content-Type", "application/json; charset=utf-8")
+                        self.send_header("Content-Length", str(len(health_response.encode("utf-8"))))
+                        self.end_headers()
+                        self.wfile.write(health_response.encode("utf-8"))
+                    else:
+                        self._send_error_response(404, "Not Found")
+                except Exception as e:
+                    self._send_error_response(500, "Internal Server Error")
+            
+            def do_POST(self):
+                """Reject POST requests with proper error response."""
+                self._send_error_response(405, "Method Not Allowed", {"Allow": "GET"})
+            
+            def do_PUT(self):
+                """Reject PUT requests with proper error response."""
+                self._send_error_response(405, "Method Not Allowed", {"Allow": "GET"})
+            
+            def do_DELETE(self):
+                """Reject DELETE requests with proper error response."""
+                self._send_error_response(405, "Method Not Allowed", {"Allow": "GET"})
+            
+            def do_HEAD(self):
+                """Handle HEAD requests (same as GET but without body)."""
+                try:
+                    if self.path == config.export_path or self.path == "/health":
+                        self.send_response(200)
+                        self._send_security_headers()
+                        if self.path == config.export_path:
+                            self.send_header("Content-Type", "text/plain; charset=utf-8")
+                        else:
+                            self.send_header("Content-Type", "application/json; charset=utf-8")
+                        self.end_headers()
+                    else:
+                        self._send_error_response(404, "Not Found")
+                except Exception:
+                    self._send_error_response(500, "Internal Server Error")
+            
+            def _send_security_headers(self):
+                """Send standard security headers."""
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.send_header("X-Frame-Options", "DENY")
+                self.send_header("X-XSS-Protection", "1; mode=block")
+                self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+                self.send_header("Pragma", "no-cache")
+                self.send_header("Expires", "0")
+            
+            def _send_error_response(self, code: int, message: str, extra_headers: dict = None):
+                """Send standardized error responses with security headers."""
+                try:
+                    self.send_response(code)
+                    self._send_security_headers()
+                    if extra_headers:
+                        for header, value in extra_headers.items():
+                            self.send_header(header, value)
                     self.send_header("Content-Type", "text/plain; charset=utf-8")
                     self.end_headers()
-                    self.wfile.write(metrics_output.encode("utf-8"))
-                else:
-                    self.send_response(404)
-                    self.end_headers()
+                    if hasattr(self, 'wfile'):
+                        self.wfile.write(f"{code} {message}\n".encode("utf-8"))
+                except Exception:
+                    pass  # Avoid recursive errors
             
             def log_message(self, format, *args):
-                # Suppress default HTTP server logging
+                # Suppress default HTTP server logging to avoid log pollution
                 pass
+            
+            def version_string(self):
+                # Don't reveal server version for security
+                return "EmailTriageMetrics/1.0"
         
         return MetricsHandler
 

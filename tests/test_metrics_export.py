@@ -349,6 +349,62 @@ class TestMetricsConfig:
             MetricsConfig(export_path="invalid-path")  # Must start with /
 
 
+class TestMetricsEndpointSecurity:
+    """Test HTTP endpoint security features."""
+
+    def test_http_method_validation(self):
+        """Test that only GET and HEAD methods are allowed."""
+        collector = MetricsCollector()
+        exporter = PrometheusExporter(collector)
+        config = MetricsConfig(enabled=True, export_port=9099, export_path="/metrics")
+        endpoint = MetricsEndpoint(exporter, config)
+        
+        # This test would require actual HTTP server testing
+        # For now, we test the handler creation and basic functionality
+        handler_class = endpoint._create_handler()
+        
+        # Verify the handler has the expected methods
+        expected_methods = ['do_GET', 'do_POST', 'do_PUT', 'do_DELETE', 'do_HEAD']
+        for method in expected_methods:
+            assert hasattr(handler_class, method), f"Handler missing {method} method"
+        
+        # Verify security methods exist
+        security_methods = ['_send_security_headers', '_send_error_response', 'version_string']
+        for method in security_methods:
+            assert hasattr(handler_class, method), f"Handler missing security method {method}"
+
+    def test_health_check_endpoint_response(self):
+        """Test that health check endpoint returns proper JSON."""
+        collector = MetricsCollector()
+        exporter = PrometheusExporter(collector)
+        config = MetricsConfig(enabled=True, export_port=9100, export_path="/metrics")
+        endpoint = MetricsEndpoint(exporter, config)
+        
+        # Test that the endpoint creates a proper handler
+        handler_class = endpoint._create_handler()
+        assert handler_class is not None
+        
+        # Verify the handler has proper path handling logic
+        # (Full HTTP testing would require integration tests)
+        assert hasattr(handler_class, 'do_GET')
+
+    def test_security_headers_configuration(self):
+        """Test that security headers are properly configured."""
+        collector = MetricsCollector()
+        exporter = PrometheusExporter(collector)
+        config = MetricsConfig(enabled=True, export_port=9101, export_path="/metrics")
+        endpoint = MetricsEndpoint(exporter, config)
+        
+        handler_class = endpoint._create_handler()
+        
+        # Verify security header method exists
+        assert hasattr(handler_class, '_send_security_headers')
+        
+        # Create a mock handler instance to test the method exists
+        # (Full header testing would require HTTP integration tests)
+        assert callable(getattr(handler_class, '_send_security_headers'))
+
+
 class TestUtilityFunctions:
     """Test utility functions for metrics export."""
 

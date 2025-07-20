@@ -28,3 +28,11 @@ All notable changes to this project will be documented in this file.
 - Added security documentation and tests for sanitization
 - Maintained excellent performance (28k+ emails/sec) without caching
 - Updated test suite to verify no sensitive data caching
+
+## [0.4.2] - 2024-07-20 (HTTP Security Hardening)
+- **SECURITY**: Comprehensive HTTP endpoint security improvements
+- Added proper HTTP method validation (405 Method Not Allowed responses)
+- Implemented security headers (X-Content-Type-Options, X-Frame-Options, etc.)
+- Added /health endpoint for monitoring and health checks
+- Proper HEAD request support and standardized error responses
+- Hidden server version information for security
