@@ -53,6 +53,16 @@ All notable changes to this project will be documented in this file.
 - Enhanced pipeline critical error logging with context and stack traces
 - Added specific metrics for different exception types to improve monitoring
 
+## [0.4.6] - 2024-07-20 (Secure Credential Storage)
+- **SECURITY**: Implemented secure credential storage system with encryption
+- Added memory-safe password handling to prevent exposure in memory dumps
+- Created SecureCredentialManager with AES-256 encryption and PBKDF2 key derivation
+- Automatic migration from environment variables to secure storage
+- Thread-safe credential operations with file locking and secure permissions (600)
+- Enhanced GmailProvider to use secure credential storage instead of plaintext memory storage
+- Comprehensive test suite for credential security and memory safety
+- Backward compatibility maintained for existing environment variable usage
+
 ## [0.4.5] - 2024-07-20 (Network Retry Logic)
 - **RELIABILITY**: Implemented comprehensive retry logic with exponential backoff
 - Added configurable retry utilities with exponential backoff and jitter
