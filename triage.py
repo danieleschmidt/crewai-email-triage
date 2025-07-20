@@ -12,6 +12,9 @@ from crewai_email_triage.pipeline import METRICS, triage_batch
 from crewai_email_triage import __version__, triage_email, GmailProvider
 from crewai_email_triage.config import set_config
 from crewai_email_triage.logging_utils import setup_structured_logging, LoggingContext
+from crewai_email_triage.metrics_export import (
+    get_metrics_collector, PrometheusExporter, MetricsEndpoint, MetricsConfig
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -52,6 +55,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--disable-sanitization", action="store_true", help="Disable content sanitization (not recommended)")
     parser.add_argument("--sanitization-level", choices=['basic', 'standard', 'strict'], default='standard', 
                        help="Content sanitization level (default: standard)")
+    parser.add_argument("--export-metrics", action="store_true", help="Start HTTP server to export Prometheus metrics")
+    parser.add_argument("--metrics-port", type=int, default=8080, help="Port for metrics HTTP server (default: 8080)")
+    parser.add_argument("--metrics-path", default="/metrics", help="Path for metrics endpoint (default: /metrics)")
     return parser
 
 
@@ -99,6 +105,26 @@ def main() -> None:
 
     if args.config:
         set_config(args.config)
+    
+    # Setup metrics export if requested
+    metrics_endpoint = None
+    if args.export_metrics:
+        config = MetricsConfig(
+            enabled=True,
+            export_port=args.metrics_port,
+            export_path=args.metrics_path
+        )
+        collector = get_metrics_collector()
+        exporter = PrometheusExporter(collector)
+        metrics_endpoint = MetricsEndpoint(exporter, config)
+        
+        try:
+            metrics_endpoint.start()
+            logging.info("Metrics endpoint started on http://localhost:%d%s", 
+                        args.metrics_port, args.metrics_path)
+        except Exception as e:
+            logging.error("Failed to start metrics endpoint: %s", e)
+            metrics_endpoint = None
 
     if args.interactive:
         _run_interactive(args.pretty)
@@ -124,6 +150,11 @@ def main() -> None:
         print(output)
 
     logging.info("Processed %d message(s) in %.3fs", METRICS["processed"], METRICS["total_time"])
+    
+    # Cleanup metrics endpoint
+    if metrics_endpoint:
+        metrics_endpoint.stop()
+        logging.info("Metrics endpoint stopped")
 
 
 if __name__ == "__main__":

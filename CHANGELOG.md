@@ -13,3 +13,11 @@ All notable changes to this project will be documented in this file.
 - Batch processing with shared agents
 - Gmail integration via IMAP
 - Documentation cleanup
+
+## [0.4.0] - 2024-07-20
+- Comprehensive metrics export system with Prometheus format
+- Thread-safe metrics collection (counters, gauges, histograms)
+- HTTP endpoint for metrics serving (/metrics)
+- CLI options for metrics export (--export-metrics, --metrics-port)
+- Agent-level performance tracking and sanitization metrics
+- Backward compatibility with legacy METRICS dict

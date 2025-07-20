@@ -17,9 +17,11 @@ from .response import ResponseAgent
 from .logging_utils import get_logger, LoggingContext, set_request_id
 from .sanitization import sanitize_email_content, SanitizationConfig
 from .agent_responses import parse_agent_response, extract_value_from_response
+from .metrics_export import get_metrics_collector
 
 logger = get_logger(__name__)
-METRICS = {"processed": 0, "total_time": 0.0}
+METRICS = {"processed": 0, "total_time": 0.0}  # Backward compatibility
+_metrics_collector = get_metrics_collector()
 
 
 def _triage_single(
@@ -61,6 +63,12 @@ def _triage_single(
         sanitization_result = sanitize_email_content(content)
         content = sanitization_result.sanitized_content
         
+        # Record sanitization metrics
+        _metrics_collector.increment_counter("sanitization_operations")
+        if sanitization_result.threats_detected:
+            _metrics_collector.increment_counter("sanitization_threats_detected", len(sanitization_result.threats_detected))
+        _metrics_collector.record_histogram("sanitization_time_seconds", sanitization_result.processing_time_ms / 1000.0)
+        
         # Log sanitization results
         if sanitization_result.threats_detected:
             logger.warning("Security threats detected and sanitized",
@@ -78,6 +86,7 @@ def _triage_single(
                           'processing_time_ms': sanitization_result.processing_time_ms})
                           
     except Exception as e:
+        _metrics_collector.increment_counter("sanitization_errors")
         logger.error("Content sanitization failed",
                     extra={'error': str(e)})
         # Continue with original content if sanitization fails
@@ -89,18 +98,22 @@ def _triage_single(
             cat_result = classifier.run(content)
             cat_response = parse_agent_response(cat_result, "classifier")
             
+            _metrics_collector.increment_counter("classifier_operations")
             if cat_response.success:
                 result["category"] = cat_response.category
+                _metrics_collector.record_histogram("classifier_time_seconds", cat_response.processing_time_ms / 1000.0)
                 logger.debug("Classification completed", 
                             extra={'category': cat_response.category, 
                                   'agent': 'classifier',
                                   'processing_time_ms': cat_response.processing_time_ms})
             else:
                 result["category"] = "classification_error"
+                _metrics_collector.increment_counter("classifier_errors")
                 logger.error("Classification parsing failed",
                             extra={'error': cat_response.error_message, 
                                   'raw_output': cat_result, 'agent': 'classifier'})
         except Exception as e:
+            _metrics_collector.increment_counter("classifier_errors")
             logger.error("Classification failed", 
                         extra={'error': str(e), 'agent': 'classifier'})
             result["category"] = "classification_error"
@@ -110,8 +123,10 @@ def _triage_single(
             pri_result = prioritizer.run(content)
             pri_response = parse_agent_response(pri_result, "priority")
             
+            _metrics_collector.increment_counter("priority_operations")
             if pri_response.success:
                 result["priority"] = pri_response.priority_score
+                _metrics_collector.record_histogram("priority_time_seconds", pri_response.processing_time_ms / 1000.0)
                 logger.debug("Priority scoring completed", 
                             extra={'priority_score': pri_response.priority_score,
                                   'agent': 'priority',
@@ -119,10 +134,12 @@ def _triage_single(
                                   'reasoning': pri_response.reasoning})
             else:
                 result["priority"] = 0
+                _metrics_collector.increment_counter("priority_errors")
                 logger.error("Priority parsing failed",
                             extra={'error': pri_response.error_message,
                                   'raw_output': pri_result, 'agent': 'priority'})
         except Exception as e:
+            _metrics_collector.increment_counter("priority_errors")
             logger.error("Priority scoring failed", 
                         extra={'error': str(e), 'agent': 'priority'})
             result["priority"] = 0
@@ -132,8 +149,10 @@ def _triage_single(
             summary_result = summarizer.run(content)
             summary_response = parse_agent_response(summary_result, "summarizer")
             
+            _metrics_collector.increment_counter("summarizer_operations")
             if summary_response.success:
                 result["summary"] = summary_response.summary
+                _metrics_collector.record_histogram("summarizer_time_seconds", summary_response.processing_time_ms / 1000.0)
                 logger.debug("Summarization completed", 
                             extra={'summary_length': len(summary_response.summary) if summary_response.summary else 0,
                                   'word_count': summary_response.word_count,
@@ -141,10 +160,12 @@ def _triage_single(
                                   'processing_time_ms': summary_response.processing_time_ms})
             else:
                 result["summary"] = "Summarization failed"
+                _metrics_collector.increment_counter("summarizer_errors")
                 logger.error("Summarization parsing failed",
                             extra={'error': summary_response.error_message,
                                   'raw_output': summary_result, 'agent': 'summarizer'})
         except Exception as e:
+            _metrics_collector.increment_counter("summarizer_errors")
             logger.error("Summarization failed", 
                         extra={'error': str(e), 'agent': 'summarizer'})
             result["summary"] = "Summarization failed"
@@ -154,8 +175,10 @@ def _triage_single(
             response_result = responder.run(content)
             response_response = parse_agent_response(response_result, "responder")
             
+            _metrics_collector.increment_counter("responder_operations")
             if response_response.success:
                 result["response"] = response_response.response_text
+                _metrics_collector.record_histogram("responder_time_seconds", response_response.processing_time_ms / 1000.0)
                 logger.debug("Response generation completed", 
                             extra={'response_length': len(response_response.response_text) if response_response.response_text else 0,
                                   'response_type': response_response.response_type,
@@ -164,10 +187,12 @@ def _triage_single(
                                   'processing_time_ms': response_response.processing_time_ms})
             else:
                 result["response"] = "Response generation failed"
+                _metrics_collector.increment_counter("responder_errors")
                 logger.error("Response generation parsing failed",
                             extra={'error': response_response.error_message,
                                   'raw_output': response_result, 'agent': 'responder'})
         except Exception as e:
+            _metrics_collector.increment_counter("responder_errors")
             logger.error("Response generation failed", 
                         extra={'error': str(e), 'agent': 'responder'})
             result["response"] = "Response generation failed"
@@ -200,8 +225,12 @@ def triage_email(content: str | None) -> Dict[str, str | int]:
         )
 
         elapsed = time.perf_counter() - start
+        
+        # Update both legacy METRICS dict and new metrics collector
         METRICS["processed"] += 1
         METRICS["total_time"] += elapsed
+        _metrics_collector.increment_counter("emails_processed")
+        _metrics_collector.record_histogram("processing_time_seconds", elapsed)
         
         logger.info("Email triage completed", 
                    extra={'duration': elapsed, 'category': result.get('category'),
@@ -288,8 +317,13 @@ def triage_batch(
             ]
 
         elapsed = time.perf_counter() - start
+        
+        # Update both legacy METRICS dict and new metrics collector
         METRICS["processed"] += len(results)
         METRICS["total_time"] += elapsed
+        _metrics_collector.increment_counter("emails_processed", len(results))
+        _metrics_collector.record_histogram("batch_processing_time_seconds", elapsed)
+        _metrics_collector.set_gauge("last_batch_size", len(messages_list))
         
         # Calculate performance metrics
         avg_time_per_message = elapsed / len(messages_list) if messages_list else 0
