@@ -44,3 +44,11 @@ All notable changes to this project will be documented in this file.
 - Enhanced Prometheus export with efficient histogram statistics
 - Comprehensive thread safety testing for concurrent metrics collection
 - Maintains performance while preventing unbounded memory growth
+
+## [0.4.4] - 2024-07-20 (Exception Handling Improvements)
+- **DEBUGGING**: Enhanced exception handling with specific exception types
+- Replaced generic Exception catches with targeted error handling
+- Added detailed error categorization for sanitization (Unicode, Memory, Regex errors)
+- Improved agent operation error handling (Timeout, JSON, Connection errors)
+- Enhanced pipeline critical error logging with context and stack traces
+- Added specific metrics for different exception types to improve monitoring

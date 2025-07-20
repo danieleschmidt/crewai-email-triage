@@ -24,6 +24,46 @@ METRICS = {"processed": 0, "total_time": 0.0}  # Backward compatibility
 _metrics_collector = get_metrics_collector()
 
 
+def _handle_agent_exception(e: Exception, agent_type: str) -> str:
+    """Handle agent-specific exceptions with detailed logging and metrics.
+    
+    Returns appropriate error category based on exception type.
+    """
+    import json
+    from concurrent.futures import TimeoutError
+    
+    if isinstance(e, TimeoutError):
+        _metrics_collector.increment_counter(f"{agent_type}_timeouts")
+        logger.error(f"{agent_type} timeout", 
+                    extra={'error': str(e), 'agent': agent_type, 'error_type': 'timeout'})
+        return f"{agent_type}_timeout"
+    
+    elif isinstance(e, json.JSONDecodeError):
+        _metrics_collector.increment_counter(f"{agent_type}_parse_errors")
+        logger.error(f"{agent_type} response parsing failed", 
+                    extra={'error': str(e), 'agent': agent_type, 'error_type': 'json_parse'})
+        return f"{agent_type}_parse_error"
+    
+    elif isinstance(e, ConnectionError):
+        _metrics_collector.increment_counter(f"{agent_type}_connection_errors")
+        logger.error(f"{agent_type} connection failed", 
+                    extra={'error': str(e), 'agent': agent_type, 'error_type': 'connection'})
+        return f"{agent_type}_connection_error"
+    
+    elif isinstance(e, ValueError):
+        _metrics_collector.increment_counter(f"{agent_type}_value_errors")
+        logger.error(f"{agent_type} invalid input or response", 
+                    extra={'error': str(e), 'agent': agent_type, 'error_type': 'value'})
+        return f"{agent_type}_value_error"
+    
+    else:
+        _metrics_collector.increment_counter(f"{agent_type}_errors")
+        logger.error(f"{agent_type} unexpected error", 
+                    extra={'error': str(e), 'agent': agent_type, 'error_type': 'unexpected'}, 
+                    exc_info=True)
+        return f"{agent_type}_error"
+
+
 def _triage_single(
     content: str | None,
     classifier: ClassifierAgent,
@@ -113,10 +153,8 @@ def _triage_single(
                             extra={'error': cat_response.error_message, 
                                   'raw_output': cat_result, 'agent': 'classifier'})
         except Exception as e:
-            _metrics_collector.increment_counter("classifier_errors")
-            logger.error("Classification failed", 
-                        extra={'error': str(e), 'agent': 'classifier'})
-            result["category"] = "classification_error"
+            error_category = _handle_agent_exception(e, "classifier")
+            result["category"] = error_category
     
         # Priority scoring with error handling
         try:
@@ -139,9 +177,7 @@ def _triage_single(
                             extra={'error': pri_response.error_message,
                                   'raw_output': pri_result, 'agent': 'priority'})
         except Exception as e:
-            _metrics_collector.increment_counter("priority_errors")
-            logger.error("Priority scoring failed", 
-                        extra={'error': str(e), 'agent': 'priority'})
+            _handle_agent_exception(e, "priority")
             result["priority"] = 0
     
         # Summarization with error handling
@@ -165,9 +201,7 @@ def _triage_single(
                             extra={'error': summary_response.error_message,
                                   'raw_output': summary_result, 'agent': 'summarizer'})
         except Exception as e:
-            _metrics_collector.increment_counter("summarizer_errors")
-            logger.error("Summarization failed", 
-                        extra={'error': str(e), 'agent': 'summarizer'})
+            _handle_agent_exception(e, "summarizer")
             result["summary"] = "Summarization failed"
     
         # Response generation with error handling
@@ -192,13 +226,18 @@ def _triage_single(
                             extra={'error': response_response.error_message,
                                   'raw_output': response_result, 'agent': 'responder'})
         except Exception as e:
-            _metrics_collector.increment_counter("responder_errors")
-            logger.error("Response generation failed", 
-                        extra={'error': str(e), 'agent': 'responder'})
+            _handle_agent_exception(e, "responder")
             result["response"] = "Response generation failed"
             
     except Exception as e:
-        logger.error("Unexpected error in triage processing: %s", str(e))
+        _metrics_collector.increment_counter("pipeline_critical_errors")
+        logger.error("Unexpected error in triage processing: %s", str(e), 
+                    exc_info=True,
+                    extra={
+                        'content_length': len(content) if content else 0,
+                        'partial_result': {k: v for k, v in result.items() if k in ['category', 'priority']},
+                        'error_type': 'pipeline_critical'
+                    })
         # result already has default error values
 
     return result

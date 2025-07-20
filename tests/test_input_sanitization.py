@@ -261,6 +261,34 @@ class TestEmailSanitizer:
         assert not hasattr(sanitizer.sanitize, 'cache_info'), \
             "Sanitize method should not have caching to prevent PII exposure"
 
+    def test_sanitizer_specific_exception_handling(self):
+        """Test that sanitizer handles specific exception types appropriately."""
+        sanitizer = EmailSanitizer()
+        
+        # Test Unicode handling - create content with potential encoding issues
+        unicode_content = "Test content with unicode: \u0080\u0081\u0082"
+        result = sanitizer.sanitize(unicode_content)
+        
+        # Should handle without crashing
+        assert result is not None
+        assert result.sanitized_content is not None
+        
+        # Test very large content (to test memory handling path)
+        large_content = "x" * 100000
+        result = sanitizer.sanitize(large_content)
+        
+        # Should handle without crashing and apply length limits
+        assert result is not None
+        assert len(result.sanitized_content) <= sanitizer.config.max_length
+        
+        # Test complex regex patterns
+        complex_content = "Content with regex challenges: " + "(?(" * 10 + ")"
+        result = sanitizer.sanitize(complex_content)
+        
+        # Should handle without regex errors
+        assert result is not None
+        assert result.sanitized_content is not None
+
     def test_sanitizer_metrics_tracking(self):
         """Test that sanitizer tracks processing metrics."""
         sanitizer = EmailSanitizer()

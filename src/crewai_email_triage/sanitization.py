@@ -194,9 +194,51 @@ class EmailSanitizer:
                 processing_time_ms=processing_time
             )
             
+        except (UnicodeDecodeError, UnicodeEncodeError) as e:
+            logger.error("Encoding error during sanitization", extra={'error': str(e), 'error_type': 'encoding'})
+            # Return encoding-specific fallback with partial content if possible
+            safe_content = content.encode('ascii', errors='replace').decode('ascii') if content else ""
+            return SanitizationResult(
+                sanitized_content=safe_content[:1000] if safe_content else "[Encoding error - content removed]",
+                is_safe=False,
+                threats_detected=['encoding_error'],
+                modifications_made=['encoding_fallback'],
+                original_length=original_length,
+                sanitized_length=len(safe_content[:1000]) if safe_content else 0,
+                processing_time_ms=(time.perf_counter() - start_time) * 1000
+            )
+        except MemoryError as e:
+            logger.error("Memory error during sanitization - content too large", 
+                        extra={'error': str(e), 'error_type': 'memory', 'content_size': original_length})
+            # Return memory-specific fallback with truncated content
+            truncated_content = content[:500] if content else ""
+            return SanitizationResult(
+                sanitized_content=f"[Large content truncated for memory safety: {truncated_content}...]",
+                is_safe=False,
+                threats_detected=['content_too_large'],
+                modifications_made=['emergency_truncation'],
+                original_length=original_length,
+                sanitized_length=len(truncated_content) + 50,  # Account for prefix text
+                processing_time_ms=(time.perf_counter() - start_time) * 1000
+            )
+        except re.error as e:
+            logger.error("Regex pattern error during sanitization", 
+                        extra={'error': str(e), 'error_type': 'regex'})
+            # Return pattern-specific fallback - basic text cleaning
+            simple_content = ''.join(c for c in content if c.isprintable()) if content else ""
+            return SanitizationResult(
+                sanitized_content=simple_content[:1000],
+                is_safe=False,
+                threats_detected=['regex_pattern_error'],
+                modifications_made=['fallback_cleaning'],
+                original_length=original_length,
+                sanitized_length=len(simple_content[:1000]),
+                processing_time_ms=(time.perf_counter() - start_time) * 1000
+            )
         except Exception as e:
-            logger.error("Error during sanitization", extra={'error': str(e)})
-            # Return safe fallback
+            logger.error("Unexpected error during sanitization", 
+                        extra={'error': str(e), 'error_type': 'unexpected'}, exc_info=True)
+            # Return generic safe fallback for unexpected errors
             return SanitizationResult(
                 sanitized_content="[Content sanitization failed - content removed for security]",
                 is_safe=False,
