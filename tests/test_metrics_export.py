@@ -49,6 +49,76 @@ class TestMetricsCollector:
         assert 1.5 in values
         assert 2.3 in values
 
+    def test_bounded_histogram_memory_safety(self):
+        """Test that histograms are bounded to prevent memory issues."""
+        config = MetricsConfig(histogram_max_size=100)
+        collector = MetricsCollector(config)
+        
+        # Record more values than the maximum
+        for i in range(500):
+            collector.record_histogram("bounded_test", float(i))
+        
+        values = collector.get_histogram("bounded_test")
+        
+        # Should be bounded to the configured maximum
+        assert len(values) <= config.histogram_max_size
+        assert len(values) == config.histogram_max_size  # Should be exactly at the limit
+        
+        # Should contain the most recent values
+        assert 499.0 in values  # Last value should be present
+
+    def test_histogram_statistics(self):
+        """Test histogram statistics calculation."""
+        collector = MetricsCollector()
+        
+        # Record known values
+        test_values = [1.0, 2.0, 3.0, 4.0, 5.0]
+        for value in test_values:
+            collector.record_histogram("stats_test", value)
+        
+        stats = collector.get_histogram_stats("stats_test")
+        
+        assert stats["count"] == len(test_values)
+        assert stats["sum"] == sum(test_values)
+        
+        # Test empty histogram
+        empty_stats = collector.get_histogram_stats("nonexistent")
+        assert empty_stats["count"] == 0
+        assert empty_stats["sum"] == 0.0
+
+    def test_concurrent_histogram_recording(self):
+        """Test thread safety of bounded histogram recording."""
+        import threading
+        
+        config = MetricsConfig(histogram_max_size=1000)
+        collector = MetricsCollector(config)
+        errors = []
+        
+        def worker(thread_id):
+            try:
+                for i in range(100):
+                    collector.record_histogram("concurrent_test", float(thread_id * 100 + i))
+            except Exception as e:
+                errors.append(str(e))
+        
+        # Start multiple threads
+        threads = []
+        for i in range(5):
+            thread = threading.Thread(target=worker, args=(i,))
+            threads.append(thread)
+            thread.start()
+        
+        for thread in threads:
+            thread.join()
+        
+        # Should complete without errors
+        assert not errors, f"Concurrency errors: {errors}"
+        
+        # Should have recorded values (bounded)
+        values = collector.get_histogram("concurrent_test")
+        assert len(values) <= config.histogram_max_size
+        assert len(values) > 0
+
     def test_set_gauge(self):
         """Test gauge setting functionality."""
         collector = MetricsCollector()

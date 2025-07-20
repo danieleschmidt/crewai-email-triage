@@ -23,6 +23,7 @@ class MetricsConfig:
     export_port: int = 8080
     export_path: str = "/metrics"
     namespace: str = "crewai_email_triage"
+    histogram_max_size: int = 1000  # Maximum number of values to keep in histograms
     
     @classmethod
     def from_environment(cls) -> MetricsConfig:
@@ -32,6 +33,7 @@ class MetricsConfig:
             export_port=int(os.environ.get("METRICS_EXPORT_PORT", "8080")),
             export_path=os.environ.get("METRICS_EXPORT_PATH", "/metrics"),
             namespace=os.environ.get("METRICS_NAMESPACE", "crewai_email_triage"),
+            histogram_max_size=int(os.environ.get("METRICS_HISTOGRAM_MAX_SIZE", "1000")),
         )
     
     def __post_init__(self):
@@ -46,12 +48,13 @@ class MetricsConfig:
 class MetricsCollector:
     """Thread-safe metrics collector for counters, gauges, and histograms."""
     
-    def __init__(self):
+    def __init__(self, config: Optional[MetricsConfig] = None):
         """Initialize the metrics collector."""
+        self._config = config or MetricsConfig()
         self._lock = threading.Lock()
         self._counters: Dict[str, int] = defaultdict(int)
         self._gauges: Dict[str, float] = defaultdict(float)
-        self._histograms: Dict[str, List[float]] = defaultdict(list)
+        self._histograms: Dict[str, deque] = defaultdict(lambda: deque(maxlen=self._config.histogram_max_size))
     
     def increment_counter(self, name: str, value: int = 1) -> None:
         """Increment a counter metric."""
@@ -86,7 +89,7 @@ class MetricsCollector:
     def get_histogram(self, name: str) -> List[float]:
         """Get all recorded values for a histogram."""
         with self._lock:
-            return self._histograms[name].copy()
+            return list(self._histograms[name])
     
     def get_all_metrics(self) -> Dict[str, Dict[str, Any]]:
         """Get all metrics organized by type."""
@@ -94,7 +97,7 @@ class MetricsCollector:
             return {
                 "counters": dict(self._counters),
                 "gauges": dict(self._gauges),
-                "histograms": {k: v.copy() for k, v in self._histograms.items()},
+                "histograms": {k: list(v) for k, v in self._histograms.items()},
             }
     
     def reset_metrics(self) -> None:
@@ -103,6 +106,18 @@ class MetricsCollector:
             self._counters.clear()
             self._gauges.clear()
             self._histograms.clear()
+    
+    def get_histogram_stats(self, name: str) -> Dict[str, float]:
+        """Get statistical summary of a histogram for Prometheus export."""
+        with self._lock:
+            values = list(self._histograms[name])
+            if not values:
+                return {"count": 0, "sum": 0.0}
+            
+            return {
+                "count": len(values),
+                "sum": sum(values),
+            }
 
 
 class PrometheusExporter:
@@ -130,15 +145,14 @@ class PrometheusExporter:
             output.append(f"# TYPE {metric_name} gauge")
             output.append(f"{metric_name} {value}")
         
-        # Export histograms (simplified - just count and sum)
-        for name, values in all_metrics["histograms"].items():
-            if values:
+        # Export histograms (using efficient stats calculation)
+        for name in all_metrics["histograms"].keys():
+            stats = self.collector.get_histogram_stats(name)
+            if stats["count"] > 0:
                 metric_name = f"{self.namespace}_{name}"
-                count = len(values)
-                total = sum(values)
                 output.append(f"# TYPE {metric_name} histogram")
-                output.append(f"{metric_name}_count {count}")
-                output.append(f"{metric_name}_sum {total}")
+                output.append(f"{metric_name}_count {int(stats['count'])}")
+                output.append(f"{metric_name}_sum {stats['sum']}")
         
         return "\n".join(output) + "\n"
 

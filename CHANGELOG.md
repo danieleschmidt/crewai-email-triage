@@ -36,3 +36,11 @@ All notable changes to this project will be documented in this file.
 - Added /health endpoint for monitoring and health checks
 - Proper HEAD request support and standardized error responses
 - Hidden server version information for security
+
+## [0.4.3] - 2024-07-20 (Memory Management Fix)
+- **STABILITY**: Fixed memory leak vulnerability in histogram collection
+- Implemented bounded histogram storage using deque with configurable limits
+- Added METRICS_HISTOGRAM_MAX_SIZE environment variable (default: 1000)
+- Enhanced Prometheus export with efficient histogram statistics
+- Comprehensive thread safety testing for concurrent metrics collection
+- Maintains performance while preventing unbounded memory growth
