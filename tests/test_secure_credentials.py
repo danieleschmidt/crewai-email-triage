@@ -273,6 +273,48 @@ class TestSecureCredentialManagerIntegration(unittest.TestCase):
         for thread_id, success in results:
             self.assertTrue(success, f"Thread {thread_id} failed to store/retrieve correctly")
 
+    def test_temp_file_cleanup_exception_handling(self):
+        """Test specific exception handling during temp file cleanup."""
+        import tempfile
+        import os
+        from unittest.mock import patch, Mock
+        
+        manager = SecureCredentialManager(keyring_file=self.test_keyring_file.name)
+        
+        # Test case 1: os.rename fails, temp file cleanup succeeds
+        with patch('os.unlink') as mock_unlink:
+            mock_unlink.return_value = None
+            
+            with patch('os.rename', side_effect=PermissionError("Cannot rename")):
+                # This should trigger the temp file cleanup in the exception handler
+                with self.assertRaises(CredentialError):
+                    manager.store_credential("test", "user", "pass")
+            
+            # Verify unlink was called once for cleanup
+            self.assertEqual(mock_unlink.call_count, 1)
+        
+        # Test case 2: os.rename fails, temp file cleanup fails with OSError
+        with patch('os.unlink') as mock_unlink:
+            mock_unlink.side_effect = OSError("Permission denied")
+            
+            with patch('os.rename', side_effect=PermissionError("Cannot rename")):
+                with self.assertRaises(CredentialError):
+                    manager.store_credential("test2", "user2", "pass2")
+            
+            # Verify unlink was called and failed (should be caught silently)
+            self.assertEqual(mock_unlink.call_count, 1)
+        
+        # Test case 3: os.rename fails, temp file cleanup fails with FileNotFoundError  
+        with patch('os.unlink') as mock_unlink:
+            mock_unlink.side_effect = FileNotFoundError("File not found")
+            
+            with patch('os.rename', side_effect=PermissionError("Cannot rename")):
+                with self.assertRaises(CredentialError):
+                    manager.store_credential("test3", "user3", "pass3")
+            
+            # Verify unlink was called and failed (should be caught silently)
+            self.assertEqual(mock_unlink.call_count, 1)
+
 
 if __name__ == '__main__':
     unittest.main()

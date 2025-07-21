@@ -346,7 +346,8 @@ class SecureCredentialManager:
             try:
                 if 'temp_path' in locals():
                     os.unlink(temp_path)
-            except:
+            except (OSError, FileNotFoundError):
+                # Ignore cleanup errors - temp file may already be deleted or inaccessible
                 pass
             
             logger.error(f"Failed to save credentials to {self._keyring_file}: {e}")
