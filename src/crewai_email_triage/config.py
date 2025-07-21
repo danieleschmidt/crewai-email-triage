@@ -30,7 +30,9 @@ def load_config(path: str | None = None) -> Dict[str, Any]:
     
     Falls back to a basic configuration if file loading fails.
     """
-    env_path = os.environ.get("CREWAI_CONFIG")
+    from .env_config import get_app_config
+    app_config = get_app_config()
+    env_path = app_config.config_path
     cfg_path = Path(path or env_path) if (path or env_path) else _DEF_PATH
     
     try:

@@ -63,6 +63,17 @@ All notable changes to this project will be documented in this file.
 - Comprehensive test suite for credential security and memory safety
 - Backward compatibility maintained for existing environment variable usage
 
+## [0.5.0] - 2024-07-21 (Environment Configuration Centralization)
+- **TWELVE-FACTOR COMPLIANCE**: Centralized all environment variable management for improved maintainability
+- Implemented centralized environment configuration system with type safety and validation
+- Added automatic environment variable documentation generation (get_all_environment_docs)
+- Migrated 13 environment variables across 4 modules to unified configuration system
+- Created EnvironmentConfig base class with common functionality and validation
+- Added specialized config classes: RetryEnvironmentConfig, MetricsEnvironmentConfig, ProviderEnvironmentConfig, AppEnvironmentConfig
+- Enhanced boolean parsing with support for multiple true/false representations
+- Maintained 100% backward compatibility with existing module interfaces
+- Improved testing capabilities with centralized configuration mocking
+
 ## [0.4.9] - 2024-07-21 (Enhanced Exception Handling)
 - **DEBUGGING**: Replaced generic exception handling with specific, categorized error handling
 - Improved sanitization error handling with specific exception types (ValueError, UnicodeError, etc.)
