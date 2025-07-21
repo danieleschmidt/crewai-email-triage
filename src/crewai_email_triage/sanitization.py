@@ -13,6 +13,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Constants for consistent behavior
+MILLISECONDS_PER_SECOND = 1000  # Conversion factor for timing calculations
+
 
 @dataclass
 class SanitizationConfig:
@@ -167,7 +170,7 @@ class EmailSanitizer:
             # Step 9: Final cleanup
             content = self._final_cleanup(content, modifications_made)
             
-            processing_time = (time.perf_counter() - start_time) * 1000
+            processing_time = (time.perf_counter() - start_time) * MILLISECONDS_PER_SECOND
             is_safe = len(threats_detected) == 0
             
             # Update metrics
@@ -205,7 +208,7 @@ class EmailSanitizer:
                 modifications_made=['encoding_fallback'],
                 original_length=original_length,
                 sanitized_length=len(safe_content[:1000]) if safe_content else 0,
-                processing_time_ms=(time.perf_counter() - start_time) * 1000
+                processing_time_ms=(time.perf_counter() - start_time) * MILLISECONDS_PER_SECOND
             )
         except MemoryError as e:
             logger.error("Memory error during sanitization - content too large", 
@@ -219,7 +222,7 @@ class EmailSanitizer:
                 modifications_made=['emergency_truncation'],
                 original_length=original_length,
                 sanitized_length=len(truncated_content) + 50,  # Account for prefix text
-                processing_time_ms=(time.perf_counter() - start_time) * 1000
+                processing_time_ms=(time.perf_counter() - start_time) * MILLISECONDS_PER_SECOND
             )
         except re.error as e:
             logger.error("Regex pattern error during sanitization", 
@@ -233,7 +236,7 @@ class EmailSanitizer:
                 modifications_made=['fallback_cleaning'],
                 original_length=original_length,
                 sanitized_length=len(simple_content[:1000]),
-                processing_time_ms=(time.perf_counter() - start_time) * 1000
+                processing_time_ms=(time.perf_counter() - start_time) * MILLISECONDS_PER_SECOND
             )
         except Exception as e:
             logger.error("Unexpected error during sanitization", 
@@ -246,7 +249,7 @@ class EmailSanitizer:
                 modifications_made=['content_replaced'],
                 original_length=original_length,
                 sanitized_length=0,
-                processing_time_ms=(time.perf_counter() - start_time) * 1000
+                processing_time_ms=(time.perf_counter() - start_time) * MILLISECONDS_PER_SECOND
             )
     
     def _normalize_unicode(self, content: str) -> str:
