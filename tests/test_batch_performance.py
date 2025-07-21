@@ -2,7 +2,7 @@
 
 import pytest
 from unittest.mock import patch
-from crewai_email_triage.pipeline import triage_batch, METRICS
+from crewai_email_triage.pipeline import triage_batch, get_legacy_metrics
 
 
 class TestBatchProcessing:
@@ -82,14 +82,16 @@ class TestBatchProcessing:
 
     def test_metrics_tracking(self):
         """Test that metrics are properly tracked during batch processing."""
-        initial_processed = METRICS["processed"]
-        initial_time = METRICS["total_time"]
+        initial_metrics = get_legacy_metrics()
+        initial_processed = initial_metrics["processed"]
+        initial_time = initial_metrics["total_time"]
         
         messages = ["test message 1", "test message 2"]
         triage_batch(messages)
         
-        assert METRICS["processed"] > initial_processed
-        assert METRICS["total_time"] >= initial_time
+        final_metrics = get_legacy_metrics()
+        assert final_metrics["processed"] > initial_processed
+        assert final_metrics["total_time"] >= initial_time
 
     def test_iterable_input_handling(self):
         """Test that different iterable types work correctly."""

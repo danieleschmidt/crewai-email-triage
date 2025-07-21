@@ -20,8 +20,27 @@ from .metrics_export import get_metrics_collector
 from .retry_utils import retry_with_backoff, RetryConfig
 
 logger = get_logger(__name__)
-METRICS = {"processed": 0, "total_time": 0.0}  # Backward compatibility
 _metrics_collector = get_metrics_collector()
+
+def get_legacy_metrics():
+    """Get metrics in legacy METRICS dict format for backward compatibility.
+    
+    Returns
+    -------
+    dict
+        Dictionary with 'processed' and 'total_time' keys matching legacy METRICS format.
+    """
+    return {
+        "processed": _metrics_collector.get_counter("emails_processed"),
+        "total_time": _metrics_collector.get_gauge("total_processing_time")
+    }
+
+def reset_legacy_metrics():
+    """Reset metrics for testing purposes (backward compatibility).
+    
+    This function provides the same interface as manually resetting the legacy METRICS dict.
+    """
+    _metrics_collector.reset_metrics()
 
 # Global retry configuration for agent operations
 _retry_config = RetryConfig.from_env()
@@ -336,11 +355,10 @@ def triage_email(content: str | None) -> Dict[str, str | int]:
 
         elapsed = time.perf_counter() - start
         
-        # Update both legacy METRICS dict and new metrics collector
-        METRICS["processed"] += 1
-        METRICS["total_time"] += elapsed
+        # Update metrics collector
         _metrics_collector.increment_counter("emails_processed")
         _metrics_collector.record_histogram("processing_time_seconds", elapsed)
+        _metrics_collector.increment_gauge("total_processing_time", elapsed)
         
         logger.info("Email triage completed", 
                    extra={'duration': elapsed, 'category': result.get('category'),
@@ -428,11 +446,10 @@ def triage_batch(
 
         elapsed = time.perf_counter() - start
         
-        # Update both legacy METRICS dict and new metrics collector
-        METRICS["processed"] += len(results)
-        METRICS["total_time"] += elapsed
+        # Update metrics collector
         _metrics_collector.increment_counter("emails_processed", len(results))
         _metrics_collector.record_histogram("batch_processing_time_seconds", elapsed)
+        _metrics_collector.increment_gauge("total_processing_time", elapsed)
         _metrics_collector.set_gauge("last_batch_size", len(messages_list))
         
         # Calculate performance metrics

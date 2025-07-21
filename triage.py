@@ -7,7 +7,7 @@ import json
 import logging
 import sys
 
-from crewai_email_triage.pipeline import METRICS, triage_batch
+from crewai_email_triage.pipeline import get_legacy_metrics, triage_batch
 
 from crewai_email_triage import __version__, triage_email, GmailProvider
 from crewai_email_triage.config import set_config
@@ -128,7 +128,8 @@ def main() -> None:
 
     if args.interactive:
         _run_interactive(args.pretty)
-        logging.info("Processed %d message(s)", METRICS["processed"])
+        metrics = get_legacy_metrics()
+        logging.info("Processed %d message(s)", metrics["processed"])
         return
 
     with LoggingContext(operation="cli_operation"):
@@ -149,7 +150,8 @@ def main() -> None:
     else:
         print(output)
 
-    logging.info("Processed %d message(s) in %.3fs", METRICS["processed"], METRICS["total_time"])
+    metrics = get_legacy_metrics()
+    logging.info("Processed %d message(s) in %.3fs", metrics["processed"], metrics["total_time"])
     
     # Cleanup metrics endpoint
     if metrics_endpoint:

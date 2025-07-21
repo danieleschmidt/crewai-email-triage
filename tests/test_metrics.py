@@ -1,8 +1,10 @@
-from crewai_email_triage.pipeline import METRICS, triage_email
+from crewai_email_triage.pipeline import get_legacy_metrics, triage_email
 
 
 def test_metrics_increment():
-    start = METRICS["processed"]
+    metrics_before = get_legacy_metrics()
+    start = metrics_before["processed"]
     triage_email("hello world")
-    assert METRICS["processed"] == start + 1
-    assert METRICS["total_time"] > 0
+    metrics_after = get_legacy_metrics()
+    assert metrics_after["processed"] == start + 1
+    assert metrics_after["total_time"] > metrics_before["total_time"]
