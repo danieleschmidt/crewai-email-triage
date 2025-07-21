@@ -5,7 +5,7 @@ from pathlib import Path
 import tomllib
 
 from .core import process_email
-from .agent import Agent
+from .agent import Agent, LegacyAgent
 from .classifier import ClassifierAgent
 from .summarizer import SummarizerAgent
 from .response import ResponseAgent
@@ -39,6 +39,7 @@ except PackageNotFoundError:  # Local source without installation
 __all__ = [
     "process_email",
     "Agent",
+    "LegacyAgent",
     "ClassifierAgent",
     "SummarizerAgent",
     "ResponseAgent",
