@@ -63,6 +63,15 @@ All notable changes to this project will be documented in this file.
 - Comprehensive test suite for credential security and memory safety
 - Backward compatibility maintained for existing environment variable usage
 
+## [0.4.9] - 2024-07-21 (Enhanced Exception Handling)
+- **DEBUGGING**: Replaced generic exception handling with specific, categorized error handling
+- Improved sanitization error handling with specific exception types (ValueError, UnicodeError, etc.)
+- Enhanced secure credentials error handling for file I/O, encoding, and data corruption scenarios
+- Added error_type metadata to all exception logging for better monitoring and categorization
+- Implemented specific error metrics counters for different failure types
+- Added comprehensive test coverage for all improved exception handling scenarios
+- Maintained all existing functionality while improving error visibility and debugging capabilities
+
 ## [0.4.8] - 2024-07-21 (Legacy Metrics Code Cleanup)
 - **MAINTAINABILITY**: Removed duplicate legacy METRICS dictionary while maintaining backward compatibility
 - Migrated all legacy METRICS usage to unified metrics collector system
