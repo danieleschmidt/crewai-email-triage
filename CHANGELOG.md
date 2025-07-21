@@ -63,6 +63,15 @@ All notable changes to this project will be documented in this file.
 - Comprehensive test suite for credential security and memory safety
 - Backward compatibility maintained for existing environment variable usage
 
+## [0.4.8] - 2024-07-21 (Legacy Metrics Code Cleanup)
+- **MAINTAINABILITY**: Removed duplicate legacy METRICS dictionary while maintaining backward compatibility
+- Migrated all legacy METRICS usage to unified metrics collector system
+- Added get_legacy_metrics() and reset_legacy_metrics() compatibility functions
+- Eliminated redundant metrics tracking in pipeline hot paths for improved performance
+- Updated CLI interface and all test files to use new metrics interface
+- Maintained 100% backward compatibility with existing metrics API
+- Simplified codebase by removing 6 duplicate metrics update locations
+
 ## [0.4.7] - 2024-07-21 (Abstract Agent Base Class)
 - **MAINTAINABILITY**: Implemented abstract base class pattern for all email processing agents
 - Added ABC (Abstract Base Class) enforcement for Agent interface with @abstractmethod decorator

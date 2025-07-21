@@ -1,5 +1,5 @@
 from crewai_email_triage import triage_email, triage_batch
-from crewai_email_triage.pipeline import METRICS
+from crewai_email_triage.pipeline import get_legacy_metrics, reset_legacy_metrics
 
 
 def test_success():
@@ -66,20 +66,20 @@ def test_unicode_content_handling():
 def test_triage_batch_matches_single():
     msgs = ["Urgent meeting tomorrow!", "hello"]
     single = [triage_email(m) for m in msgs]
-    METRICS["processed"] = 0
-    METRICS["total_time"] = 0.0
+    reset_legacy_metrics()
     batch = triage_batch(msgs)
     assert batch == single
-    assert METRICS["processed"] == len(msgs)
-    assert METRICS["total_time"] > 0
+    metrics = get_legacy_metrics()
+    assert metrics["processed"] == len(msgs)
+    assert metrics["total_time"] > 0
 
 
 def test_triage_batch_parallel_matches_single():
     msgs = ["Urgent meeting tomorrow!", "hello"]
     single = [triage_email(m) for m in msgs]
-    METRICS["processed"] = 0
-    METRICS["total_time"] = 0.0
+    reset_legacy_metrics()
     batch = triage_batch(msgs, parallel=True, max_workers=2)
     assert batch == single
-    assert METRICS["processed"] == len(msgs)
+    metrics = get_legacy_metrics()
+    assert metrics["processed"] == len(msgs)
 

@@ -205,25 +205,28 @@ class TestEndToEndIntegration:
 
     def test_metrics_tracking_integration(self):
         """Test that metrics are properly tracked across operations."""
-        from crewai_email_triage.pipeline import METRICS
+        from crewai_email_triage.pipeline import get_legacy_metrics
         
         # Get initial metrics
-        initial_processed = METRICS["processed"]
-        initial_time = METRICS["total_time"]
+        initial_metrics = get_legacy_metrics()
+        initial_processed = initial_metrics["processed"]
+        initial_time = initial_metrics["total_time"]
         
         # Process some emails
         emails = ["Email 1", "Email 2", "Email 3"]
         triage_batch(emails)
         
         # Verify metrics were updated
-        assert METRICS["processed"] > initial_processed
-        assert METRICS["total_time"] >= initial_time
+        after_batch_metrics = get_legacy_metrics()
+        assert after_batch_metrics["processed"] > initial_processed
+        assert after_batch_metrics["total_time"] >= initial_time
         
         # Process single email
         triage_email("Single email test")
         
         # Verify single email processing updates metrics
-        assert METRICS["processed"] > initial_processed + len(emails)
+        final_metrics = get_legacy_metrics()
+        assert final_metrics["processed"] > initial_processed + len(emails)
 
     def test_error_recovery_integration(self):
         """Test that the system recovers gracefully from various error conditions."""
