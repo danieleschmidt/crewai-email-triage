@@ -10,6 +10,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Constants for consistent behavior across the module
+MILLISECONDS_PER_SECOND = 1000  # Conversion factor for timing calculations
+MAX_SUMMARY_LENGTH = 500        # Maximum length for summary truncation
+MAX_RESPONSE_LENGTH = 1000      # Maximum length for response truncation
+
 
 class AgentResponseError(Exception):
     """Exception raised for agent response parsing errors."""
@@ -170,7 +175,7 @@ def parse_agent_response(raw_output: Optional[str], agent_type: str) -> AgentRes
 
 def _create_error_response(agent_type: str, raw_output: str, error_msg: str, start_time: float) -> AgentResponse:
     """Create an error response for failed parsing."""
-    processing_time = (time.perf_counter() - start_time) * 1000
+    processing_time = (time.perf_counter() - start_time) * MILLISECONDS_PER_SECOND
     
     if agent_type == "classifier":
         return ClassificationResponse(
@@ -216,7 +221,7 @@ def _create_error_response(agent_type: str, raw_output: str, error_msg: str, sta
 
 def _parse_classification_response(raw_output: str, start_time: float) -> ClassificationResponse:
     """Parse classification agent output."""
-    processing_time = (time.perf_counter() - start_time) * 1000
+    processing_time = (time.perf_counter() - start_time) * MILLISECONDS_PER_SECOND
     
     # Handle case-insensitive matching
     match = re.match(r'^\s*category\s*:\s*(.+)\s*$', raw_output, re.IGNORECASE)
@@ -250,7 +255,7 @@ def _parse_classification_response(raw_output: str, start_time: float) -> Classi
 
 def _parse_priority_response(raw_output: str, start_time: float) -> PriorityResponse:
     """Parse priority agent output."""
-    processing_time = (time.perf_counter() - start_time) * 1000
+    processing_time = (time.perf_counter() - start_time) * MILLISECONDS_PER_SECOND
     
     # Handle case-insensitive matching
     match = re.match(r'^\s*priority\s*:\s*(.+)\s*$', raw_output, re.IGNORECASE)
@@ -299,7 +304,7 @@ def _parse_priority_response(raw_output: str, start_time: float) -> PriorityResp
 
 def _parse_summary_response(raw_output: str, start_time: float) -> SummaryResponse:
     """Parse summary agent output."""
-    processing_time = (time.perf_counter() - start_time) * 1000
+    processing_time = (time.perf_counter() - start_time) * MILLISECONDS_PER_SECOND
     
     # Handle case-insensitive matching
     match = re.match(r'^\s*summary\s*:\s*(.+)\s*$', raw_output, re.IGNORECASE | re.DOTALL)
@@ -326,9 +331,9 @@ def _parse_summary_response(raw_output: str, start_time: float) -> SummaryRespon
         )
     
     # Truncate if too long
-    if len(summary) > 500:
-        summary = summary[:497] + "..."
-        logger.debug("Summary truncated to 500 characters")
+    if len(summary) > MAX_SUMMARY_LENGTH:
+        summary = summary[:MAX_SUMMARY_LENGTH-3] + "..."
+        logger.debug(f"Summary truncated to {MAX_SUMMARY_LENGTH} characters")
     
     # Calculate word count
     word_count = len(summary.split()) if summary else 0
@@ -349,7 +354,7 @@ def _parse_summary_response(raw_output: str, start_time: float) -> SummaryRespon
 
 def _parse_response_generation_response(raw_output: str, start_time: float) -> ResponseGenerationResponse:
     """Parse response generation agent output."""
-    processing_time = (time.perf_counter() - start_time) * 1000
+    processing_time = (time.perf_counter() - start_time) * MILLISECONDS_PER_SECOND
     
     # Handle case-insensitive matching
     match = re.match(r'^\s*response\s*:\s*(.+)\s*$', raw_output, re.IGNORECASE | re.DOTALL)
@@ -376,9 +381,9 @@ def _parse_response_generation_response(raw_output: str, start_time: float) -> R
         )
     
     # Truncate if too long
-    if len(response_text) > 1000:
-        response_text = response_text[:997] + "..."
-        logger.debug("Response truncated to 1000 characters")
+    if len(response_text) > MAX_RESPONSE_LENGTH:
+        response_text = response_text[:MAX_RESPONSE_LENGTH-3] + "..."
+        logger.debug(f"Response truncated to {MAX_RESPONSE_LENGTH} characters")
     
     # Determine response type
     response_type = "acknowledgment"
@@ -438,7 +443,7 @@ def create_agent_response_wrapper(agent_run_func, agent_type: str):
             raw_output = agent_run_func(content)
             return parse_agent_response(raw_output, agent_type)
         except Exception as e:
-            processing_time = (time.perf_counter() - start_time) * 1000
+            processing_time = (time.perf_counter() - start_time) * MILLISECONDS_PER_SECOND
             error_msg = f"Agent execution failed: {str(e)}"
             return _create_error_response(agent_type, "", error_msg, start_time)
     
