@@ -266,8 +266,15 @@ class EmailSanitizer:
             if decoded != content:
                 content = decoded
                 threats.append('encoding_attack')
-        except Exception:
-            pass
+        except (ValueError, UnicodeDecodeError) as e:
+            # Log specific URL decoding errors for debugging
+            logger.debug("URL decode failed for content", 
+                        extra={'error_type': 'url_decode', 'error': str(e), 'content_sample': content[:50]})
+        except Exception as e:
+            # Catch any other unexpected errors during URL decoding
+            logger.warning("Unexpected error during URL decode", 
+                          extra={'error_type': 'url_decode_unexpected', 'error': str(e)})
+            _metrics_collector.increment_counter("sanitization_url_decode_errors")
         
         # HTML entity decode
         try:
@@ -276,8 +283,15 @@ class EmailSanitizer:
                 content = decoded
                 if 'encoding_attack' not in threats:
                     threats.append('encoding_attack')
-        except Exception:
-            pass
+        except (ValueError, TypeError) as e:
+            # Log specific HTML entity decoding errors
+            logger.debug("HTML entity decode failed", 
+                        extra={'error_type': 'html_decode', 'error': str(e), 'content_sample': content[:50]})
+        except Exception as e:
+            # Catch any other unexpected errors during HTML decoding
+            logger.warning("Unexpected error during HTML decode", 
+                          extra={'error_type': 'html_decode_unexpected', 'error': str(e)})
+            _metrics_collector.increment_counter("sanitization_html_decode_errors")
         
         # Unicode escape decode
         try:
@@ -287,8 +301,15 @@ class EmailSanitizer:
                     content = decoded
                     if 'encoding_attack' not in threats:
                         threats.append('encoding_attack')
-        except Exception:
-            pass
+        except (UnicodeDecodeError, UnicodeEncodeError) as e:
+            # Log specific unicode decoding errors
+            logger.debug("Unicode escape decode failed", 
+                        extra={'error_type': 'unicode_decode', 'error': str(e), 'content_sample': content[:50]})
+        except Exception as e:
+            # Catch any other unexpected errors during unicode decoding
+            logger.warning("Unexpected error during unicode decode", 
+                          extra={'error_type': 'unicode_decode_unexpected', 'error': str(e)})
+            _metrics_collector.increment_counter("sanitization_unicode_decode_errors")
             
         return content, threats
     
@@ -397,7 +418,17 @@ class EmailSanitizer:
                     if self.config.strict_url_validation:
                         threats.append('untrusted_domain')
                         content = content.replace(url, '[UNTRUSTED_URL]')
-            except Exception:
+            except (ValueError, AttributeError) as e:
+                # Handle malformed URLs or unexpected URL structure
+                logger.debug("URL parsing failed", 
+                           extra={'error_type': 'url_parse', 'error': str(e), 'url_sample': url[:50]})
+                threats.append('malformed_url')
+                content = content.replace(url, '[MALFORMED_URL]')
+            except Exception as e:
+                # Handle unexpected errors in URL processing
+                logger.warning("Unexpected error during URL validation", 
+                             extra={'error_type': 'url_validation_unexpected', 'error': str(e)})
+                _metrics_collector.increment_counter("sanitization_url_validation_errors")
                 threats.append('malformed_url')
                 content = content.replace(url, '[MALFORMED_URL]')
         

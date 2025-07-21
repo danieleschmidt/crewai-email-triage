@@ -146,8 +146,17 @@ class SecureCredentialManager:
                 
                 logger.info(f"Credential stored for {service}:{username}")
                 
+            except (OSError, PermissionError) as e:
+                logger.error(f"File operation failed for {service}:{username}", 
+                           extra={'error_type': 'file_io', 'error': str(e)})
+                raise CredentialError(f"Failed to store credential due to file system error: {e}")
+            except (UnicodeEncodeError, UnicodeDecodeError) as e:
+                logger.error(f"Encoding error for {service}:{username}", 
+                           extra={'error_type': 'encoding', 'error': str(e)})
+                raise CredentialError(f"Failed to store credential due to encoding error: {e}")
             except Exception as e:
-                logger.error(f"Failed to store credential for {service}:{username}: {e}")
+                logger.error(f"Unexpected error storing credential for {service}:{username}", 
+                           extra={'error_type': 'unexpected', 'error': str(e)}, exc_info=True)
                 raise CredentialError(f"Failed to store credential: {e}")
     
     def get_credential(self, service: str, username: str) -> str:
@@ -183,8 +192,17 @@ class SecureCredentialManager:
                 
             except CredentialError:
                 raise
+            except (OSError, PermissionError) as e:
+                logger.error(f"File access failed for {service}:{username}", 
+                           extra={'error_type': 'file_access', 'error': str(e)})
+                raise CredentialError(f"Failed to retrieve credential due to file access error: {e}")
+            except (ValueError, base64.binascii.Error) as e:
+                logger.error(f"Credential decoding failed for {service}:{username}", 
+                           extra={'error_type': 'decoding', 'error': str(e)})
+                raise CredentialError(f"Failed to retrieve credential due to data corruption: {e}")
             except Exception as e:
-                logger.error(f"Failed to retrieve credential for {service}:{username}: {e}")
+                logger.error(f"Unexpected error retrieving credential for {service}:{username}", 
+                           extra={'error_type': 'unexpected', 'error': str(e)}, exc_info=True)
                 raise CredentialError(f"Failed to retrieve credential: {e}")
     
     def delete_credential(self, service: str, username: str) -> None:
