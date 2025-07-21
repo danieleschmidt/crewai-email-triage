@@ -14,15 +14,23 @@ class PriorityAgent(Agent):
         if not content:
             return "priority: 0"
 
-        normalized = content.lower()
-        high_urgency = set(config.CONFIG["priority"]["high_keywords"])
-        medium_urgency = set(config.CONFIG["priority"]["medium_keywords"])
-
-        if any(word in normalized for word in high_urgency) or content.isupper():
-            score = config.CONFIG["priority"]["scores"]["high"]
-        elif any(word in normalized for word in medium_urgency) or "!" in content:
-            score = config.CONFIG["priority"]["scores"]["medium"]
-        else:
-            score = config.CONFIG["priority"]["scores"]["low"]
-
-        return f"priority: {score}"
+        # Optimize: Cache normalized content and perform string checks once
+        normalized_content = content.lower()
+        priority_config = config.CONFIG["priority"]
+        high_keywords = priority_config["high_keywords"]
+        medium_keywords = priority_config["medium_keywords"]
+        scores = priority_config["scores"]
+        
+        # Optimize: Check uppercase and exclamation once, store results
+        is_uppercase = content.isupper()
+        has_exclamation = "!" in content
+        
+        # Optimize: Early return for high priority conditions
+        if is_uppercase or any(keyword in normalized_content for keyword in high_keywords):
+            return f"priority: {scores['high']}"
+        
+        # Optimize: Early return for medium priority conditions
+        if has_exclamation or any(keyword in normalized_content for keyword in medium_keywords):
+            return f"priority: {scores['medium']}"
+        
+        return f"priority: {scores['low']}"

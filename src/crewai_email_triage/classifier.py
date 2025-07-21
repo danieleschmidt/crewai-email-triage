@@ -13,8 +13,13 @@ class ClassifierAgent(Agent):
         """Return a category string for ``content``."""
         if not content:
             return "category: unknown"
-        text = content.lower()
-        for category, keywords in config.CONFIG["classifier"].items():
-            if any(word in text for word in keywords):
+        
+        # Optimize: Cache normalized content for efficient repeated access
+        normalized_content = content.lower()
+        classifier_config = config.CONFIG["classifier"]
+        
+        # Optimize: Single iteration through categories with early return
+        for category, keywords in classifier_config.items():
+            if any(keyword in normalized_content for keyword in keywords):
                 return f"category: {category}"
         return "category: general"
