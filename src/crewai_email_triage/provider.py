@@ -45,7 +45,9 @@ class GmailProvider:
         # Verify we can access the credential
         if not self._credential_manager.credential_exists("gmail", username):
             # Try to get from environment as fallback
-            env_password = os.environ.get("GMAIL_PASSWORD")
+            from .env_config import get_provider_config
+            provider_config = get_provider_config()
+            env_password = provider_config.gmail_password
             if env_password:
                 self._credential_manager.store_credential("gmail", username, env_password)
                 logger.info(f"Migrated password from environment for {username}")
@@ -59,7 +61,9 @@ class GmailProvider:
         Raises ``RuntimeError`` if GMAIL_USER is missing. GMAIL_PASSWORD is optional
         if the credential is already stored securely.
         """
-        user = os.environ.get("GMAIL_USER")
+        from .env_config import get_provider_config
+        provider_config = get_provider_config()
+        user = provider_config.gmail_user
         if not user:
             raise RuntimeError("GMAIL_USER must be set")
         

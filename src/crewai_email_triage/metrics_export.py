@@ -28,12 +28,15 @@ class MetricsConfig:
     @classmethod
     def from_environment(cls) -> MetricsConfig:
         """Create configuration from environment variables."""
+        from .env_config import get_metrics_config
+        
+        env_config = get_metrics_config()
         return cls(
-            enabled=os.environ.get("METRICS_ENABLED", "true").lower() == "true",
-            export_port=int(os.environ.get("METRICS_EXPORT_PORT", "8080")),
-            export_path=os.environ.get("METRICS_EXPORT_PATH", "/metrics"),
-            namespace=os.environ.get("METRICS_NAMESPACE", "crewai_email_triage"),
-            histogram_max_size=int(os.environ.get("METRICS_HISTOGRAM_MAX_SIZE", "1000")),
+            enabled=env_config.enabled,
+            export_port=env_config.export_port,
+            export_path=env_config.export_path,
+            namespace=env_config.namespace,
+            histogram_max_size=env_config.histogram_max_size,
         )
     
     def __post_init__(self):

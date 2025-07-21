@@ -55,12 +55,15 @@ class RetryConfig:
     @classmethod
     def from_env(cls) -> "RetryConfig":
         """Create retry config from environment variables."""
+        from .env_config import get_retry_config
+        
+        env_config = get_retry_config()
         return cls(
-            max_attempts=int(os.environ.get("RETRY_MAX_ATTEMPTS", "3")),
-            base_delay=float(os.environ.get("RETRY_BASE_DELAY", "1.0")),
-            max_delay=float(os.environ.get("RETRY_MAX_DELAY", "60.0")),
-            exponential_factor=float(os.environ.get("RETRY_EXPONENTIAL_FACTOR", "2.0")),
-            jitter=os.environ.get("RETRY_JITTER", "true").lower() == "true"
+            max_attempts=env_config.max_attempts,
+            base_delay=env_config.base_delay,
+            max_delay=env_config.max_delay,
+            exponential_factor=env_config.exponential_factor,
+            jitter=env_config.jitter
         )
 
 
