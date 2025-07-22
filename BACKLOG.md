@@ -221,13 +221,21 @@
 - **Risk**: Limited production value, misleading examples for developers
 - **Solution**: Implement meaningful summarization and response generation logic
 
-### 2. Missing Observability for Config Changes [WSJF: 12]
-- **Impact**: 8 (Low - operational visibility)
-- **Effort**: 2 (Low - logging additions)
-- **Issue**: No logging/metrics when configuration is loaded or changed
-- **Evidence**: config.py loads config silently
-- **Risk**: Configuration issues hard to diagnose in production
-- **Solution**: Add structured logging for config load/change events
+### ✅ 2. Missing Observability for Config Changes [WSJF: 12] - COMPLETED
+- **Status**: ✅ RESOLVED - Comprehensive configuration observability implemented
+- **Solution**: Enhanced configuration loading and change detection with detailed structured logging including:
+  - **Configuration Loading Events**: Structured logs for every config load attempt with path, source, and result
+  - **Change Detection**: Configuration hash-based change detection with detailed comparison logging
+  - **Rich Metadata**: File size, sections, keyword counts, validation results, and error categorization
+  - **Operational Context**: Load results (success/fallback/error), fallback reasons, validation errors
+  - **Performance Tracking**: Configuration statistics and hash-based content verification
+- **Observability Benefits**: 
+  - Configuration issues easily diagnosed with detailed error logs and fallback reasons
+  - Change detection prevents silent configuration issues in production
+  - Rich structured data enables monitoring and alerting on configuration changes
+  - Hash-based verification ensures configuration integrity
+- **Files Modified**: config.py (enhanced load_config and set_config functions with comprehensive logging)
+- **Logging Features**: JSON structured logs with operation context, config hashes, file metadata, and statistical analysis
 
 ### 3. No Performance Benchmarks [WSJF: 10]
 - **Impact**: 8 (Low - regression prevention)
