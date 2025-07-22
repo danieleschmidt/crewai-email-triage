@@ -82,9 +82,22 @@
 - **Security Benefits**: Prevents masking of unexpected errors, improves debugging capability, maintains proper exception handling semantics
 - **Testing**: Added comprehensive test coverage for temp file cleanup exception scenarios
 
+### ✅ 16. Misplaced Test File Organization [WSJF: 45] - COMPLETED
+- **Status**: ✅ RESOLVED - Moved test file to proper location with improved imports
+- **Solution**: Moved test_retry_logic.py from root to tests/ directory and fixed hardcoded path
+- **Benefits**: Consistent test discovery, proper CI integration, environment independence
+- **Files Modified**: tests/test_retry_logic.py (moved and improved imports)
+
+### ✅ 17. Hardcoded System Path Modifications [WSJF: 42] - COMPLETED
+- **Status**: ✅ RESOLVED - Replaced hardcoded paths with environment-independent imports
+- **Solution**: Updated sys.path.insert usage to only apply when running as standalone scripts
+- **Benefits**: Environment portability, CI reliability, proper package structure
+- **Files Modified**: tests/test_secure_credentials.py, tests/test_provider_secure_credentials.py, tests/test_retry_logic.py
+- **Pattern**: All files now use conditional path modification only when `__name__ == "__main__"`
+
 ## 🔥 CURRENT HIGH PRIORITY ITEMS
 
-### 1. Hardcoded Gmail Credentials Vulnerability [WSJF: 80] 
+### 3. Hardcoded Gmail Credentials Vulnerability [WSJF: 80] 
 - **Impact**: 25 (High - security risk)
 - **Effort**: 5 (Medium - requires OAuth integration)
 - **Issue**: Password authentication instead of OAuth2
@@ -140,13 +153,17 @@
 - **Files Modified**: env_config.py (new), retry_utils.py, metrics_export.py, provider.py, config.py
 - **Backward Compatibility**: All existing interfaces preserved, zero breaking changes
 
-### 2. Global Mutable Configuration State [WSJF: 40]
-- **Impact**: 15 (Medium - maintainability)
-- **Effort**: 6 (Medium - requires dependency injection)
-- **Issue**: Global CONFIG variable in config.py:71
-- **Evidence**: Mutable global state affects testability
-- **Risk**: Race conditions and testing difficulties
-- **Solution**: Implement dependency injection pattern
+### ✅ 18. Global Mutable Configuration State [WSJF: 40] - COMPLETED
+- **Status**: ✅ RESOLVED - Implemented dependency injection pattern with backward compatibility
+- **Solution**: Added configuration injection to ClassifierAgent and PriorityAgent constructors while maintaining global config fallback
+- **Benefits**: 
+  - **Testability**: Agents can be tested with custom configurations without affecting global state
+  - **Thread Safety**: Each agent instance can have its own configuration, eliminating race conditions
+  - **Maintainability**: Configuration dependencies are explicit through constructor parameters
+  - **Backward Compatibility**: Existing code continues to work without changes (agents fallback to global CONFIG)
+- **Files Modified**: classifier.py, priority.py, pipeline.py, tests/test_config_injection.py (new)
+- **API Enhancement**: All pipeline functions (triage_email, triage_batch) now accept optional config_dict parameter
+- **Testing**: Comprehensive test suite validates configuration injection, immutability, and graceful fallback behavior
 
 ### ✅ 3. Legacy Metrics Code Cleanup [WSJF: 36] - COMPLETED
 - **Status**: ✅ RESOLVED - Legacy METRICS dictionary completely removed, backward compatibility maintained

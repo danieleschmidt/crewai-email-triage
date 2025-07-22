@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """Test retry logic implementation for network operations."""
 
-import sys
-sys.path.insert(0, 'src')
-
 import time
 import random
+import sys
+import os
 from unittest.mock import Mock, patch
+
+# Add src to path for proper imports when running as standalone script
+if __name__ == "__main__":
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+
 from crewai_email_triage.provider import GmailProvider
 
 
