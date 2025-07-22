@@ -97,7 +97,19 @@
 
 ## 🔥 CURRENT HIGH PRIORITY ITEMS
 
-### 3. Hardcoded Gmail Credentials Vulnerability [WSJF: 80] 
+### ✅ 19. Incomplete Dependency Injection Implementation [WSJF: 50] - COMPLETED
+- **Status**: ✅ RESOLVED - Complete dependency injection pattern implemented across all agents
+- **Solution**: Extended configuration injection to SummarizerAgent and ResponseAgent, maintaining API consistency
+- **Benefits**:
+  - **API Consistency**: All four agents now accept config_dict parameter with identical interface
+  - **Enhanced Testability**: All agents can be tested with custom configurations without global state
+  - **Future Extensibility**: SummarizerAgent and ResponseAgent now support configurable behavior
+  - **Configuration Features**: Added max_length for summarizer, custom templates/signatures for responses
+- **Files Modified**: summarizer.py, response.py, pipeline.py, tests/test_config_injection.py (enhanced)
+- **Pipeline Integration**: All agent instantiation points updated to pass configuration consistently
+- **Testing**: Extended test suite validates complete dependency injection coverage for all agents
+
+### 2. Hardcoded Gmail Credentials Vulnerability [WSJF: 80] 
 - **Impact**: 25 (High - security risk)
 - **Effort**: 5 (Medium - requires OAuth integration)
 - **Issue**: Password authentication instead of OAuth2
@@ -106,6 +118,72 @@
 - **Priority**: CRITICAL SECURITY ISSUE - REQUIRES HUMAN REVIEW
 
 ## 🔧 MEDIUM PRIORITY ITEMS
+
+### 1. Missing Circuit Breaker Pattern [WSJF: 36]
+- **Impact**: 18 (Medium - reliability, resource protection)
+- **Effort**: 4 (Medium - new pattern implementation)
+- **Issue**: Retry logic exists but no circuit breaker to prevent cascading failures
+- **Evidence**: retry_utils.py implements exponential backoff but no circuit breaker
+- **Risk**: Resource exhaustion during extended outages, cascading failures
+- **Solution**: Implement circuit breaker pattern with failure thresholds
+
+### 2. Thread Safety in Agent State [WSJF: 32]
+- **Impact**: 16 (Medium - concurrency safety)
+- **Effort**: 4 (Medium - thread safety patterns)
+- **Issue**: Agents store config in instance variables without thread-safe access
+- **Evidence**: classifier.py:21 and priority.py:21 store config without locks
+- **Risk**: Data corruption in high-concurrency scenarios
+- **Solution**: Implement thread-safe configuration access patterns
+
+### 3. Missing Health Check Endpoints [WSJF: 30]
+- **Impact**: 15 (Medium - k8s/container integration)
+- **Effort**: 4 (Medium - endpoint implementation)
+- **Issue**: No dedicated health check endpoint for container orchestration
+- **Evidence**: metrics_export.py only provides /metrics endpoint
+- **Risk**: Poor integration with modern deployment platforms
+- **Solution**: Add /health and /ready endpoints with proper status checks
+
+### 4. No Rate Limiting or Backpressure [WSJF: 28]
+- **Impact**: 14 (Medium - system stability under load)
+- **Effort**: 4 (Medium - rate limiting implementation)
+- **Issue**: Pipeline processes emails without throttling or backpressure
+- **Evidence**: pipeline.py processes batches without rate limits
+- **Risk**: Service degradation under high load, API quota exhaustion
+- **Solution**: Implement configurable rate limiting and backpressure mechanisms
+
+### 5. Incomplete Documentation for Agent Contract [WSJF: 25]
+- **Impact**: 10 (Low-Medium - developer experience)
+- **Effort**: 3 (Low - documentation improvement)
+- **Issue**: Agent abstract base class doesn't fully document expected format/behavior
+- **Evidence**: agent.py docstring is minimal
+- **Risk**: Inconsistent agent implementations, poor developer experience
+- **Solution**: Enhance abstract base class with comprehensive contract documentation
+
+## 📝 LOW PRIORITY ITEMS
+
+### 1. Oversimplified Agent Implementations [WSJF: 15]
+- **Impact**: 12 (Medium - production usefulness)
+- **Effort**: 6 (High - substantial re-implementation)
+- **Issue**: SummarizerAgent and ResponseAgent have trivial implementations
+- **Evidence**: summarizer.py returns only first sentence, response.py always same message
+- **Risk**: Limited production value, misleading examples for developers
+- **Solution**: Implement meaningful summarization and response generation logic
+
+### 2. Missing Observability for Config Changes [WSJF: 12]
+- **Impact**: 8 (Low - operational visibility)
+- **Effort**: 2 (Low - logging additions)
+- **Issue**: No logging/metrics when configuration is loaded or changed
+- **Evidence**: config.py loads config silently
+- **Risk**: Configuration issues hard to diagnose in production
+- **Solution**: Add structured logging for config load/change events
+
+### 3. No Performance Benchmarks [WSJF: 10]
+- **Impact**: 8 (Low - regression prevention)
+- **Effort**: 3 (Low - benchmark setup)
+- **Issue**: No automated performance regression testing
+- **Evidence**: Test files lack systematic performance benchmarks
+- **Risk**: Gradual performance degradation over time
+- **Solution**: Add automated performance benchmark suite
 
 ### ✅ 1. Monolithic Pipeline Method Refactoring [WSJF: 75] - COMPLETED
 - **Status**: ✅ RESOLVED - Extracted focused methods with single responsibilities
