@@ -1,6 +1,7 @@
 """Simple response agent."""
 
 from __future__ import annotations
+import threading
 from typing import Dict, Any
 
 from .agent import Agent
@@ -18,12 +19,14 @@ class ResponseAgent(Agent):
         """
         super().__init__()
         self._config = config_dict
+        self._config_lock = threading.RLock()
     
     def _get_response_config(self) -> Dict[str, Any]:
         """Get response configuration, with fallback to defaults."""
-        if self._config is not None:
-            return self._config.get("response", {})
-        return {}
+        with self._config_lock:
+            if self._config is not None:
+                return self._config.get("response", {})
+            return {}
 
     def run(self, content: str | None) -> str:
         """Return a reply string for ``content``."""

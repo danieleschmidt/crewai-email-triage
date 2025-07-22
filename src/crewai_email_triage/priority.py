@@ -1,6 +1,7 @@
 """Simple priority agent for assessing email urgency."""
 
 from __future__ import annotations
+import threading
 from typing import Dict, Any
 
 from .agent import Agent
@@ -19,12 +20,14 @@ class PriorityAgent(Agent):
         """
         super().__init__()
         self._config = config_dict
+        self._config_lock = threading.RLock()
     
     def _get_priority_config(self) -> Dict[str, Any]:
         """Get priority configuration, with fallback to global config."""
-        if self._config is not None:
-            return self._config.get("priority", {})
-        return config.CONFIG.get("priority", {})
+        with self._config_lock:
+            if self._config is not None:
+                return self._config.get("priority", {})
+            return config.CONFIG.get("priority", {})
 
     def run(self, content: str | None) -> str:
         """Return a priority score for ``content`` using simple heuristics."""

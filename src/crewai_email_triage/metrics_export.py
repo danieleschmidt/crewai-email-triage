@@ -210,14 +210,29 @@ class MetricsEndpoint:
                         self.end_headers()
                         self.wfile.write(metrics_output.encode("utf-8"))
                     elif self.path == "/health":
-                        # Basic health check endpoint
-                        health_response = '{"status": "healthy", "service": "email-triage-metrics"}\n'
-                        self.send_response(200)
+                        # Health check endpoint for liveness probes
+                        health_status = self._get_health_status()
+                        health_response = health_status["response"]
+                        status_code = health_status["status_code"]
+                        
+                        self.send_response(status_code)
                         self._send_security_headers()
                         self.send_header("Content-Type", "application/json; charset=utf-8")
                         self.send_header("Content-Length", str(len(health_response.encode("utf-8"))))
                         self.end_headers()
                         self.wfile.write(health_response.encode("utf-8"))
+                    elif self.path == "/ready":
+                        # Readiness check endpoint for readiness probes
+                        readiness_status = self._get_readiness_status()
+                        readiness_response = readiness_status["response"]
+                        status_code = readiness_status["status_code"]
+                        
+                        self.send_response(status_code)
+                        self._send_security_headers()
+                        self.send_header("Content-Type", "application/json; charset=utf-8")
+                        self.send_header("Content-Length", str(len(readiness_response.encode("utf-8"))))
+                        self.end_headers()
+                        self.wfile.write(readiness_response.encode("utf-8"))
                     else:
                         self._send_error_response(404, "Not Found")
                 except Exception as e:
@@ -238,8 +253,17 @@ class MetricsEndpoint:
             def do_HEAD(self):
                 """Handle HEAD requests (same as GET but without body)."""
                 try:
-                    if self.path == config.export_path or self.path == "/health":
-                        self.send_response(200)
+                    if self.path == config.export_path or self.path == "/health" or self.path == "/ready":
+                        # For HEAD requests, only return status based on health/readiness
+                        status_code = 200
+                        if self.path == "/health":
+                            health_status = self._get_health_status()
+                            status_code = health_status["status_code"]
+                        elif self.path == "/ready":
+                            readiness_status = self._get_readiness_status()
+                            status_code = readiness_status["status_code"]
+                        
+                        self.send_response(status_code)
                         self._send_security_headers()
                         if self.path == config.export_path:
                             self.send_header("Content-Type", "text/plain; charset=utf-8")
@@ -278,6 +302,80 @@ class MetricsEndpoint:
             def log_message(self, format, *args):
                 # Suppress default HTTP server logging to avoid log pollution
                 pass
+            
+            def _get_health_status(self) -> dict:
+                """Get health status for liveness probe (basic service availability)."""
+                try:
+                    # Basic health check - service is running and can serve requests
+                    import time
+                    current_time = time.time()
+                    
+                    response = {
+                        "status": "healthy",
+                        "service": "email-triage-metrics",
+                        "timestamp": int(current_time),
+                        "version": "1.0"
+                    }
+                    
+                    return {
+                        "response": f"{response}\n".replace("'", '"'),
+                        "status_code": 200
+                    }
+                except Exception:
+                    error_response = {
+                        "status": "unhealthy",
+                        "service": "email-triage-metrics",
+                        "error": "Internal service error"
+                    }
+                    return {
+                        "response": f"{error_response}\n".replace("'", '"'),
+                        "status_code": 503
+                    }
+            
+            def _get_readiness_status(self) -> dict:
+                """Get readiness status for readiness probe (service ready to handle requests)."""
+                try:
+                    # Check if metrics collector is accessible and functional
+                    test_metrics = exporter.collector.get_all_metrics()
+                    
+                    # Check if we can generate metrics export
+                    _ = exporter.export()
+                    
+                    import time
+                    current_time = time.time()
+                    
+                    response = {
+                        "status": "ready",
+                        "service": "email-triage-metrics",
+                        "timestamp": int(current_time),
+                        "checks": {
+                            "metrics_collector": "ok",
+                            "prometheus_export": "ok"
+                        }
+                    }
+                    
+                    return {
+                        "response": f"{response}\n".replace("'", '"'),
+                        "status_code": 200
+                    }
+                except Exception as e:
+                    import time
+                    current_time = time.time()
+                    
+                    error_response = {
+                        "status": "not_ready",
+                        "service": "email-triage-metrics",
+                        "timestamp": int(current_time),
+                        "error": "Service dependencies not ready",
+                        "checks": {
+                            "metrics_collector": "error",
+                            "prometheus_export": "error"
+                        }
+                    }
+                    return {
+                        "response": f"{error_response}\n".replace("'", '"'),
+                        "status_code": 503
+                    }
             
             def version_string(self):
                 # Don't reveal server version for security

@@ -1,6 +1,7 @@
 """Simple summarizer agent."""
 
 from __future__ import annotations
+import threading
 from typing import Dict, Any
 
 from .agent import Agent
@@ -18,12 +19,14 @@ class SummarizerAgent(Agent):
         """
         super().__init__()
         self._config = config_dict
+        self._config_lock = threading.RLock()
     
     def _get_summarizer_config(self) -> Dict[str, Any]:
         """Get summarizer configuration, with fallback to defaults."""
-        if self._config is not None:
-            return self._config.get("summarizer", {})
-        return {}
+        with self._config_lock:
+            if self._config is not None:
+                return self._config.get("summarizer", {})
+            return {}
 
     def run(self, content: str | None) -> str:
         """Return a summary string for ``content``."""

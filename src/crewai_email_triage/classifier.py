@@ -1,6 +1,7 @@
 """Simple email classification agent."""
 
 from __future__ import annotations
+import threading
 from typing import Dict, Any
 
 from .agent import Agent
@@ -19,12 +20,14 @@ class ClassifierAgent(Agent):
         """
         super().__init__()
         self._config = config_dict
+        self._config_lock = threading.RLock()
     
     def _get_classifier_config(self) -> Dict[str, Any]:
         """Get classifier configuration, with fallback to global config."""
-        if self._config is not None:
-            return self._config.get("classifier", {})
-        return config.CONFIG.get("classifier", {})
+        with self._config_lock:
+            if self._config is not None:
+                return self._config.get("classifier", {})
+            return config.CONFIG.get("classifier", {})
 
     def run(self, content: str | None) -> str:
         """Return a category string for ``content``."""
