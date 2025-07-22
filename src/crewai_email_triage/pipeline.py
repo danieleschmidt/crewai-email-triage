@@ -344,11 +344,11 @@ def triage_email(content: str | None, config_dict: Dict = None) -> Dict[str, str
     """
     with LoggingContext(operation="triage_single_email"):
         start = time.perf_counter()
-        # Inject configuration into agents that support it
+        # Inject configuration into all agents
         classifier = ClassifierAgent(config_dict=config_dict)
         prioritizer = PriorityAgent(config_dict=config_dict)
-        summarizer = SummarizerAgent()
-        responder = ResponseAgent()
+        summarizer = SummarizerAgent(config_dict=config_dict)
+        responder = ResponseAgent(config_dict=config_dict)
         
         logger.info("Starting email triage", 
                    extra={'content_length': len(content) if isinstance(content, str) else 0})
@@ -383,8 +383,8 @@ def _create_triage_worker(config_dict: Dict = None) -> partial:
     """
     classifier = ClassifierAgent(config_dict=config_dict)
     prioritizer = PriorityAgent(config_dict=config_dict)
-    summarizer = SummarizerAgent()
-    responder = ResponseAgent()
+    summarizer = SummarizerAgent(config_dict=config_dict)
+    responder = ResponseAgent(config_dict=config_dict)
     
     return partial(_triage_single, 
                   classifier=classifier,
@@ -406,8 +406,8 @@ def _process_message_with_new_agents(message: str, config_dict: Dict = None) -> 
         message,
         ClassifierAgent(config_dict=config_dict),
         PriorityAgent(config_dict=config_dict), 
-        SummarizerAgent(),
-        ResponseAgent()
+        SummarizerAgent(config_dict=config_dict),
+        ResponseAgent(config_dict=config_dict)
     )
 
 
@@ -457,8 +457,8 @@ def triage_batch(
             # In sequential mode, reuse the same agent instances for efficiency
             classifier = ClassifierAgent(config_dict=config_dict)
             prioritizer = PriorityAgent(config_dict=config_dict)
-            summarizer = SummarizerAgent()
-            responder = ResponseAgent()
+            summarizer = SummarizerAgent(config_dict=config_dict)
+            responder = ResponseAgent(config_dict=config_dict)
             
             results = [
                 _triage_single(m, classifier, prioritizer, summarizer, responder)
