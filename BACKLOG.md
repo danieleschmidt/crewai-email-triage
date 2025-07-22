@@ -82,9 +82,22 @@
 - **Security Benefits**: Prevents masking of unexpected errors, improves debugging capability, maintains proper exception handling semantics
 - **Testing**: Added comprehensive test coverage for temp file cleanup exception scenarios
 
+### ✅ 16. Misplaced Test File Organization [WSJF: 45] - COMPLETED
+- **Status**: ✅ RESOLVED - Moved test file to proper location with improved imports
+- **Solution**: Moved test_retry_logic.py from root to tests/ directory and fixed hardcoded path
+- **Benefits**: Consistent test discovery, proper CI integration, environment independence
+- **Files Modified**: tests/test_retry_logic.py (moved and improved imports)
+
+### ✅ 17. Hardcoded System Path Modifications [WSJF: 42] - COMPLETED
+- **Status**: ✅ RESOLVED - Replaced hardcoded paths with environment-independent imports
+- **Solution**: Updated sys.path.insert usage to only apply when running as standalone scripts
+- **Benefits**: Environment portability, CI reliability, proper package structure
+- **Files Modified**: tests/test_secure_credentials.py, tests/test_provider_secure_credentials.py, tests/test_retry_logic.py
+- **Pattern**: All files now use conditional path modification only when `__name__ == "__main__"`
+
 ## 🔥 CURRENT HIGH PRIORITY ITEMS
 
-### 1. Hardcoded Gmail Credentials Vulnerability [WSJF: 80] 
+### 3. Hardcoded Gmail Credentials Vulnerability [WSJF: 80] 
 - **Impact**: 25 (High - security risk)
 - **Effort**: 5 (Medium - requires OAuth integration)
 - **Issue**: Password authentication instead of OAuth2

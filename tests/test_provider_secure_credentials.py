@@ -12,8 +12,9 @@ import unittest
 from unittest.mock import patch, MagicMock
 import sys
 
-# Add project root to path for imports
-sys.path.insert(0, '/root/repo/src')
+# Add project root to path for imports when running standalone
+if __name__ == "__main__":
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from crewai_email_triage.provider import GmailProvider
 from crewai_email_triage.secure_credentials import SecureCredentialManager, CredentialError
