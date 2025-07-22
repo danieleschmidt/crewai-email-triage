@@ -153,13 +153,17 @@
 - **Files Modified**: env_config.py (new), retry_utils.py, metrics_export.py, provider.py, config.py
 - **Backward Compatibility**: All existing interfaces preserved, zero breaking changes
 
-### 2. Global Mutable Configuration State [WSJF: 40]
-- **Impact**: 15 (Medium - maintainability)
-- **Effort**: 6 (Medium - requires dependency injection)
-- **Issue**: Global CONFIG variable in config.py:71
-- **Evidence**: Mutable global state affects testability
-- **Risk**: Race conditions and testing difficulties
-- **Solution**: Implement dependency injection pattern
+### ✅ 18. Global Mutable Configuration State [WSJF: 40] - COMPLETED
+- **Status**: ✅ RESOLVED - Implemented dependency injection pattern with backward compatibility
+- **Solution**: Added configuration injection to ClassifierAgent and PriorityAgent constructors while maintaining global config fallback
+- **Benefits**: 
+  - **Testability**: Agents can be tested with custom configurations without affecting global state
+  - **Thread Safety**: Each agent instance can have its own configuration, eliminating race conditions
+  - **Maintainability**: Configuration dependencies are explicit through constructor parameters
+  - **Backward Compatibility**: Existing code continues to work without changes (agents fallback to global CONFIG)
+- **Files Modified**: classifier.py, priority.py, pipeline.py, tests/test_config_injection.py (new)
+- **API Enhancement**: All pipeline functions (triage_email, triage_batch) now accept optional config_dict parameter
+- **Testing**: Comprehensive test suite validates configuration injection, immutability, and graceful fallback behavior
 
 ### ✅ 3. Legacy Metrics Code Cleanup [WSJF: 36] - COMPLETED
 - **Status**: ✅ RESOLVED - Legacy METRICS dictionary completely removed, backward compatibility maintained

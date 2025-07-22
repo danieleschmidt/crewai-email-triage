@@ -18,6 +18,7 @@ from .sanitization import sanitize_email_content
 from .agent_responses import parse_agent_response
 from .metrics_export import get_metrics_collector
 from .retry_utils import retry_with_backoff, RetryConfig
+from .config import load_config
 
 logger = get_logger(__name__)
 _metrics_collector = get_metrics_collector()
@@ -333,12 +334,19 @@ def _run_agent_with_isolation(agent_func, agent_name: str) -> None:
         # Don't re-raise - let other agents continue
 
 
-def triage_email(content: str | None) -> Dict[str, str | int]:
-    """Run email ``content`` through all agents and collect results."""
+def triage_email(content: str | None, config_dict: Dict = None) -> Dict[str, str | int]:
+    """Run email ``content`` through all agents and collect results.
+    
+    Args:
+        content: Email content to process
+        config_dict: Configuration dictionary to inject into agents. 
+                    If None, agents use default configuration.
+    """
     with LoggingContext(operation="triage_single_email"):
         start = time.perf_counter()
-        classifier = ClassifierAgent()
-        prioritizer = PriorityAgent()
+        # Inject configuration into agents that support it
+        classifier = ClassifierAgent(config_dict=config_dict)
+        prioritizer = PriorityAgent(config_dict=config_dict)
         summarizer = SummarizerAgent()
         responder = ResponseAgent()
         
@@ -367,10 +375,14 @@ def triage_email(content: str | None) -> Dict[str, str | int]:
         return result
 
 
-def _create_triage_worker() -> partial:
-    """Create a worker function with its own agent instances for thread safety."""
-    classifier = ClassifierAgent()
-    prioritizer = PriorityAgent()
+def _create_triage_worker(config_dict: Dict = None) -> partial:
+    """Create a worker function with its own agent instances for thread safety.
+    
+    Args:
+        config_dict: Configuration dictionary to inject into agents.
+    """
+    classifier = ClassifierAgent(config_dict=config_dict)
+    prioritizer = PriorityAgent(config_dict=config_dict)
     summarizer = SummarizerAgent()
     responder = ResponseAgent()
     
@@ -381,14 +393,19 @@ def _create_triage_worker() -> partial:
                   responder=responder)
 
 
-def _process_message_with_new_agents(message: str) -> Dict[str, str | int]:
-    """Process a single message with fresh agent instances for thread safety."""
+def _process_message_with_new_agents(message: str, config_dict: Dict = None) -> Dict[str, str | int]:
+    """Process a single message with fresh agent instances for thread safety.
+    
+    Args:
+        message: Email message to process
+        config_dict: Configuration dictionary to inject into agents.
+    """
     # Set a new request ID for this worker thread
     set_request_id()
     return _triage_single(
         message,
-        ClassifierAgent(),
-        PriorityAgent(), 
+        ClassifierAgent(config_dict=config_dict),
+        PriorityAgent(config_dict=config_dict), 
         SummarizerAgent(),
         ResponseAgent()
     )
@@ -398,6 +415,7 @@ def triage_batch(
     messages: Iterable[str],
     parallel: bool = False,
     max_workers: Optional[int] = None,
+    config_dict: Dict = None,
 ) -> List[Dict[str, str | int]]:
     """Process ``messages`` efficiently with optimized agent reuse.
 
@@ -410,6 +428,8 @@ def triage_batch(
         Each worker thread gets its own agent instances for thread safety.
     max_workers:
         Optional maximum number of worker threads. Defaults to min(32, cpu_count + 4).
+    config_dict:
+        Configuration dictionary to inject into agents. If None, agents use default configuration.
     
     Returns
     -------
@@ -431,11 +451,12 @@ def triage_batch(
         if parallel:
             # In parallel mode, each worker gets fresh agent instances to avoid thread safety issues
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                results = list(executor.map(_process_message_with_new_agents, messages_list))
+                worker_fn = partial(_process_message_with_new_agents, config_dict=config_dict)
+                results = list(executor.map(worker_fn, messages_list))
         else:
             # In sequential mode, reuse the same agent instances for efficiency
-            classifier = ClassifierAgent()
-            prioritizer = PriorityAgent()
+            classifier = ClassifierAgent(config_dict=config_dict)
+            prioritizer = PriorityAgent(config_dict=config_dict)
             summarizer = SummarizerAgent()
             responder = ResponseAgent()
             
