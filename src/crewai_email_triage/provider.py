@@ -78,7 +78,12 @@ class GmailProvider:
         try:
             password = self._credential_manager.get_credential("gmail", self.username)
         except CredentialError as e:
-            logger.error(f"Failed to retrieve password for {self.username}: {e}")
+            logger.error("Failed to retrieve password for Gmail authentication", extra={
+                'username': self.username,
+                'error': str(e),
+                'error_type': 'credential_error',
+                'operation': 'connect_and_authenticate'
+            })
             raise RuntimeError(f"No valid password found for {self.username}")
         
         mail.login(self.username, password)
@@ -93,29 +98,56 @@ class GmailProvider:
         """Search for unread messages. This method has retry logic."""
         _typ, data = mail.search(None, "UNSEEN")
         if not data or not data[0]:
-            logger.info("No unread messages found")
+            logger.info("No unread messages found", extra={
+                'username': self.username,
+                'server': self.server,
+                'operation': 'search_unread_messages'
+            })
             return []
         
         message_nums = data[0].split()[:max_messages]
-        logger.info("Found %d unread messages to fetch", len(message_nums))
+        total_available = len(data[0].split())
+        logger.info("Found unread messages for processing", extra={
+            'message_count': len(message_nums),
+            'total_available': total_available,
+            'max_requested': max_messages,
+            'username': self.username,
+            'operation': 'search_unread_messages'
+        })
         return message_nums
 
     def _fetch_message_content(self, mail: imaplib.IMAP4_SSL, message_num: bytes) -> str:
         """Fetch and parse content for a single message. This method has retry logic."""
         _typ, msg_data = mail.fetch(message_num, "(RFC822)")
         if not msg_data or not msg_data[0]:
-            logger.warning("Empty message data for message %s", message_num)
+            logger.warning("Empty message data received", extra={
+                'message_num': message_num.decode('utf-8') if isinstance(message_num, bytes) else str(message_num),
+                'username': self.username,
+                'operation': 'fetch_message_content',
+                'error_type': 'empty_message_data'
+            })
             return ""
             
         # Safely parse the email message
         raw_email = msg_data[0][1]
         if not raw_email:
-            logger.warning("No raw email content for message %s", message_num)
+            logger.warning("No raw email content available", extra={
+                'message_num': message_num.decode('utf-8') if isinstance(message_num, bytes) else str(message_num),
+                'username': self.username,
+                'operation': 'fetch_message_content',
+                'error_type': 'no_raw_content'
+            })
             return ""
             
         email_msg = message_from_bytes(raw_email)
         if not isinstance(email_msg, EmailMessage):
-            logger.warning("Failed to parse email message %s", message_num)
+            logger.warning("Failed to parse email message", extra={
+                'message_num': message_num.decode('utf-8') if isinstance(message_num, bytes) else str(message_num),
+                'username': self.username,
+                'operation': 'fetch_message_content',
+                'error_type': 'parse_failure',
+                'actual_type': type(email_msg).__name__
+            })
             return ""
         
         # Extract payload with proper error handling
@@ -182,9 +214,21 @@ class GmailProvider:
                     continue
                     
         except imaplib.IMAP4.error as e:
-            logger.error("IMAP error: %s", str(e))
+            logger.error("IMAP error during email fetch", extra={
+                'error': str(e),
+                'error_type': 'imap_error',
+                'username': self.username,
+                'server': self.server,
+                'operation': 'fetch_unread'
+            })
         except Exception as e:
-            logger.error("Unexpected error fetching emails: %s", str(e))
+            logger.error("Unexpected error during email fetch", extra={
+                'error': str(e),
+                'error_type': 'unexpected',
+                'username': self.username,
+                'server': self.server,
+                'operation': 'fetch_unread'
+            })
         finally:
             if mail:
                 try:
@@ -192,5 +236,12 @@ class GmailProvider:
                 except Exception as e:
                     logger.warning("Error during logout: %s", str(e))
 
-        logger.info("Successfully fetched %d messages", len(messages))
+        logger.info("Email fetch operation completed", extra={
+            'messages_fetched': len(messages),
+            'max_requested': max_messages,
+            'username': self.username,
+            'server': self.server,
+            'operation': 'fetch_unread',
+            'success': True
+        })
         return messages

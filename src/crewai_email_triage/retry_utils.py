@@ -132,10 +132,12 @@ def retry_with_backoff(config: Optional[RetryConfig] = None, circuit_breaker_nam
                 try:
                     return circuit_breaker.call(retry_operation)
                 except CircuitBreakerError:
-                    logger.error(
-                        "Circuit breaker '%s' is open, skipping retry logic for function %s",
-                        breaker_name, func.__name__
-                    )
+                    logger.error("Circuit breaker is open, skipping retry logic", extra={
+                        'circuit_breaker': breaker_name,
+                        'function': func.__name__,
+                        'operation': 'retry_with_circuit_breaker',
+                        'error_type': 'circuit_breaker_open'
+                    })
                     raise
             else:
                 # Original retry logic without circuit breaker
@@ -166,36 +168,51 @@ def _execute_with_retry(func: Callable, config: RetryConfig, *args, **kwargs) ->
         try:
             result = func(*args, **kwargs)
             if attempt > 1:
-                logger.info(
-                    "Function %s succeeded on attempt %d/%d",
-                    func.__name__, attempt, config.max_attempts
-                )
+                logger.info("Function succeeded after retry", extra={
+                    'function': func.__name__,
+                    'attempt': attempt,
+                    'max_attempts': config.max_attempts,
+                    'operation': 'retry_execute',
+                    'success': True
+                })
             return result
             
         except config.retryable_exceptions as e:
             last_exception = e
             
             if attempt == config.max_attempts:
-                logger.error(
-                    "Function %s failed after %d attempts. Final error: %s",
-                    func.__name__, config.max_attempts, str(e)
-                )
+                logger.error("Function failed after all retry attempts", extra={
+                    'function': func.__name__,
+                    'max_attempts': config.max_attempts,
+                    'final_error': str(e),
+                    'error_type': type(e).__name__,
+                    'operation': 'retry_execute',
+                    'success': False
+                })
                 break
             
             delay = calculate_delay(attempt, config)
-            logger.warning(
-                "Function %s failed on attempt %d/%d (error: %s). Retrying in %.2f seconds...",
-                func.__name__, attempt, config.max_attempts, str(e), delay
-            )
+            logger.warning("Function failed, retrying with backoff", extra={
+                'function': func.__name__,
+                'attempt': attempt,
+                'max_attempts': config.max_attempts,
+                'error': str(e),
+                'error_type': type(e).__name__,
+                'retry_delay': delay,
+                'operation': 'retry_execute'
+            })
             
             time.sleep(delay)
             
         except Exception as e:
             # Non-retryable exception, re-raise immediately
-            logger.error(
-                "Function %s failed with non-retryable exception: %s",
-                func.__name__, str(e)
-            )
+            logger.error("Function failed with non-retryable exception", extra={
+                'function': func.__name__,
+                'error': str(e),
+                'error_type': type(e).__name__,
+                'operation': 'retry_execute',
+                'retryable': False
+            })
             raise
     
     # If we get here, all retries were exhausted
