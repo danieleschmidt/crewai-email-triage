@@ -18,10 +18,18 @@ from .sanitization import sanitize_email_content
 from .agent_responses import parse_agent_response
 from .metrics_export import get_metrics_collector
 from .retry_utils import retry_with_backoff, RetryConfig
+from .rate_limiter import get_rate_limiter
 from .config import load_config
 
 logger = get_logger(__name__)
 _metrics_collector = get_metrics_collector()
+
+def _get_rate_limiter():
+    """Get rate limiter instance (lazy initialization)."""
+    global _rate_limiter
+    if '_rate_limiter' not in globals():
+        _rate_limiter = get_rate_limiter()
+    return _rate_limiter
 
 def get_legacy_metrics():
     """Get metrics in legacy METRICS dict format for backward compatibility.
@@ -334,16 +342,23 @@ def _run_agent_with_isolation(agent_func, agent_name: str) -> None:
         # Don't re-raise - let other agents continue
 
 
-def triage_email(content: str | None, config_dict: Dict = None) -> Dict[str, str | int]:
+def triage_email(content: str | None, config_dict: Dict = None, enable_rate_limiting: Optional[bool] = None) -> Dict[str, str | int]:
     """Run email ``content`` through all agents and collect results.
     
     Args:
         content: Email content to process
         config_dict: Configuration dictionary to inject into agents. 
                     If None, agents use default configuration.
+        enable_rate_limiting: If True applies rate limiting. If None, uses environment config default.
     """
     with LoggingContext(operation="triage_single_email"):
         start = time.perf_counter()
+        
+        # Determine if rate limiting should be enabled
+        use_rate_limiting = enable_rate_limiting
+        if use_rate_limiting is None:
+            use_rate_limiting = _get_rate_limiter()._config.enabled
+            
         # Inject configuration into all agents
         classifier = ClassifierAgent(config_dict=config_dict)
         prioritizer = PriorityAgent(config_dict=config_dict)
@@ -351,15 +366,25 @@ def triage_email(content: str | None, config_dict: Dict = None) -> Dict[str, str
         responder = ResponseAgent(config_dict=config_dict)
         
         logger.info("Starting email triage", 
-                   extra={'content_length': len(content) if isinstance(content, str) else 0})
+                   extra={'content_length': len(content) if isinstance(content, str) else 0,
+                         'rate_limiting': use_rate_limiting})
         
-        result = _triage_single(
-            content,
-            classifier=classifier,
-            prioritizer=prioritizer,
-            summarizer=summarizer,
-            responder=responder,
-        )
+        if use_rate_limiting:
+            result = _process_message_sequential_with_rate_limiting(
+                content,
+                classifier,
+                prioritizer,
+                summarizer,
+                responder,
+            )
+        else:
+            result = _triage_single(
+                content,
+                classifier=classifier,
+                prioritizer=prioritizer,
+                summarizer=summarizer,
+                responder=responder,
+            )
 
         elapsed = time.perf_counter() - start
         
@@ -368,9 +393,24 @@ def triage_email(content: str | None, config_dict: Dict = None) -> Dict[str, str
         _metrics_collector.record_histogram("processing_time_seconds", elapsed)
         _metrics_collector.increment_gauge("total_processing_time", elapsed)
         
-        logger.info("Email triage completed", 
-                   extra={'duration': elapsed, 'category': result.get('category'),
-                         'priority': result.get('priority')})
+        # Add rate limiter status to metrics if enabled
+        if use_rate_limiting:
+            rate_limiter_status = _get_rate_limiter().get_status()
+            _metrics_collector.set_gauge("rate_limiter_tokens_available", rate_limiter_status["tokens_available"])
+            _metrics_collector.set_gauge("rate_limiter_utilization", rate_limiter_status["utilization"])
+        
+        # Include rate limiter status in log output
+        extra_info = {
+            'duration': elapsed, 
+            'category': result.get('category'),
+            'priority': result.get('priority')
+        }
+        
+        if use_rate_limiting:
+            rate_limiter_status = _get_rate_limiter().get_status()
+            extra_info['rate_limiter_utilization'] = rate_limiter_status["utilization"]
+        
+        logger.info("Email triage completed", extra=extra_info)
 
         return result
 
@@ -411,11 +451,49 @@ def _process_message_with_new_agents(message: str, config_dict: Dict = None) -> 
     )
 
 
+def _process_message_with_rate_limiting(message: str, config_dict: Dict = None) -> Dict[str, str | int]:
+    """Process a single message with rate limiting and fresh agent instances."""
+    # Set a new request ID for this worker thread
+    set_request_id()
+    
+    # Apply rate limiting before processing
+    with _get_rate_limiter().rate_limited_operation() as delay:
+        if delay > 0:
+            _metrics_collector.increment_counter("rate_limit_delays")
+            _metrics_collector.record_histogram("rate_limit_delay_seconds", delay)
+            
+        return _triage_single(
+            message,
+            ClassifierAgent(config_dict=config_dict),
+            PriorityAgent(config_dict=config_dict), 
+            SummarizerAgent(config_dict=config_dict),
+            ResponseAgent(config_dict=config_dict)
+        )
+
+
+def _process_message_sequential_with_rate_limiting(
+    message: str, 
+    classifier, 
+    prioritizer, 
+    summarizer, 
+    responder
+) -> Dict[str, str | int]:
+    """Process a single message with rate limiting using existing agent instances."""
+    # Apply rate limiting before processing
+    with _get_rate_limiter().rate_limited_operation() as delay:
+        if delay > 0:
+            _metrics_collector.increment_counter("rate_limit_delays")
+            _metrics_collector.record_histogram("rate_limit_delay_seconds", delay)
+            
+        return _triage_single(message, classifier, prioritizer, summarizer, responder)
+
+
 def triage_batch(
     messages: Iterable[str],
     parallel: bool = False,
     max_workers: Optional[int] = None,
     config_dict: Dict = None,
+    enable_rate_limiting: Optional[bool] = None,
 ) -> List[Dict[str, str | int]]:
     """Process ``messages`` efficiently with optimized agent reuse.
 
@@ -430,6 +508,8 @@ def triage_batch(
         Optional maximum number of worker threads. Defaults to min(32, cpu_count + 4).
     config_dict:
         Configuration dictionary to inject into agents. If None, agents use default configuration.
+    enable_rate_limiting:
+        If ``True`` applies rate limiting to message processing. If None, uses environment config default.
     
     Returns
     -------
@@ -444,14 +524,22 @@ def triage_batch(
             logger.info("No messages to process")
             return []
         
+        # Determine if rate limiting should be enabled
+        use_rate_limiting = enable_rate_limiting
+        if use_rate_limiting is None:
+            use_rate_limiting = _get_rate_limiter()._config.enabled
+            
         logger.info("Starting batch processing", 
                    extra={'message_count': len(messages_list), 'parallel': parallel,
-                         'max_workers': max_workers})
+                         'max_workers': max_workers, 'rate_limiting': use_rate_limiting})
 
         if parallel:
             # In parallel mode, each worker gets fresh agent instances to avoid thread safety issues
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                worker_fn = partial(_process_message_with_new_agents, config_dict=config_dict)
+                if use_rate_limiting:
+                    worker_fn = partial(_process_message_with_rate_limiting, config_dict=config_dict)
+                else:
+                    worker_fn = partial(_process_message_with_new_agents, config_dict=config_dict)
                 results = list(executor.map(worker_fn, messages_list))
         else:
             # In sequential mode, reuse the same agent instances for efficiency
@@ -460,10 +548,16 @@ def triage_batch(
             summarizer = SummarizerAgent(config_dict=config_dict)
             responder = ResponseAgent(config_dict=config_dict)
             
-            results = [
-                _triage_single(m, classifier, prioritizer, summarizer, responder)
-                for m in messages_list
-            ]
+            if use_rate_limiting:
+                results = [
+                    _process_message_sequential_with_rate_limiting(m, classifier, prioritizer, summarizer, responder)
+                    for m in messages_list
+                ]
+            else:
+                results = [
+                    _triage_single(m, classifier, prioritizer, summarizer, responder)
+                    for m in messages_list
+                ]
 
         elapsed = time.perf_counter() - start
         
@@ -473,13 +567,32 @@ def triage_batch(
         _metrics_collector.increment_gauge("total_processing_time", elapsed)
         _metrics_collector.set_gauge("last_batch_size", len(messages_list))
         
+        # Add rate limiter status to metrics if enabled
+        if use_rate_limiting:
+            rate_limiter_status = _get_rate_limiter().get_status()
+            _metrics_collector.set_gauge("rate_limiter_tokens_available", rate_limiter_status["tokens_available"])
+            _metrics_collector.set_gauge("rate_limiter_utilization", rate_limiter_status["utilization"])
+            _metrics_collector.set_gauge("rate_limiter_backpressure_active", 1.0 if rate_limiter_status["backpressure_active"] else 0.0)
+        
         # Calculate performance metrics
         avg_time_per_message = elapsed / len(messages_list) if messages_list else 0
         messages_per_second = len(messages_list) / elapsed if elapsed > 0 else 0
         
-        logger.info("Batch processing completed", 
-                   extra={'message_count': len(messages_list), 'duration': elapsed,
-                         'avg_time_per_message': avg_time_per_message,
-                         'messages_per_second': messages_per_second})
+        # Include rate limiter status in log output
+        extra_info = {
+            'message_count': len(messages_list), 
+            'duration': elapsed,
+            'avg_time_per_message': avg_time_per_message,
+            'messages_per_second': messages_per_second
+        }
+        
+        if use_rate_limiting:
+            rate_limiter_status = _get_rate_limiter().get_status()
+            extra_info.update({
+                'rate_limiter_utilization': rate_limiter_status["utilization"],
+                'rate_limiter_backpressure': rate_limiter_status["backpressure_active"]
+            })
+        
+        logger.info("Batch processing completed", extra=extra_info)
 
         return results
