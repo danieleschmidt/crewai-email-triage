@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, MISSING
-from typing import Optional, Dict, Any, Union
+from typing import Optional, Dict, Any, Union, get_type_hints
 
 
 def _parse_bool(value: str) -> bool:
@@ -66,7 +66,7 @@ class EnvironmentConfig:
     def from_environment(cls) -> "EnvironmentConfig":
         """Create configuration instance from environment variables."""
         env_mapping = cls._get_env_mapping()
-        annotations = getattr(cls, '__annotations__', {})
+        annotations = get_type_hints(cls)
         defaults = {}
         
         # Get default values from dataclass field defaults
@@ -212,6 +212,38 @@ class ProviderEnvironmentConfig(EnvironmentConfig):
 
 
 @dataclass
+class RateLimitEnvironmentConfig(EnvironmentConfig):
+    """Rate limiting configuration loaded from environment variables."""
+    
+    requests_per_second: float = 10.0
+    burst_size: int = 20
+    enabled: bool = True
+    backpressure_threshold: float = 0.8
+    backpressure_delay: float = 0.1
+    
+    @classmethod
+    def _get_env_mapping(cls) -> Dict[str, str]:
+        return {
+            'requests_per_second': 'RATE_LIMIT_REQUESTS_PER_SECOND',
+            'burst_size': 'RATE_LIMIT_BURST_SIZE', 
+            'enabled': 'RATE_LIMIT_ENABLED',
+            'backpressure_threshold': 'RATE_LIMIT_BACKPRESSURE_THRESHOLD',
+            'backpressure_delay': 'RATE_LIMIT_BACKPRESSURE_DELAY'
+        }
+    
+    def validate(self):
+        """Validate rate limiting configuration values."""
+        if self.requests_per_second <= 0:
+            raise ValueError("requests_per_second must be positive")
+        if self.burst_size < 1:
+            raise ValueError("burst_size must be at least 1")
+        if not 0 < self.backpressure_threshold <= 1:
+            raise ValueError("backpressure_threshold must be between 0 and 1")
+        if self.backpressure_delay < 0:
+            raise ValueError("backpressure_delay must be non-negative")
+
+
+@dataclass
 class AppEnvironmentConfig(EnvironmentConfig):
     """Main application configuration loaded from environment variables."""
     
@@ -229,6 +261,7 @@ _retry_config: Optional[RetryEnvironmentConfig] = None
 _metrics_config: Optional[MetricsEnvironmentConfig] = None
 _provider_config: Optional[ProviderEnvironmentConfig] = None
 _app_config: Optional[AppEnvironmentConfig] = None
+_rate_limit_config: Optional[RateLimitEnvironmentConfig] = None
 
 
 def get_retry_config() -> RetryEnvironmentConfig:
@@ -265,13 +298,23 @@ def get_app_config() -> AppEnvironmentConfig:
     return _app_config
 
 
+def get_rate_limit_config() -> RateLimitEnvironmentConfig:
+    """Get the global rate limiting configuration instance."""
+    global _rate_limit_config
+    if _rate_limit_config is None:
+        _rate_limit_config = RateLimitEnvironmentConfig.from_environment()
+        _rate_limit_config.validate()
+    return _rate_limit_config
+
+
 def reset_config_cache() -> None:
     """Reset cached configuration instances. Useful for testing."""
-    global _retry_config, _metrics_config, _provider_config, _app_config
+    global _retry_config, _metrics_config, _provider_config, _app_config, _rate_limit_config
     _retry_config = None
     _metrics_config = None
     _provider_config = None
     _app_config = None
+    _rate_limit_config = None
 
 
 def get_all_environment_docs() -> Dict[str, Dict[str, str]]:

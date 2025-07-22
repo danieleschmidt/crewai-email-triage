@@ -171,13 +171,33 @@
 - **Files Modified**: metrics_export.py (enhanced HTTP handler)
 - **Testing**: Comprehensive test suite with 14 test cases covering k8s probe patterns, concurrent access, security headers
 
-### 4. No Rate Limiting or Backpressure [WSJF: 28]
-- **Impact**: 14 (Medium - system stability under load)
-- **Effort**: 4 (Medium - rate limiting implementation)
-- **Issue**: Pipeline processes emails without throttling or backpressure
-- **Evidence**: pipeline.py processes batches without rate limits
-- **Risk**: Service degradation under high load, API quota exhaustion
-- **Solution**: Implement configurable rate limiting and backpressure mechanisms
+### ✅ 4. No Rate Limiting or Backpressure [WSJF: 28] - COMPLETED
+- **Status**: ✅ RESOLVED - Comprehensive rate limiting and backpressure mechanisms implemented
+- **Solution**: Implemented token bucket rate limiter with configurable thresholds and backpressure detection
+- **Benefits**:
+  - **Load Protection**: Token bucket algorithm prevents service overload under high traffic
+  - **Backpressure Detection**: Automatic backpressure activation when token bucket utilization exceeds threshold
+  - **Configurable Parameters**: Environment-based configuration for requests per second, burst size, and backpressure behavior
+  - **Thread Safety**: Full concurrent operation support with RLock synchronization
+  - **Pipeline Integration**: Seamless integration with both sequential and parallel batch processing modes
+  - **Observability**: Comprehensive metrics collection including token utilization, backpressure status, and delay tracking
+- **Features Implemented**:
+  - **Token Bucket Algorithm**: Configurable requests per second with burst capacity
+  - **Backpressure Mechanism**: Early warning system with configurable threshold and delay
+  - **Environment Configuration**: Full environment variable support with type validation
+  - **Context Manager Support**: Rate-limited operation context for clean resource management
+  - **Status Monitoring**: Real-time rate limiter status with utilization metrics
+  - **Batch Processing**: Adaptive rate limiting for both sequential and parallel processing modes
+- **Files Added**: rate_limiter.py, tests/test_rate_limiting.py
+- **Files Modified**: pipeline.py (integrated rate limiting), env_config.py (added RateLimitEnvironmentConfig), __init__.py (exported rate limiter classes)
+- **Environment Variables**:
+  - `RATE_LIMIT_ENABLED`: Enable/disable rate limiting (default: true)
+  - `RATE_LIMIT_REQUESTS_PER_SECOND`: Maximum requests per second (default: 10.0)
+  - `RATE_LIMIT_BURST_SIZE`: Token bucket capacity (default: 20)
+  - `RATE_LIMIT_BACKPRESSURE_THRESHOLD`: Utilization threshold for backpressure (default: 0.8)
+  - `RATE_LIMIT_BACKPRESSURE_DELAY`: Additional delay when backpressure active (default: 0.1s)
+- **Testing**: Comprehensive test suite with 40+ test cases covering token bucket behavior, thread safety, pipeline integration, and environment configuration
+- **Performance Impact**: Controlled processing rates prevent resource exhaustion while maintaining throughput under normal conditions
 
 ### 5. Incomplete Documentation for Agent Contract [WSJF: 25]
 - **Impact**: 10 (Low-Medium - developer experience)
@@ -321,7 +341,7 @@
 
 ## 📊 PROGRESS SUMMARY
 
-### Completed This Session (22 Major Items)
+### Completed This Session (25 Major Items)
 1. ✅ **Error Handling & Robustness** - Added comprehensive error handling throughout
 2. ✅ **Batch Processing Optimization** - Fixed thread safety and performance issues  
 3. ✅ **Structured Logging** - Implemented request correlation and JSON logging
@@ -344,19 +364,24 @@
 20. ✅ **Environment Configuration Centralization** - Implemented Twelve-Factor App compliant centralized environment variable management
 21. ✅ **Magic Number Elimination** - Consolidated constants for timing calculations, content truncation, and other repeated values for better maintainability
 22. ✅ **Bare Exception Clause Fix** - Replaced bare except clause with specific exception types for better error handling and security
+23. ✅ **Thread Safety in Agent State** - Implemented RLock synchronization for concurrent configuration access across all agents
+24. ✅ **Health Check Endpoints** - Added comprehensive k8s-compatible health and readiness probes with proper status validation
+25. ✅ **Rate Limiting & Backpressure** - Implemented token bucket rate limiter with configurable thresholds and backpressure detection for load protection
 
 ### Key Improvements Made
-- **Reliability**: System now handles malformed emails, network errors, and invalid inputs gracefully; automatic retry logic prevents temporary network failures; enhanced graceful degradation ensures partial results even with component failures
-- **Performance**: Optimized batch processing with proper agent reuse strategies; eliminated redundant metrics tracking in hot paths; optimized agent string processing to reduce redundant operations and memory allocation
-- **Observability**: Full structured logging with request IDs and comprehensive metrics export
+- **Reliability**: System now handles malformed emails, network errors, and invalid inputs gracefully; automatic retry logic prevents temporary network failures; enhanced graceful degradation ensures partial results even with component failures; circuit breaker pattern prevents cascading failures
+- **Performance**: Optimized batch processing with proper agent reuse strategies; eliminated redundant metrics tracking in hot paths; optimized agent string processing to reduce redundant operations and memory allocation; rate limiting prevents resource exhaustion under high load
+- **Observability**: Full structured logging with request IDs and comprehensive metrics export; health check endpoints for container orchestration; rate limiter metrics and status monitoring
 - **Security**: Comprehensive input sanitization prevents XSS, SQL injection, and other attacks; fixed PII caching vulnerability; secured HTTP endpoints; eliminated plaintext password storage with encrypted credential management
 - **Quality Assurance**: End-to-end integration tests ensure system reliability under various conditions
 - **Maintainability**: Structured agent responses eliminate fragile string parsing throughout pipeline; refactored monolithic pipeline method for better code organization; implemented abstract base class pattern for consistent agent interface enforcement; unified metrics system eliminates code duplication; centralized environment configuration improves Twelve-Factor App compliance
 - **Debugging**: Specific exception handling improves error diagnosis and troubleshooting; enhanced error categorization and logging provide better monitoring visibility
-- **Robustness**: Enhanced error handling and threat detection reduce attack surface
-- **Monitoring**: Production-ready metrics export with Prometheus format and HTTP endpoint
+- **Robustness**: Enhanced error handling and threat detection reduce attack surface; circuit breaker and rate limiting provide multiple layers of protection
+- **Monitoring**: Production-ready metrics export with Prometheus format and HTTP endpoint; comprehensive health check endpoints for k8s integration
 - **Memory Management**: Bounded histogram collections prevent memory leaks in high-traffic scenarios
 - **Configuration Management**: Centralized environment variable handling with type safety and automatic documentation
+- **Concurrency**: Thread-safe configuration access across all agents; rate limiting works seamlessly in both sequential and parallel processing modes
+- **Load Management**: Token bucket rate limiter with backpressure detection prevents service degradation under high traffic conditions
 
 ### Test Coverage Added
 - Error handling scenarios (None, empty, malformed inputs)

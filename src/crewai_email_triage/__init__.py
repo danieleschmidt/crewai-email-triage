@@ -17,6 +17,7 @@ from .agent_responses import (
     AgentResponse, ClassificationResponse, PriorityResponse, 
     SummaryResponse, ResponseGenerationResponse, parse_agent_response
 )
+from .rate_limiter import RateLimiter, RateLimitConfig, get_rate_limiter
 
 
 
@@ -56,5 +57,8 @@ __all__ = [
     "SummaryResponse",
     "ResponseGenerationResponse",
     "parse_agent_response",
+    "RateLimiter",
+    "RateLimitConfig", 
+    "get_rate_limiter",
     "__version__",
 ]
