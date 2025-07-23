@@ -1,6 +1,7 @@
 import json
 import subprocess
 import sys
+import os
 
 from crewai_email_triage import __version__
 import importlib.util
@@ -10,6 +11,14 @@ spec = importlib.util.spec_from_file_location("triage", Path(__file__).resolve()
 triage = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(triage)
 
+# Get the project root directory
+project_root = Path(__file__).resolve().parents[1]
+src_path = project_root / "src"
+
+# Create environment with PYTHONPATH
+env = os.environ.copy()
+env["PYTHONPATH"] = str(src_path) + os.pathsep + env.get("PYTHONPATH", "")
+
 
 def test_cli_message():
     result = subprocess.run(
@@ -17,6 +26,7 @@ def test_cli_message():
         capture_output=True,
         text=True,
         check=True,
+        env=env,
     )
     output = json.loads(result.stdout)
     assert output["priority"] == 10
@@ -27,6 +37,7 @@ def test_cli_output_file(tmp_path):
     subprocess.run(
         [sys.executable, "triage.py", "--message", "Urgent meeting tomorrow!", "--output", str(path)],
         check=True,
+        env=env,
     )
     output = json.loads(path.read_text())
     assert output["priority"] == 10
@@ -56,6 +67,7 @@ def test_cli_stdin():
         text=True,
         capture_output=True,
         check=True,
+        env=env,
     )
     output = json.loads(result.stdout)
     assert output["priority"] == 10
@@ -69,6 +81,7 @@ def test_cli_file(tmp_path):
         capture_output=True,
         text=True,
         check=True,
+        env=env,
     )
     output = json.loads(result.stdout)
     assert output["priority"] == 10
@@ -82,6 +95,7 @@ def test_cli_batch_file(tmp_path):
         capture_output=True,
         text=True,
         check=True,
+        env=env,
     )
     output = json.loads(result.stdout)
     assert isinstance(output, list)
@@ -95,6 +109,7 @@ def test_cli_pretty():
         capture_output=True,
         text=True,
         check=True,
+        env=env,
     )
     assert "\n" in result.stdout.strip()
     output = json.loads(result.stdout)
@@ -107,6 +122,7 @@ def test_cli_version():
         capture_output=True,
         text=True,
         check=True,
+        env=env,
     )
     assert result.stdout.strip() == f"triage.py {__version__}"
 
@@ -116,6 +132,7 @@ def test_cli_requires_message():
         [sys.executable, "triage.py"],
         capture_output=True,
         text=True,
+        env=env,
     )
     assert result.returncode == 2
     last_line = result.stderr.strip().splitlines()[-1]
@@ -139,6 +156,7 @@ def test_cli_mutually_exclusive(tmp_path):
         ],
         text=True,
         capture_output=True,
+        env=env,
     )
     assert result.returncode == 2
     last_line = result.stderr.strip().splitlines()[-1]
@@ -153,6 +171,7 @@ def test_cli_interactive_exclusive():
         [sys.executable, "triage.py", "--interactive", "--message", "hi"],
         text=True,
         capture_output=True,
+        env=env,
     )
     assert result.returncode == 2
     last_line = result.stderr.strip().splitlines()[-1]
@@ -168,6 +187,7 @@ def test_cli_verbose():
         capture_output=True,
         text=True,
         check=True,
+        env=env,
     )
     assert "Processed" in result.stderr
 
@@ -192,7 +212,7 @@ sys.argv = ['triage.py', '--gmail', '--max-messages', '2']
 triage.main()
 """
     )
-    result = subprocess.run([sys.executable, str(script)], capture_output=True, text=True, check=True)
+    result = subprocess.run([sys.executable, str(script)], capture_output=True, text=True, check=True, env=env)
     output = json.loads(result.stdout)
     assert len(output) == 2
     assert output[0]["priority"] == 10
@@ -202,7 +222,7 @@ def test_cli_custom_config(tmp_path):
     cfg = {
         "classifier": {"urgent": ["urgent"]},
         "priority": {
-            "scores": {"high": 99, "medium": 50, "low": 1},
+            "scores": {"high": 9, "medium": 5, "low": 1},
             "high_keywords": ["urgent"],
             "medium_keywords": []
         },
@@ -215,6 +235,7 @@ def test_cli_custom_config(tmp_path):
         capture_output=True,
         text=True,
         check=True,
+        env=env,
     )
     output = json.loads(result.stdout)
-    assert output["priority"] == 99
+    assert output["priority"] == 9

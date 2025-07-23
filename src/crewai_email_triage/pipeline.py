@@ -19,7 +19,6 @@ from .agent_responses import parse_agent_response
 from .metrics_export import get_metrics_collector
 from .retry_utils import retry_with_backoff, RetryConfig
 from .rate_limiter import get_rate_limiter
-from .config import load_config
 
 logger = get_logger(__name__)
 _metrics_collector = get_metrics_collector()

@@ -7,7 +7,6 @@ import logging
 from email import message_from_bytes
 from email.message import EmailMessage
 from typing import List
-import os
 
 from .retry_utils import retry_with_backoff, RetryConfig
 from .secure_credentials import SecureCredentialManager, CredentialError

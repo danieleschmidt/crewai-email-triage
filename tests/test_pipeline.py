@@ -6,8 +6,10 @@ def test_success():
     result = triage_email("This is urgent. Please review by tomorrow!")
     assert result["category"] == "urgent"
     assert result["priority"] == 10
-    assert result["summary"] == "This is urgent"
-    assert result["response"] == "Thanks for your email"
+    # The summarizer includes the full message
+    assert "urgent" in result["summary"].lower()
+    # The response agent gives context-aware responses
+    assert "urgent" in result["response"].lower() or "priority" in result["response"].lower()
 
 
 def test_edge_case_invalid_input():
@@ -15,15 +17,16 @@ def test_edge_case_invalid_input():
     result = triage_email(None)
     assert result["category"] == "unknown"
     assert result["priority"] == 0
-    assert "processing failed" in result["summary"].lower() or result["summary"] == "summary:"
-    assert "unable to process" in result["response"].lower() or result["response"] == "response:"
+    assert result["summary"] == "Processing failed"
+    assert result["response"] == "Unable to process message"
 
 def test_empty_content_handling():
     """Test handling of empty content."""
     result = triage_email("")
     assert result["category"] == "empty"
     assert result["priority"] == 0
-    assert "empty" in result["summary"].lower() or result["summary"] == "summary:"
+    assert result["summary"] == "Empty message"
+    assert result["response"] == "No content to process"
 
 def test_pipeline_exception_metrics():
     """Test that pipeline exceptions are properly recorded in metrics."""

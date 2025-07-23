@@ -36,17 +36,17 @@ def _parse_bool(value: str) -> bool:
 
 def _parse_env_value(value: str, target_type: type) -> Any:
     """Parse environment variable value to target type with proper error handling."""
-    if value == "" and target_type != str:
+    if value == "" and target_type is not str:
         return None
     
     try:
-        if target_type == bool:
+        if target_type is bool:
             return _parse_bool(value)
-        elif target_type == int:
+        elif target_type is int:
             return int(value)
-        elif target_type == float:
+        elif target_type is float:
             return float(value)
-        elif target_type == str:
+        elif target_type is str:
             return value
         else:
             return value

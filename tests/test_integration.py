@@ -2,15 +2,12 @@
 
 import json
 import os
-import tempfile
 from unittest.mock import Mock, patch, MagicMock
 from io import StringIO
 
 import pytest
 
 from crewai_email_triage import triage_email, triage_batch, GmailProvider
-from crewai_email_triage.sanitization import SanitizationConfig
-from crewai_email_triage.logging_utils import setup_structured_logging
 
 
 class TestEndToEndIntegration:

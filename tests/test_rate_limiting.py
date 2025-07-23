@@ -1,7 +1,6 @@
 """Comprehensive test suite for rate limiting and backpressure mechanisms."""
 
 import time
-import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from unittest.mock import patch, Mock
 

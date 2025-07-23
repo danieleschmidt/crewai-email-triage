@@ -1,11 +1,9 @@
 """Test input sanitization and validation functionality."""
 
-import pytest
 from crewai_email_triage.sanitization import (
     EmailSanitizer,
     sanitize_email_content,
-    SanitizationConfig,
-    SanitizationResult
+    SanitizationConfig
 )
 
 

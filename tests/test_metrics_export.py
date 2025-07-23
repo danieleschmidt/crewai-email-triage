@@ -2,8 +2,7 @@
 
 import pytest
 import time
-from unittest.mock import Mock, patch
-from io import StringIO
+from unittest.mock import patch
 
 from crewai_email_triage.metrics_export import (
     MetricsCollector,

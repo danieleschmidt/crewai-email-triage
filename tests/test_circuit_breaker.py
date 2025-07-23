@@ -14,9 +14,8 @@ import os
 import sys
 import unittest
 import time
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from concurrent.futures import ThreadPoolExecutor
-import threading
 
 # Add project root to path for imports when running standalone
 if __name__ == "__main__":

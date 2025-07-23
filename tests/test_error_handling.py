@@ -1,6 +1,5 @@
 """Test error handling and robustness of the email triage system."""
 
-import pytest
 from unittest.mock import Mock, patch
 from crewai_email_triage.pipeline import _triage_single, triage_email
 from crewai_email_triage.classifier import ClassifierAgent

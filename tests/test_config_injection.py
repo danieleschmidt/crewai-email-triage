@@ -12,13 +12,12 @@ Tests the refactored configuration system to ensure:
 import os
 import sys
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 # Add project root to path for imports when running standalone
 if __name__ == "__main__":
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from crewai_email_triage.config import load_config
 from crewai_email_triage.classifier import ClassifierAgent
 from crewai_email_triage.priority import PriorityAgent
 from crewai_email_triage.summarizer import SummarizerAgent

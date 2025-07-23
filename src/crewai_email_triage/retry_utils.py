@@ -4,8 +4,7 @@ import time
 import random
 import logging
 from functools import wraps
-from typing import Any, Callable, Type, Tuple, Union, Optional
-import os
+from typing import Any, Callable, Type, Tuple, Optional
 
 from .circuit_breaker import get_circuit_breaker, CircuitBreakerConfig, CircuitBreakerError
 
