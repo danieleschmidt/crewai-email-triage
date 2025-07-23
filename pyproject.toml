@@ -8,6 +8,9 @@ version = "0.1.0"
 description = "Smart email assistant that classifies, prioritizes, summarizes, and drafts replies."
 readme = "README.md"
 requires-python = ">=3.8"
+dependencies = [
+    "cryptography>=3.0"
+]
 
 [project.optional-dependencies]
 test = [

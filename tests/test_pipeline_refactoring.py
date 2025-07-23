@@ -1,7 +1,7 @@
 """Tests for pipeline method refactoring to ensure behavior is preserved."""
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from crewai_email_triage.pipeline import _triage_single
 from crewai_email_triage.agent_responses import (
     ClassificationResponse, PriorityResponse, 

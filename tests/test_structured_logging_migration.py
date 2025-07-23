@@ -3,15 +3,13 @@
 import sys
 import os
 import json
-import tempfile
 import logging
 from io import StringIO
-from unittest.mock import patch
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'src'))
 
-from crewai_email_triage.logging_utils import setup_structured_logging, StructuredFormatter
+from crewai_email_triage.logging_utils import StructuredFormatter
 from crewai_email_triage.sanitization import sanitize_email_content
 from crewai_email_triage.provider import GmailProvider
 

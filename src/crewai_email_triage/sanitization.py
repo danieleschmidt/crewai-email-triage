@@ -7,11 +7,15 @@ import re
 import urllib.parse
 import unicodedata
 from dataclasses import dataclass, field
-from typing import List, Dict, Optional, Set
+from typing import List, Dict, Optional
 import logging
 # Removed lru_cache import due to security concerns with caching sensitive email content
 
 logger = logging.getLogger(__name__)
+
+# Import metrics collector for error tracking
+from .metrics_export import get_metrics_collector
+_metrics_collector = get_metrics_collector()
 
 # Constants for consistent behavior
 MILLISECONDS_PER_SECOND = 1000  # Conversion factor for timing calculations
@@ -261,7 +265,6 @@ class EmailSanitizer:
     def _decode_encodings(self, content: str) -> tuple[str, List[str]]:
         """Decode common encoding attacks."""
         threats = []
-        original_content = content
         
         # URL decode
         try:

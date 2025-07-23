@@ -6,9 +6,7 @@ for monitoring the email triage pipeline in production environments.
 
 from __future__ import annotations
 
-import os
 import threading
-import time
 from collections import defaultdict, deque
 from dataclasses import dataclass
 from typing import Dict, List, Any, Optional
@@ -235,7 +233,7 @@ class MetricsEndpoint:
                         self.wfile.write(readiness_response.encode("utf-8"))
                     else:
                         self._send_error_response(404, "Not Found")
-                except Exception as e:
+                except Exception:
                     self._send_error_response(500, "Internal Server Error")
             
             def do_POST(self):
@@ -358,7 +356,7 @@ class MetricsEndpoint:
                         "response": f"{response}\n".replace("'", '"'),
                         "status_code": 200
                     }
-                except Exception as e:
+                except Exception:
                     import time
                     current_time = time.time()
                     

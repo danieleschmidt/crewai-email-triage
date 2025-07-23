@@ -13,7 +13,6 @@ import unittest
 import threading
 import time
 from http.client import HTTPConnection
-from unittest.mock import patch, MagicMock
 
 # Add project root to path for imports when running standalone
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ established baselines to catch performance regressions early.
 
 import time
 import statistics
-from typing import Dict, List, Callable, Any
+from typing import Dict, Callable
 
 try:
     import pytest

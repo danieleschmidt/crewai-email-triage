@@ -1,7 +1,5 @@
 """Test batch processing performance and thread safety."""
 
-import pytest
-from unittest.mock import patch
 from crewai_email_triage.pipeline import triage_batch, get_legacy_metrics
 
 

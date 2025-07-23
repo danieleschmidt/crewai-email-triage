@@ -156,7 +156,7 @@ class SummarizerAgent(Agent):
             sentence = sentence.strip()
             if sentence and len(sentence) > 3:  # Filter very short fragments
                 # Add back the period if it doesn't end with punctuation
-                if not sentence[-1] in '.!?':
+                if sentence[-1] not in '.!?':
                     sentence += '.'
                 result.append(sentence)
         

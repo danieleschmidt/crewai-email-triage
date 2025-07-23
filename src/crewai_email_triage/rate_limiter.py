@@ -4,14 +4,13 @@ Implements configurable rate limiting using token bucket algorithm to prevent
 service degradation under high load and protect against API quota exhaustion.
 """
 
-import asyncio
 import time
 import threading
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Dict, Optional
 
-from .env_config import get_rate_limit_config, RateLimitEnvironmentConfig
+from .env_config import get_rate_limit_config
 
 
 @dataclass

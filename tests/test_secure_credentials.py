@@ -13,7 +13,7 @@ Tests the SecureCredentialManager class to ensure:
 import os
 import tempfile
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import sys
 
 # Add project root to path for imports when running standalone
@@ -276,9 +276,7 @@ class TestSecureCredentialManagerIntegration(unittest.TestCase):
 
     def test_temp_file_cleanup_exception_handling(self):
         """Test specific exception handling during temp file cleanup."""
-        import tempfile
-        import os
-        from unittest.mock import patch, Mock
+        from unittest.mock import patch
         
         manager = SecureCredentialManager(keyring_file=self.test_keyring_file.name)
         

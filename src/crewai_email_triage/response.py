@@ -1,7 +1,6 @@
 """Simple response agent."""
 
 from __future__ import annotations
-import re
 import threading
 import time
 from typing import Dict, Any

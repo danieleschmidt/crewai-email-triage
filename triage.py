@@ -65,7 +65,7 @@ def _dump(data: object, pretty: bool) -> str:
     return json.dumps(data, indent=2 if pretty else None)
 
 
-def _run_interactive(pretty: bool) -> None:
+def _run_interactive(pretty: bool, config_dict: dict = None) -> None:
     while True:
         try:
             sys.stderr.write("message> ")
@@ -78,7 +78,7 @@ def _run_interactive(pretty: bool) -> None:
             break
         if not line:
             break
-        print(_dump(triage_email(line), pretty))
+        print(_dump(triage_email(line, config_dict=config_dict), pretty))
 
 
 def _read_single_message(args: argparse.Namespace) -> str:
@@ -103,8 +103,12 @@ def main() -> None:
     log_level = logging.DEBUG if args.verbose else logging.INFO
     setup_structured_logging(level=log_level, structured=args.structured_logs)
 
+    # Load configuration
+    config_dict = None
     if args.config:
-        set_config(args.config)
+        from crewai_email_triage.config import load_config
+        config_dict = load_config(args.config)
+        set_config(args.config)  # Also set global for backward compatibility
     
     # Setup metrics export if requested
     metrics_endpoint = None
@@ -127,7 +131,7 @@ def main() -> None:
             metrics_endpoint = None
 
     if args.interactive:
-        _run_interactive(args.pretty)
+        _run_interactive(args.pretty, config_dict)
         metrics = get_legacy_metrics()
         logging.info("Processed %d message(s)", metrics["processed"])
         return
@@ -135,14 +139,14 @@ def main() -> None:
     with LoggingContext(operation="cli_operation"):
         if args.gmail:
             messages = _read_gmail(args.max_messages)
-            output = _dump(triage_batch(messages), args.pretty)
+            output = _dump(triage_batch(messages, config_dict=config_dict), args.pretty)
         elif args.batch_file:
             with args.batch_file as fh:
                 messages = [line.strip() for line in fh if line.strip()]
-            output = _dump(triage_batch(messages), args.pretty)
+            output = _dump(triage_batch(messages, config_dict=config_dict), args.pretty)
         else:
             message = _read_single_message(args)
-            output = _dump(triage_email(message), args.pretty)
+            output = _dump(triage_email(message, config_dict=config_dict), args.pretty)
 
     if args.output:
         with args.output as fh:

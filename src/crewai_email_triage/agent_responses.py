@@ -443,7 +443,6 @@ def create_agent_response_wrapper(agent_run_func, agent_type: str):
             raw_output = agent_run_func(content)
             return parse_agent_response(raw_output, agent_type)
         except Exception as e:
-            processing_time = (time.perf_counter() - start_time) * MILLISECONDS_PER_SECOND
             error_msg = f"Agent execution failed: {str(e)}"
             return _create_error_response(agent_type, "", error_msg, start_time)
     

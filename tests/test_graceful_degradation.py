@@ -1,13 +1,8 @@
 """Tests for graceful degradation improvements in the email triage pipeline."""
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from crewai_email_triage.pipeline import _triage_single
-from crewai_email_triage.agent_responses import (
-    ClassificationResponse, PriorityResponse, 
-    SummaryResponse, ResponseGenerationResponse
-)
-from crewai_email_triage.sanitization import SanitizationResult
 
 
 class TestGracefulDegradation:

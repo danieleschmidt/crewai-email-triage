@@ -2,7 +2,6 @@
 
 import pytest
 from dataclasses import asdict
-from typing import Dict, Any
 
 from crewai_email_triage.agent_responses import (
     AgentResponse,
