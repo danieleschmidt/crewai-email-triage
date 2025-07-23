@@ -40,15 +40,42 @@ python triage.py --message "ASAP reply needed" --config mycfg.json
 
 ## Development
 
+### Test Setup
+
+Install the package with test dependencies:
+
+```bash
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install with test dependencies
+pip install -e ".[test]"
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run tests in parallel for speed
+pytest -n auto -q
+
+# Run with coverage
+pytest --cov=src/crewai_email_triage
+
+# Run specific test file
+pytest tests/test_pipeline.py
+```
+
+### Pre-commit Hooks
+
 See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and commit guidelines.
 Install pre-commit hooks to catch lint and secret issues before committing:
 
 ```bash
 pre-commit install
-```
-Run tests in parallel with pytest:
-```bash
-pytest -n auto -q
 ```
 
 ## License

@@ -42,19 +42,56 @@
         "Document test setup in README or CONTRIBUTING.md"
       ],
       "created_at": "2025-07-23T17:21:41.832047",
-      "updated_at": "2025-07-23T17:21:58.835929",
+      "updated_at": "2025-07-23T17:22:45.000000",
       "blocked_reason": "",
-      "wsjf_score": 0.0,
-      "aging_multiplier": 1.0
+      "wsjf_score": 6.5,
+      "aging_multiplier": 1.0,
+      "completion_notes": "✅ COMPLETED - Pytest dependencies successfully installed. Created virtual environment, installed all test dependencies, verified import functionality, and documented test setup process in README.md. Tests can now run but revealed 33 test failures requiring separate investigation."
+    },
+    {
+      "id": "test_suite_failures",
+      "title": "Fix Test Suite Failures (33 failing tests)",
+      "description": "After installing pytest dependencies, test suite revealed 33 failing tests across multiple modules including agent responses, metrics export, input sanitization, and provider integration. These failures indicate underlying code issues that need investigation and fixes.",
+      "type": "Quality",
+      "status": "READY",
+      "business_value": 8,
+      "time_criticality": 6,
+      "risk_reduction": 8,
+      "effort": 8,
+      "links": [],
+      "acceptance_criteria": [
+        "Investigate and categorize all 33 test failures",
+        "Fix failing tests systematically without breaking functionality",
+        "Ensure test suite passes with >95% success rate",
+        "Maintain backward compatibility while fixing tests",
+        "Document any behavior changes during fixes"
+      ],
+      "created_at": "2025-07-23T17:22:45.000000",
+      "updated_at": "2025-07-23T17:22:45.000000",
+      "blocked_reason": "",
+      "wsjf_score": 2.75,
+      "aging_multiplier": 1.0,
+      "failure_categories": [
+        "Agent response parsing validation issues",
+        "Metrics export and HTTP endpoint failures",
+        "Input sanitization test expectations",
+        "Gmail provider integration test failures",
+        "Pipeline refactoring behavior changes",
+        "Rate limiting test assumptions"
+      ]
     }
   ],
   "metrics": {
-    "total_items": 0,
-    "completed_items": 0,
-    "blocked_items": 0,
+    "total_items": 3,
+    "completed_items": 1,
+    "blocked_items": 1,
     "average_cycle_time": 0.0,
-    "wsjf_distribution": {},
-    "last_updated": ""
+    "wsjf_distribution": {
+      "high_priority": 1,
+      "medium_priority": 1,
+      "low_priority": 0
+    },
+    "last_updated": "2025-07-23T17:22:45.000000"
   },
-  "last_updated": "2025-07-23T17:21:58.836152"
+  "last_updated": "2025-07-23T17:22:45.000000"
 }
