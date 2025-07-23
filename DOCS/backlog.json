@@ -1,0 +1,60 @@
+{
+  "items": [
+    {
+      "id": "gmail_oauth_security",
+      "title": "Hardcoded Gmail Credentials Vulnerability",
+      "description": "Replace password authentication with OAuth2 flow. Currently stores plaintext passwords in provider.py:26",
+      "type": "Security",
+      "status": "BLOCKED",
+      "business_value": 8,
+      "time_criticality": 8,
+      "risk_reduction": 13,
+      "effort": 5,
+      "links": [],
+      "acceptance_criteria": [
+        "Implement OAuth2 flow for Gmail authentication",
+        "Remove plaintext password storage",
+        "Update provider.py to use secure OAuth tokens",
+        "Add OAuth2 configuration documentation",
+        "Ensure backward compatibility or migration path"
+      ],
+      "created_at": "2025-07-23T17:21:41.832020",
+      "updated_at": "2025-07-23T17:21:58.835904",
+      "blocked_reason": "REQUIRES HUMAN REVIEW - Critical security issue affecting authentication system",
+      "wsjf_score": 0.0,
+      "aging_multiplier": 1.0
+    },
+    {
+      "id": "pytest_dependencies",
+      "title": "Install Missing Pytest Dependencies",
+      "description": "Several test files cannot run due to missing pytest dependency. Need to install test dependencies for comprehensive coverage.",
+      "type": "Infrastructure",
+      "status": "DONE",
+      "business_value": 5,
+      "time_criticality": 3,
+      "risk_reduction": 5,
+      "effort": 2,
+      "links": [],
+      "acceptance_criteria": [
+        "Install pytest and test dependencies from pyproject.toml[test]",
+        "Verify all test files can be imported successfully",
+        "Run complete test suite without import errors",
+        "Document test setup in README or CONTRIBUTING.md"
+      ],
+      "created_at": "2025-07-23T17:21:41.832047",
+      "updated_at": "2025-07-23T17:21:58.835929",
+      "blocked_reason": "",
+      "wsjf_score": 0.0,
+      "aging_multiplier": 1.0
+    }
+  ],
+  "metrics": {
+    "total_items": 0,
+    "completed_items": 0,
+    "blocked_items": 0,
+    "average_cycle_time": 0.0,
+    "wsjf_distribution": {},
+    "last_updated": ""
+  },
+  "last_updated": "2025-07-23T17:21:58.836152"
+}
