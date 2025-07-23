@@ -231,14 +231,14 @@ class TestAgentResponseParsing:
         assert response.error_message is not None
 
     def test_parse_out_of_range_priority(self):
-        """Test parsing out-of-range priority score."""
+        """Test parsing out-of-range priority score - should clamp to valid range."""
         raw_output = "priority: 15"
         response = parse_agent_response(raw_output, "priority")
         
         assert isinstance(response, PriorityResponse)
-        assert response.success is False
-        assert response.error_message is not None
-        assert "out of range" in response.error_message.lower()
+        assert response.success is True  # Should succeed with clamped value
+        assert response.priority_score == 10  # Should be clamped to max value
+        assert "15" in response.reasoning  # Should note the original parsed value
 
     def test_parse_unknown_agent_type(self):
         """Test parsing with unknown agent type."""
