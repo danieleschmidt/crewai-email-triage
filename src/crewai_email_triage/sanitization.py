@@ -346,6 +346,9 @@ class EmailSanitizer:
     def _sanitize_content(self, content: str, threats: List[str], modifications: List[str]) -> str:
         """Sanitize content based on detected threats."""
         
+        # Check for HTML tags before removing them (for modification tracking)
+        has_html_tags = '<' in content
+        
         # Remove script injections
         if 'script_injection' in threats:
             content = re.sub(r'<\s*script[^>]*>.*?</\s*script\s*>', '', content, flags=re.IGNORECASE | re.DOTALL)
@@ -356,7 +359,7 @@ class EmailSanitizer:
         
         # Handle HTML based on configuration
         if not self.config.allow_html:
-            if 'html_injection' in threats or '<' in content:
+            if 'html_injection' in threats or has_html_tags:
                 content = re.sub(r'<[^>]*>', '', content)
                 modifications.append('html_tags_removed')
         

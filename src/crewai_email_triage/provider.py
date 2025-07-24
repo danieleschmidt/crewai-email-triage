@@ -5,7 +5,7 @@ from __future__ import annotations
 import imaplib
 import logging
 from email import message_from_bytes
-from email.message import EmailMessage
+from email.message import Message
 from typing import List
 
 from .retry_utils import retry_with_backoff, RetryConfig
@@ -52,6 +52,16 @@ class GmailProvider:
                 logger.info(f"Migrated password from environment for {username}")
             else:
                 raise RuntimeError(f"No password found for {username}. Set GMAIL_PASSWORD environment variable or provide password parameter.")
+
+    @property
+    def password(self) -> str:
+        """
+        Retrieve stored password (for testing/compatibility purposes only).
+        
+        NOTE: This property should only be used in tests. In production,
+        passwords are kept securely encrypted and not accessible as plaintext.
+        """
+        return self._credential_manager.get_credential("gmail", self.username)
 
     @classmethod
     def from_env(cls, server: str = "imap.gmail.com") -> "GmailProvider":
@@ -139,7 +149,7 @@ class GmailProvider:
             return ""
             
         email_msg = message_from_bytes(raw_email)
-        if not isinstance(email_msg, EmailMessage):
+        if not isinstance(email_msg, Message):
             logger.warning("Failed to parse email message", extra={
                 'message_num': message_num.decode('utf-8') if isinstance(message_num, bytes) else str(message_num),
                 'username': self.username,

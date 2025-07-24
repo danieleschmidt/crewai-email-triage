@@ -29,7 +29,7 @@ class TestInputSanitization:
         assert "alert" not in result.sanitized_content
         assert "Hello  world" in result.sanitized_content
         assert "html_tags_removed" in result.modifications_made
-        assert "script_tag" in result.threats_detected
+        assert "script_injection" in result.threats_detected
 
     def test_javascript_removal(self):
         """Test that JavaScript code is detected and removed."""
