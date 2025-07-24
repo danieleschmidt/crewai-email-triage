@@ -11,8 +11,7 @@ This module implements the full-backlog execution loop that:
 import os
 import subprocess
 import sys
-import time
-from typing import List, Optional, Dict, Any
+from typing import List, Dict, Any
 from datetime import datetime
 
 from .backlog_manager import BacklogManager, BacklogItem, TaskStatus, TaskType
@@ -115,7 +114,7 @@ class BacklogExecutor:
     def _escalate_for_human_review(self, item: BacklogItem):
         """Escalate high-risk items for human review"""
         print(f"🚨 ESCALATING FOR HUMAN REVIEW: {item.title}")
-        print(f"   Reason: High-risk item requiring human oversight")
+        print("   Reason: High-risk item requiring human oversight")
         print(f"   Type: {item.type.value}")
         print(f"   Business Value: {item.business_value}")
         print(f"   Description: {item.description}")
@@ -167,7 +166,7 @@ class BacklogExecutor:
     
     def _validate_acceptance_criteria(self, item: BacklogItem) -> bool:
         """Validate that acceptance criteria are clear and testable"""
-        print(f"📋 Validating acceptance criteria...")
+        print("📋 Validating acceptance criteria...")
         
         if not item.acceptance_criteria:
             print("❌ No acceptance criteria defined")

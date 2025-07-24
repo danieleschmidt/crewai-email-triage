@@ -71,36 +71,45 @@ def _handle_agent_exception(e: Exception, agent_type: str) -> str:
     import json
     from concurrent.futures import TimeoutError
     
+    # Map agent types to their corresponding action names for error categories
+    action_mapping = {
+        "classifier": "classification",
+        "priority": "prioritization", 
+        "summarizer": "summarization",
+        "responder": "response_generation"
+    }
+    action_name = action_mapping.get(agent_type, agent_type)
+    
     if isinstance(e, TimeoutError):
         _metrics_collector.increment_counter(f"{agent_type}_timeouts")
         logger.error(f"{agent_type} timeout", 
                     extra={'error': str(e), 'agent': agent_type, 'error_type': 'timeout'})
-        return f"{agent_type}_timeout"
+        return f"{action_name}_timeout"
     
     elif isinstance(e, json.JSONDecodeError):
         _metrics_collector.increment_counter(f"{agent_type}_parse_errors")
         logger.error(f"{agent_type} response parsing failed", 
                     extra={'error': str(e), 'agent': agent_type, 'error_type': 'json_parse'})
-        return f"{agent_type}_parse_error"
+        return f"{action_name}_parse_error"
     
     elif isinstance(e, ConnectionError):
         _metrics_collector.increment_counter(f"{agent_type}_connection_errors")
         logger.error(f"{agent_type} connection failed", 
                     extra={'error': str(e), 'agent': agent_type, 'error_type': 'connection'})
-        return f"{agent_type}_connection_error"
+        return f"{action_name}_connection_error"
     
     elif isinstance(e, ValueError):
         _metrics_collector.increment_counter(f"{agent_type}_value_errors")
         logger.error(f"{agent_type} invalid input or response", 
                     extra={'error': str(e), 'agent': agent_type, 'error_type': 'value'})
-        return f"{agent_type}_value_error"
+        return f"{action_name}_value_error"
     
     else:
         _metrics_collector.increment_counter(f"{agent_type}_errors")
         logger.error(f"{agent_type} unexpected error", 
                     extra={'error': str(e), 'agent': agent_type, 'error_type': 'unexpected'}, 
                     exc_info=True)
-        return f"{agent_type}_error"
+        return f"{action_name}_error"
 
 
 def _validate_input(content: str | None) -> tuple[bool, Dict[str, str | int]]:
@@ -528,7 +537,7 @@ def triage_batch(
         if use_rate_limiting is None:
             use_rate_limiting = _get_rate_limiter()._config.enabled
             
-        logger.info("Starting batch processing", 
+        logger.info(f"Processing {len(messages_list)} messages", 
                    extra={'message_count': len(messages_list), 'parallel': parallel,
                          'max_workers': max_workers, 'rate_limiting': use_rate_limiting})
 
@@ -592,6 +601,6 @@ def triage_batch(
                 'rate_limiter_backpressure': rate_limiter_status["backpressure_active"]
             })
         
-        logger.info("Batch processing completed", extra=extra_info)
+        logger.info(f"Processed {len(messages_list)} messages at {messages_per_second:.2f} msg/s", extra=extra_info)
 
         return results

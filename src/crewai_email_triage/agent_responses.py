@@ -95,6 +95,12 @@ class SummaryResponse(AgentResponse):
     key_points: List[str] = field(default_factory=list)
     word_count: Optional[int] = None
     
+    def __post_init__(self):
+        """Validate and truncate summary length if necessary."""
+        if self.summary and len(self.summary) > MAX_SUMMARY_LENGTH:
+            self.summary = self.summary[:MAX_SUMMARY_LENGTH-3] + "..."
+            logger.debug(f"Summary truncated to {MAX_SUMMARY_LENGTH} characters")
+    
     def to_dict(self) -> Dict[str, Any]:
         """Convert response to dictionary."""
         base_dict = super().to_dict()
@@ -155,6 +161,10 @@ def parse_agent_response(raw_output: Optional[str], agent_type: str) -> AgentRes
     # Clean up the output
     cleaned_output = raw_output.strip()
     
+    # Check for unknown agent type first (should raise exception)
+    if agent_type not in ["classifier", "priority", "summarizer", "responder"]:
+        raise AgentResponseError(f"Unknown agent type: {agent_type}")
+    
     try:
         if agent_type == "classifier":
             return _parse_classification_response(cleaned_output, start_time)
@@ -164,8 +174,6 @@ def parse_agent_response(raw_output: Optional[str], agent_type: str) -> AgentRes
             return _parse_summary_response(cleaned_output, start_time)
         elif agent_type == "responder":
             return _parse_response_generation_response(cleaned_output, start_time)
-        else:
-            raise AgentResponseError(f"Unknown agent type: {agent_type}")
             
     except Exception as e:
         error_msg = f"Failed to parse {agent_type} response: {str(e)}"
