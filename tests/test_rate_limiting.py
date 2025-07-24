@@ -106,7 +106,8 @@ class TestRateLimiter:
         # Should fail to acquire more tokens
         result = limiter.try_acquire(1.0)
         assert result is False
-        assert limiter._tokens == 0.0
+        # Tokens should be approximately 0 (allowing for tiny time differences)
+        assert limiter._tokens < 0.1
     
     def test_disabled_rate_limiter(self):
         """Test rate limiter when disabled."""
@@ -175,8 +176,9 @@ class TestRateLimiter:
         limiter.acquire(5.0)
         status = limiter.get_status()
         
-        assert status["tokens_available"] == 15.0
-        assert status["utilization"] == 0.25  # 5/20 = 0.25
+        # Allow for small timing variations
+        assert abs(status["tokens_available"] - 15.0) < 0.1
+        assert abs(status["utilization"] - 0.25) < 0.01  # 5/20 = 0.25
     
     def test_context_manager(self):
         """Test rate limiter context manager."""
