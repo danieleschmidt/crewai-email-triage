@@ -155,6 +155,53 @@ class TestStructuredLoggingMigration:
                 print(f"⚠ {module_name}: Error testing - {e}")
         
         print(f"\nStructured logging summary: {structured_log_count}/{len(modules_to_test)} modules")
+        
+        # For pytest: assert that all modules are using structured logging
+        assert structured_log_count == len(modules_to_test), f"Only {structured_log_count}/{len(modules_to_test)} modules using structured logging"
+    
+    def check_modules_structured_logging(self):
+        """Helper method for standalone runner that returns counts."""
+        modules_to_test = [
+            'crewai_email_triage.sanitization',
+            'crewai_email_triage.provider', 
+            'crewai_email_triage.retry_utils',
+            'crewai_email_triage.circuit_breaker',
+            'crewai_email_triage.secure_credentials',
+            'crewai_email_triage.agent_responses'
+        ]
+        
+        structured_log_count = 0
+        
+        for module_name in modules_to_test:
+            # Clear previous log output
+            self.log_stream.seek(0)
+            self.log_stream.truncate(0)
+            
+            # Import and trigger some logging from the module
+            try:
+                module = __import__(module_name, fromlist=[''])
+                # Get the module logger name and check its configuration
+                logger = logging.getLogger(module_name)
+                
+                # Trigger a test log entry
+                logger.info(f"Test structured logging for {module_name}")
+                
+                # Check log output
+                log_output = self.log_stream.getvalue()
+                
+                if log_output.strip():
+                    log_lines = [line.strip() for line in log_output.strip().split('\n') if line.strip()]
+                    for line in log_lines:
+                        try:
+                            json.loads(line)
+                            structured_log_count += 1
+                            break
+                        except json.JSONDecodeError:
+                            break
+                    
+            except Exception:
+                pass
+        
         return structured_log_count, len(modules_to_test)
 
 
@@ -174,16 +221,15 @@ def run_logging_migration_test():
         test_instance.test_provider_structured_logging()
         
         print("\n3. Testing All Modules:")
-        structured_count, total_count = test_instance.test_all_modules_use_structured_logging()
+        structured_count, total_count = test_instance.check_modules_structured_logging()
         
         print(f"\n📊 Results: {structured_count}/{total_count} modules using structured logging")
         
         if structured_count < total_count:
             print("🎯 Migration needed for remaining modules")
-            return False
+            assert False, "Migration needed for remaining modules"
         else:
             print("✅ All modules successfully using structured logging!")
-            return True
             
     except Exception as e:
         print(f"❌ Test failed: {e}")

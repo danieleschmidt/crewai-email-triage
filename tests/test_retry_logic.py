@@ -46,15 +46,12 @@ def test_retry_logic_requirements():
             messages = provider.fetch_unread(max_messages=1)
             print("    ✅ Confirmed: IMAP operations succeed WITH retry logic")
             print(f"    Connection attempts made: {len(connection_attempts)}")
-            if len(connection_attempts) >= 3:
-                print("    ✅ Retry logic successfully attempted multiple connections")
-            else:
-                print("    ❌ Expected multiple retry attempts")
-                return False
+            assert len(connection_attempts) >= 3, "Expected multiple retry attempts"
+            print("    ✅ Retry logic successfully attempted multiple connections")
         except ConnectionError:
             print("    ❌ Operation failed even with retry logic")
             print(f"    Connection attempts made: {len(connection_attempts)}")
-            return False
+            assert False, "Operation failed even with retry logic"
     
     # Test 2: Agent operation failure simulation
     print("  Testing agent operation reliability...")
@@ -79,8 +76,7 @@ def test_retry_logic_requirements():
     try:
         # This should fail because we're calling the agent directly
         result = agent.run("Test content")
-        print("    ❌ Expected failure but operation succeeded")
-        return False
+        assert False, "Expected failure but operation succeeded"
     except ConnectionError:
         print("    ✅ Confirmed: Agent operations fail without retry logic")
         print(f"    Agent call attempts made: {len(call_attempts)}")
@@ -96,17 +92,12 @@ def test_retry_logic_requirements():
         result = _run_agent_with_retry(agent, "Test content", "classifier")
         print("    ✅ Confirmed: Agent operations succeed WITH retry logic")
         print(f"    Agent call attempts made: {len(call_attempts)}")
-        if len(call_attempts) >= 2:
-            print("    ✅ Retry logic successfully attempted multiple agent calls")
-        else:
-            print("    ❌ Expected multiple retry attempts")
-            return False
+        assert len(call_attempts) >= 2, "Expected multiple retry attempts"
+        print("    ✅ Retry logic successfully attempted multiple agent calls")
     except ConnectionError:
         print("    ❌ Agent operation failed even with retry logic")
         print(f"    Agent call attempts made: {len(call_attempts)}")
-        return False
-    
-    return True
+        assert False, "Agent operation failed even with retry logic"
 
 
 def test_exponential_backoff_behavior():
@@ -145,12 +136,8 @@ def test_exponential_backoff_behavior():
     base_delay2 = 1.0 * (2 ** 1)  # 2.0
     base_delay3 = 1.0 * (2 ** 2)  # 4.0
     
-    if base_delay1 < base_delay2 < base_delay3:
-        print("    ✅ Exponential backoff progression is correct")
-        return True
-    else:
-        print("    ❌ Exponential backoff progression is incorrect")
-        return False
+    assert base_delay1 < base_delay2 < base_delay3, "Exponential backoff progression is incorrect"
+    print("    ✅ Exponential backoff progression is correct")
 
 
 def test_retry_configuration():
@@ -175,7 +162,6 @@ def test_retry_configuration():
     assert retry_config['exponential_factor'] > 1, "Exponential factor must be > 1"
     
     print("    ✅ Retry configuration parameters are valid")
-    return True
 
 
 if __name__ == "__main__":

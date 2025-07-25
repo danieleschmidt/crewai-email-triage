@@ -30,12 +30,43 @@ class TestGmailProviderSecureCredentials(unittest.TestCase):
         self.test_username = "test@gmail.com"
         self.test_password = "secure_test_password_123"
         
+        # Clean up any existing credential files
+        self._cleanup_credentials()
+        
+        # Clear any cached environment config to ensure clean test state
+        self._clear_env_config_cache()
+        
     def tearDown(self):
         """Clean up test environment."""
         try:
             os.unlink(self.test_keyring_file.name)
         except FileNotFoundError:
             pass
+        
+        # Clean up any credential files created during tests
+        self._cleanup_credentials()
+        
+        # Clear environment config cache after tests
+        self._clear_env_config_cache()
+    
+    def _cleanup_credentials(self):
+        """Clean up credential files."""
+        import shutil
+        credential_dir = os.path.expanduser("~/.crewai_email_triage")
+        if os.path.exists(credential_dir):
+            try:
+                shutil.rmtree(credential_dir)
+            except (OSError, PermissionError):
+                pass
+    
+    def _clear_env_config_cache(self):
+        """Clear cached environment configuration."""
+        import crewai_email_triage.env_config as env_config
+        env_config._provider_config = None
+        env_config._retry_config = None
+        env_config._metrics_config = None
+        env_config._app_config = None
+        env_config._rate_limit_config = None
     
     def test_provider_with_password_parameter(self):
         """Test provider initialization with password parameter."""
