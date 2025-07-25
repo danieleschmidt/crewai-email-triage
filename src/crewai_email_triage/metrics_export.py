@@ -336,6 +336,10 @@ class MetricsEndpoint:
                     # Check if metrics collector is accessible and functional
                     test_metrics = exporter.collector.get_all_metrics()
                     
+                    # Validate that metrics are available
+                    if test_metrics is None:
+                        raise RuntimeError("Metrics collector returned None")
+                    
                     # Check if we can generate metrics export
                     _ = exporter.export()
                     

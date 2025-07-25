@@ -9,17 +9,17 @@ description = "Smart email assistant that classifies, prioritizes, summarizes, a
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
-    "cryptography>=3.0"
+    "cryptography>=43.0.0,<46.0.0"
 ]
 
 [project.optional-dependencies]
 test = [
-    "pytest",
-    "pytest-cov",
-    "ruff",
-    "bandit",
-    "pre-commit",
-    "pytest-xdist",
+    "pytest~=8.4.0",
+    "pytest-cov~=6.2.0",
+    "ruff~=0.12.0",
+    "bandit~=1.8.0",
+    "pre-commit~=4.2.0",
+    "pytest-xdist~=3.8.0",
 ]
 
 [tool.setuptools]

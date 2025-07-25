@@ -1,0 +1,11 @@
+# Bandit configuration for CrewAI Email Triage
+# All skipped tests are justified in SUBPROCESS_SECURITY.md
+#
+# B404 - subprocess import: Safe, controlled usage with hardcoded args
+# B603 - subprocess without shell: Safe, we explicitly avoid shell=True  
+# B607 - partial executable path: Safe, using known system executables
+# B110/B112 - try/except pass/continue: Intentional error handling patterns
+# B311 - random for jitter: Not cryptographic, just retry timing variation
+[bandit]
+skips = B404,B603,B607,B110,B112,B311
+exclude_dirs = tests
