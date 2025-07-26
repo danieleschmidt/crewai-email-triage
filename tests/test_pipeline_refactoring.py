@@ -373,7 +373,7 @@ class TestPipelineRefactoring:
                     
             mock_parse.side_effect = parse_side_effect
             
-            result = _triage_single(valid_content, classifier, prioritizer, summarizer, responder)
+            _triage_single(valid_content, classifier, prioritizer, summarizer, responder)
             
             # Verify metrics were recorded for pipeline operations  
             assert mock_metrics.increment_counter.call_count >= 2  # At least some operations

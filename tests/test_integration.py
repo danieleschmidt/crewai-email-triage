@@ -156,6 +156,7 @@ class TestEndToEndIntegration:
         
         # Test with default config
         result_default = triage_email(email_content)
+        assert result_default is not None
         
         # Test with custom sanitization config (via pipeline integration)
         # Note: This tests the configuration system integration
@@ -190,6 +191,7 @@ class TestEndToEndIntegration:
         
         # Process an email
         result = triage_email("Test email for logging integration")
+        assert result is not None
         
         # Check that logs were generated
         log_output = log_stream.getvalue()
