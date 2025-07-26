@@ -308,7 +308,7 @@ class TestMetricsEndpoint:
         
         exporter = PrometheusExporter(collector)
         config = MetricsConfig()
-        endpoint = MetricsEndpoint(exporter, config)
+        MetricsEndpoint(exporter, config)
         
         # Test that metrics can be exported
         metrics_output = exporter.export()

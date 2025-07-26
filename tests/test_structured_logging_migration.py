@@ -40,7 +40,7 @@ class TestStructuredLoggingMigration:
         self.log_stream.truncate(0)
         
         # Trigger sanitization (should generate logs)
-        result = sanitize_email_content(test_content)
+        sanitize_email_content(test_content)
         
         # Get log output
         log_output = self.log_stream.getvalue()
@@ -126,7 +126,7 @@ class TestStructuredLoggingMigration:
             
             # Import and trigger some logging from the module
             try:
-                module = __import__(module_name, fromlist=[''])
+                __import__(module_name, fromlist=[''])
                 # Get the module logger name and check its configuration
                 logger = logging.getLogger(module_name)
                 
@@ -141,7 +141,7 @@ class TestStructuredLoggingMigration:
                     
                     for line in log_lines:
                         try:
-                            log_entry = json.loads(line)
+                            json.loads(line)
                             structured_log_count += 1
                             print(f"✓ {module_name}: Structured logging confirmed")
                             break
@@ -179,7 +179,7 @@ class TestStructuredLoggingMigration:
             
             # Import and trigger some logging from the module
             try:
-                module = __import__(module_name, fromlist=[''])
+                __import__(module_name, fromlist=[''])
                 # Get the module logger name and check its configuration
                 logger = logging.getLogger(module_name)
                 

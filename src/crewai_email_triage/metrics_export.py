@@ -294,7 +294,7 @@ class MetricsEndpoint:
                     self.end_headers()
                     if hasattr(self, 'wfile'):
                         self.wfile.write(f"{code} {message}\n".encode("utf-8"))
-                except Exception:
+                except Exception:  # nosec B110 - Prevent recursive errors in error handler
                     pass  # Avoid recursive errors
             
             def log_message(self, format, *args):

@@ -9,7 +9,7 @@ This module implements the full-backlog execution loop that:
 """
 
 import os
-import subprocess
+import subprocess  # nosec B404 - Used for legitimate CI/automation git/pip/test commands
 import sys
 from typing import List, Dict, Any
 from datetime import datetime
@@ -86,7 +86,7 @@ class BacklogExecutor:
         """Sync repository state and check for new signals"""
         try:
             # Pull latest changes if connected to remote
-            result = subprocess.run(
+            result = subprocess.run(  # nosec B603 B607 - Safe git command with fixed args
                 ["git", "status", "--porcelain"],
                 cwd=self.repo_root,
                 capture_output=True,
@@ -199,7 +199,7 @@ class BacklogExecutor:
         
         try:
             # Install test dependencies
-            result = subprocess.run([
+            result = subprocess.run([  # nosec B603 - Safe pip install with fixed args
                 sys.executable, "-m", "pip", "install", "-e", ".[test]"
             ], cwd=self.repo_root, capture_output=True, text=True)
             
@@ -221,7 +221,7 @@ class BacklogExecutor:
         print("🧪 Verifying test imports...")
         
         try:
-            result = subprocess.run([
+            result = subprocess.run([  # nosec B603 - Safe test runner with fixed args
                 sys.executable, "run_tests.py"
             ], cwd=self.repo_root, capture_output=True, text=True)
             
@@ -268,7 +268,7 @@ class BacklogExecutor:
         
         # Run bandit security scan if available
         try:
-            result = subprocess.run([
+            result = subprocess.run([  # nosec B603 B607 - Safe bandit security tool with fixed args
                 "bandit", "-r", "src/", "-f", "json"
             ], cwd=self.repo_root, capture_output=True, text=True)
             
@@ -292,7 +292,7 @@ class BacklogExecutor:
         
         # Run tests to ensure nothing is broken
         try:
-            result = subprocess.run([
+            result = subprocess.run([  # nosec B603 - Safe test runner with fixed args
                 sys.executable, "run_tests.py"
             ], cwd=self.repo_root, capture_output=True, text=True)
             

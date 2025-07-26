@@ -97,7 +97,7 @@ def calculate_delay(attempt: int, config: RetryConfig) -> float:
     
     # Add jitter if enabled
     if config.jitter:
-        jitter_factor = random.uniform(0.5, 1.5)
+        jitter_factor = random.uniform(0.5, 1.5)  # nosec B311 - Non-cryptographic jitter for retry delays
         delay *= jitter_factor
     
     return delay

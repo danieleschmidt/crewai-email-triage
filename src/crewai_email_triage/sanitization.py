@@ -6,15 +6,15 @@ import html
 import re
 import urllib.parse
 import unicodedata
+import logging
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional
-import logging
 # Removed lru_cache import due to security concerns with caching sensitive email content
-
-logger = logging.getLogger(__name__)
 
 # Import metrics collector for error tracking
 from .metrics_export import get_metrics_collector
+
+logger = logging.getLogger(__name__)
 _metrics_collector = get_metrics_collector()
 
 # Constants for consistent behavior

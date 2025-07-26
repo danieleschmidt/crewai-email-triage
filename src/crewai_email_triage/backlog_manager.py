@@ -212,7 +212,7 @@ class BacklogManager:
                                     effort=3
                                 )
                                 
-                    except Exception:
+                    except Exception:  # nosec B112 - Intentionally skip unreadable files during discovery
                         continue  # Skip files that can't be read
     
     def _normalize_items(self):

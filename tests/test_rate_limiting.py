@@ -494,7 +494,7 @@ class TestMetricsIntegration:
             mock_metrics.set_gauge = Mock()
             
             email_content = "Test email for metrics"
-            result = triage_email(email_content, enable_rate_limiting=True)
+            triage_email(email_content, enable_rate_limiting=True)
             
             # Verify metrics were called
             assert mock_metrics.increment_counter.called

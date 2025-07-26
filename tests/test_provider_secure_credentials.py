@@ -71,7 +71,7 @@ class TestGmailProviderSecureCredentials(unittest.TestCase):
     def test_provider_with_password_parameter(self):
         """Test provider initialization with password parameter."""
         # Create provider with password - should store it securely
-        with patch.object(SecureCredentialManager, '__init__', return_value=None) as mock_init:
+        with patch.object(SecureCredentialManager, '__init__', return_value=None):
             mock_manager = MagicMock()
             mock_manager.credential_exists.return_value = False
             mock_manager.store_credential = MagicMock()
@@ -97,7 +97,7 @@ class TestGmailProviderSecureCredentials(unittest.TestCase):
                 
                 with patch.object(SecureCredentialManager, 'credential_exists', return_value=False):
                     with patch.object(SecureCredentialManager, 'store_credential') as mock_store:
-                        provider = GmailProvider(self.test_username)
+                        GmailProvider(self.test_username)
                         
                         # Verify password was migrated from environment
                         mock_store.assert_called_once_with("gmail", self.test_username, self.test_password)
@@ -272,7 +272,7 @@ class TestSecureCredentialManagerIntegrationWithProvider(unittest.TestCase):
                 
                 # Create provider - should migrate from environment
                 with patch('crewai_email_triage.provider.SecureCredentialManager', return_value=self.manager):
-                    provider = GmailProvider(self.test_username)
+                    GmailProvider(self.test_username)
                     
                     # Verify credential was migrated and stored
                     stored_password = self.manager.get_credential("gmail", self.test_username)

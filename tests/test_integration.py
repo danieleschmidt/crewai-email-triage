@@ -155,7 +155,7 @@ class TestEndToEndIntegration:
         email_content = "Test email with multiple URLs: https://site1.com and https://site2.com"
         
         # Test with default config
-        result_default = triage_email(email_content)
+        triage_email(email_content)
         
         # Test with custom sanitization config (via pipeline integration)
         # Note: This tests the configuration system integration
@@ -189,7 +189,7 @@ class TestEndToEndIntegration:
         logger.setLevel(logging.INFO)
         
         # Process an email
-        result = triage_email("Test email for logging integration")
+        triage_email("Test email for logging integration")
         
         # Check that logs were generated
         log_output = log_stream.getvalue()

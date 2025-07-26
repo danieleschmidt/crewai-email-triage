@@ -34,7 +34,7 @@ def test_pipeline_exception_metrics():
     
     collector = get_metrics_collector()
     initial_metrics = collector.get_all_metrics()
-    initial_errors = sum(v for k, v in initial_metrics.get('counters', {}).items() if 'error' in k)
+    sum(v for k, v in initial_metrics.get('counters', {}).items() if 'error' in k)
     
     # Process various content types that might trigger errors
     test_cases = [
