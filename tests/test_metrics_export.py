@@ -12,7 +12,7 @@ from crewai_email_triage.metrics_export import (
     export_metrics_to_prometheus_format,
     MetricsConfig
 )
-from crewai_email_triage.pipeline import triage_email, triage_batch
+from crewai_email_triage.pipeline import triage_email
 
 
 class TestMetricsCollector:
