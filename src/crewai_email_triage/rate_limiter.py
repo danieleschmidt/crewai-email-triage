@@ -237,7 +237,7 @@ class BatchRateLimiter:
         
         # Process items with individual rate limiting
         for item in items:
-            with self._rate_limiter.rate_limited_operation() as delay:
+            with self._rate_limiter.rate_limited_operation():
                 yield processing_func(item)
 
 

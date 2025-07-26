@@ -43,7 +43,7 @@ def test_retry_logic_requirements():
         
         try:
             # With retry logic, this should succeed after retries
-            messages = provider.fetch_unread(max_messages=1)
+            provider.fetch_unread(max_messages=1)
             print("    ✅ Confirmed: IMAP operations succeed WITH retry logic")
             print(f"    Connection attempts made: {len(connection_attempts)}")
             assert len(connection_attempts) >= 3, "Expected multiple retry attempts"
@@ -75,7 +75,7 @@ def test_retry_logic_requirements():
     # Test agent operations directly (without retry logic in the test)
     try:
         # This should fail because we're calling the agent directly
-        result = agent.run("Test content")
+        agent.run("Test content")
         assert False, "Expected failure but operation succeeded"
     except ConnectionError:
         print("    ✅ Confirmed: Agent operations fail without retry logic")
@@ -89,7 +89,7 @@ def test_retry_logic_requirements():
     
     try:
         # This should succeed with retry logic
-        result = _run_agent_with_retry(agent, "Test content", "classifier")
+        _run_agent_with_retry(agent, "Test content", "classifier")
         print("    ✅ Confirmed: Agent operations succeed WITH retry logic")
         print(f"    Agent call attempts made: {len(call_attempts)}")
         assert len(call_attempts) >= 2, "Expected multiple retry attempts"
@@ -127,9 +127,9 @@ def test_exponential_backoff_behavior():
         print(f"    Attempt {attempt}: {delay:.2f} seconds")
     
     # Validate that delays increase
-    delay1 = calculate_backoff_delay(1, base_delay=1.0, max_delay=30.0)
-    delay2 = calculate_backoff_delay(2, base_delay=1.0, max_delay=30.0)
-    delay3 = calculate_backoff_delay(3, base_delay=1.0, max_delay=30.0)
+    calculate_backoff_delay(1, base_delay=1.0, max_delay=30.0)
+    calculate_backoff_delay(2, base_delay=1.0, max_delay=30.0)
+    calculate_backoff_delay(3, base_delay=1.0, max_delay=30.0)
     
     # Account for jitter - use base calculations
     base_delay1 = 1.0 * (2 ** 0)  # 1.0

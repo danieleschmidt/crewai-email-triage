@@ -51,7 +51,7 @@ class TestProviderLoggingEnhancement:
         self.log_stream.truncate(0)
         
         # Initialize provider
-        provider = GmailProvider("test@example.com", "fake_password")
+        GmailProvider("test@example.com", "fake_password")
         
         logs = self.get_structured_logs()
         

@@ -223,7 +223,7 @@ class TestStructuredLogging:
         pipeline_logger.setLevel(logging.INFO)
         
         # Run triage
-        result = triage_email("test message")
+        triage_email("test message")
         
         # Check logs were generated
         output = stream.getvalue()
@@ -260,7 +260,7 @@ class TestStructuredLogging:
         
         # Run batch
         messages = ["message 1", "message 2"]
-        results = triage_batch(messages)
+        triage_batch(messages)
         
         # Check that we have logs
         output = stream.getvalue()
