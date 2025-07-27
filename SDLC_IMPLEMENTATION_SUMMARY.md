@@ -22,12 +22,15 @@ This document summarizes the comprehensive Software Development Lifecycle (SDLC)
 
 ## 🏗️ Infrastructure Components
 
-### CI/CD Pipelines
-- **ci.yml**: Comprehensive CI pipeline with code quality, testing, and build verification
-- **cd.yml**: Deployment pipeline with staging/production environments
-- **security-scan.yml**: Daily security scanning and vulnerability assessment
-- **dependency-update.yml**: Automated dependency updates and maintenance
-- **release.yml**: Automated release management with semantic versioning
+### CI/CD Pipelines (Manual Setup Required)
+- **GITHUB_WORKFLOWS_SETUP.md**: Complete workflow implementation guide
+- **CI Pipeline**: Comprehensive testing, quality checks, and build verification
+- **CD Pipeline**: Deployment automation with staging/production environments  
+- **Security Scanning**: Daily vulnerability assessment and dependency auditing
+- **Dependency Updates**: Automated maintenance and security patch management
+- **Release Management**: Semantic versioning and automated release process
+
+*Note: GitHub workflows require manual setup due to permission restrictions*
 
 ### Development Environment
 - **devcontainer.json**: Complete VS Code development container setup
