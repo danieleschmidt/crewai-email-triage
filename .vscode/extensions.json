@@ -1,0 +1,68 @@
+{
+  "recommendations": [
+    // Python Development
+    "ms-python.python",
+    "ms-python.black-formatter",
+    "charliermarsh.ruff",
+    "ms-python.mypy-type-checker",
+    "ms-toolsai.jupyter",
+    
+    // Testing
+    "ms-vscode.test-adapter-converter",
+    "littlefoxteam.vscode-python-test-adapter",
+    "hbenl.vscode-test-explorer",
+    
+    // Git & Version Control
+    "eamodio.gitlens",
+    "github.vscode-pull-request-github",
+    "github.vscode-github-actions",
+    "donjayamanne.githistory",
+    
+    // File Types & Syntax
+    "redhat.vscode-yaml",
+    "ms-vscode.vscode-json",
+    "tamasfe.even-better-toml",
+    "davidanson.vscode-markdownlint",
+    "yzhang.markdown-all-in-one",
+    "bierner.markdown-mermaid",
+    
+    // Docker & Containers
+    "ms-azuretools.vscode-docker",
+    "ms-vscode-remote.remote-containers",
+    "ms-vscode-remote.remote-ssh",
+    
+    // Code Quality & Security
+    "ms-vscode.vscode-bandit",
+    "ms-python.pylint",
+    "sonarsource.sonarlint-vscode",
+    "timonwong.shellcheck",
+    
+    // Productivity
+    "ms-vscode.vscode-todo-highlight",
+    "gruntfuggly.todo-tree",
+    "streetsidesoftware.code-spell-checker",
+    "christian-kohler.path-intellisense",
+    "ms-vscode.vscode-github-issue-notebooks",
+    
+    // Themes & UI
+    "pkief.material-icon-theme",
+    "zhuangtongfa.material-theme",
+    "github.github-vscode-theme",
+    
+    // REST API Testing
+    "humao.rest-client",
+    "rangav.vscode-thunder-client",
+    
+    // Database
+    "ms-mssql.mssql",
+    "cweijan.vscode-postgresql-client2",
+    
+    // Documentation
+    "swellaby.vscode-python-test-adapter",
+    "ms-vscode.vscode-github-issue-notebooks"
+  ],
+  "unwantedRecommendations": [
+    "ms-python.pylint",
+    "ms-python.flake8"
+  ]
+}

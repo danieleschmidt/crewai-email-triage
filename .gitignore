@@ -192,3 +192,358 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+
+# =============================================================================
+# CREWAI EMAIL TRIAGE SPECIFIC
+# =============================================================================
+
+# Application data and cache
+*.db
+*.sqlite
+*.sqlite3
+app.log
+audit.log
+performance.log
+
+# Configuration files with secrets
+config.json
+.env.local
+.env.production
+.env.staging
+
+# Email data and temporary files
+emails/
+temp_emails/
+email_cache/
+*.eml
+*.msg
+
+# =============================================================================
+# SECURITY & SECRETS
+# =============================================================================
+
+# Credentials and secrets
+credentials.json
+secrets.json
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+service-account.json
+client_secret.json
+
+# OAuth tokens
+token.json
+refresh_token.json
+access_token.json
+
+# API keys and configuration
+.api_keys
+.secrets
+config/secrets/
+vault/
+
+# Bandit security reports
+bandit-report.json
+bandit-baseline.json
+
+# =============================================================================
+# DEVELOPMENT & TESTING
+# =============================================================================
+
+# Test artifacts
+test-results/
+test-reports/
+screenshots/
+recordings/
+*-report.xml
+*-report.html
+junit.xml
+
+# Performance and profiling
+*.prof
+*.stats
+profile.stats
+memory_profile.dat
+.benchmarks/
+performance_results/
+
+# Development databases
+dev.db
+test.db
+local.db
+
+# Temporary development files
+tmp/
+temp/
+.tmp/
+scratch/
+playground/
+
+# =============================================================================
+# BUILD & DISTRIBUTION
+# =============================================================================
+
+# Build artifacts
+*.whl
+*.tar.gz
+*.zip
+build-output/
+artifacts/
+
+# Docker build context
+.dockerignore.bak
+docker-compose.override.yml
+docker-compose.local.yml
+
+# Container runtime
+.docker/
+docker-data/
+
+# Release artifacts
+releases/
+packages/
+
+# =============================================================================
+# MONITORING & OBSERVABILITY
+# =============================================================================
+
+# Logs
+logs/
+*.log
+*.log.*
+log-*.txt
+
+# Metrics and monitoring
+metrics/
+prometheus/
+grafana/
+alerts/
+
+# Tracing
+traces/
+spans/
+jaeger/
+
+# Health check artifacts
+health-checks/
+status/
+
+# =============================================================================
+# CI/CD & DEPLOYMENT
+# =============================================================================
+
+# CI/CD artifacts
+.ci/
+.github/secrets/
+deployment/secrets/
+
+# Terraform state
+*.tfstate
+*.tfstate.backup
+.terraform/
+terraform.tfvars
+
+# Ansible
+*.retry
+.vault_pass
+
+# Kubernetes
+*.kubeconfig
+kube-config
+k8s-secrets/
+
+# Helm
+charts/*/charts/
+charts/*/Chart.lock
+
+# =============================================================================
+# DOCUMENTATION BUILDS
+# =============================================================================
+
+# MkDocs
+site/
+docs/_build/
+docs/build/
+docs/.doctrees/
+
+# Sphinx
+_build/
+_static/
+_templates/
+
+# =============================================================================
+# EDITOR & IDE SPECIFIC
+# =============================================================================
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Atom
+.atom/
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Vim
+*.swp
+*.swo
+*~
+.vimrc.local
+
+# =============================================================================
+# OPERATING SYSTEM SPECIFIC
+# =============================================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.tmp
+*.temp
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# =============================================================================
+# PACKAGE MANAGER SPECIFIC
+# =============================================================================
+
+# npm (for documentation tools)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+package-lock.json
+yarn.lock
+
+# Bundler
+.bundle/
+vendor/bundle/
+
+# Composer
+vendor/
+composer.lock
+
+# =============================================================================
+# CLOUD & SERVICE PROVIDERS
+# =============================================================================
+
+# AWS
+.aws/
+aws-exports.js
+
+# Google Cloud
+gcloud/
+.gcloudignore
+
+# Azure
+.azure/
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+
+# =============================================================================
+# BACKUP & ARCHIVE FILES
+# =============================================================================
+
+# Backup files
+*.bak
+*.backup
+*.old
+*.orig
+*.save
+*.swp
+*.tmp
+
+# Archive files
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# =============================================================================
+# LARGE FILES & BINARIES
+# =============================================================================
+
+# Large data files
+*.csv
+*.tsv
+*.xlsx
+*.xls
+data/
+datasets/
+*.parquet
+*.h5
+*.hdf5
+
+# Media files
+*.mp4
+*.avi
+*.mov
+*.wmv
+*.mp3
+*.wav
+*.flac
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tiff
+*.svg
+*.pdf
+
+# Binary executables
+*.exe
+*.dll
+*.so
+*.dylib

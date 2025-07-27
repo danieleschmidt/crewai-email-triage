@@ -1,0 +1,314 @@
+# =============================================================================
+# DOCKER COMPOSE CONFIGURATION FOR CREWAI EMAIL TRIAGE
+# =============================================================================
+
+version: '3.8'
+
+# =============================================================================
+# SHARED CONFIGURATION
+# =============================================================================
+x-common-variables: &common-variables
+  PYTHONUNBUFFERED: 1
+  PYTHONDONTWRITEBYTECODE: 1
+  LOG_LEVEL: INFO
+  CREWAI_ENV: development
+
+x-common-volumes: &common-volumes
+  - ./src:/app/src:ro
+  - ./tests:/app/tests:ro
+  - ./triage.py:/app/triage.py:ro
+  - ./pyproject.toml:/app/pyproject.toml:ro
+  - app-data:/app/data
+  - app-logs:/app/logs
+
+services:
+  # =============================================================================
+  # MAIN APPLICATION SERVICE
+  # =============================================================================
+  crewai-triage:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+      args:
+        - BUILD_DATE=${BUILD_DATE:-$(date -u +'%Y-%m-%dT%H:%M:%SZ')}
+        - VERSION=${VERSION:-0.1.0}
+        - VCS_REF=${VCS_REF:-$(git rev-parse --short HEAD)}
+    container_name: crewai-email-triage
+    environment:
+      <<: *common-variables
+      LOG_LEVEL: DEBUG
+    volumes: *common-volumes
+    ports:
+      - "8000:8000"  # Health check and metrics
+    networks:
+      - crewai-network
+    depends_on:
+      - redis
+      - postgres
+    healthcheck:
+      test: ["CMD", "python", "-c", "from crewai_email_triage.core import health_check; health_check()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # =============================================================================
+  # TESTING SERVICE
+  # =============================================================================
+  crewai-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: testing
+    container_name: crewai-email-triage-test
+    environment:
+      <<: *common-variables
+      CREWAI_ENV: testing
+      PYTEST_ADDOPTS: "--tb=short --strict-markers -v"
+    volumes: *common-volumes
+    networks:
+      - crewai-network
+    depends_on:
+      - redis
+      - postgres
+    profiles:
+      - testing
+    command: ["python", "-m", "pytest", "tests/", "--cov=src/crewai_email_triage", "--cov-report=html"]
+
+  # =============================================================================
+  # REDIS CACHE SERVICE
+  # =============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: crewai-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - crewai-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+
+  # =============================================================================
+  # POSTGRESQL DATABASE SERVICE (for future features)
+  # =============================================================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: crewai-postgres
+    environment:
+      POSTGRES_DB: crewai_email_triage
+      POSTGRES_USER: crewai
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_password_change_in_production}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    networks:
+      - crewai-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crewai -d crewai_email_triage"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # =============================================================================
+  # PROMETHEUS MONITORING
+  # =============================================================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: crewai-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - crewai-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    profiles:
+      - monitoring
+    restart: unless-stopped
+
+  # =============================================================================
+  # GRAFANA DASHBOARD
+  # =============================================================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: crewai-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: false
+    networks:
+      - crewai-network
+    depends_on:
+      - prometheus
+    profiles:
+      - monitoring
+    restart: unless-stopped
+
+  # =============================================================================
+  # DOCUMENTATION SERVICE
+  # =============================================================================
+  docs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: documentation
+    container_name: crewai-docs
+    ports:
+      - "8080:8000"
+    volumes:
+      - ./docs:/docs
+      - ./README.md:/docs/README.md:ro
+    networks:
+      - crewai-network
+    profiles:
+      - docs
+    restart: unless-stopped
+
+  # =============================================================================
+  # NGINX REVERSE PROXY (for production-like setup)
+  # =============================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: crewai-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - crewai-network
+    depends_on:
+      - crewai-triage
+      - grafana
+      - docs
+    profiles:
+      - production
+    restart: unless-stopped
+
+  # =============================================================================
+  # LOG AGGREGATION (ELK Stack light version)
+  # =============================================================================
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.8.0
+    container_name: crewai-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - crewai-network
+    profiles:
+      - logging
+    restart: unless-stopped
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.8.0
+    container_name: crewai-kibana
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    networks:
+      - crewai-network
+    depends_on:
+      - elasticsearch
+    profiles:
+      - logging
+    restart: unless-stopped
+
+  # =============================================================================
+  # DEVELOPMENT UTILITIES
+  # =============================================================================
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: crewai-mailhog
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    networks:
+      - crewai-network
+    profiles:
+      - development
+    restart: unless-stopped
+
+  # =============================================================================
+  # SECURITY SCANNING
+  # =============================================================================
+  security-scanner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: security-scanner
+    container_name: crewai-security-scanner
+    volumes:
+      - ./security-reports:/app/reports
+      - ./src:/app/src:ro
+    networks:
+      - crewai-network
+    profiles:
+      - security
+    command: |
+      sh -c "
+        bandit -r src/ -f json -o /app/reports/bandit-report.json &&
+        safety check --json --output /app/reports/safety-report.json &&
+        echo 'Security scans completed. Check ./security-reports/ for results.'
+      "
+
+# =============================================================================
+# NETWORKS
+# =============================================================================
+networks:
+  crewai-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# =============================================================================
+# VOLUMES
+# =============================================================================
+volumes:
+  app-data:
+    driver: local
+  app-logs:
+    driver: local
+  redis-data:
+    driver: local
+  postgres-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  elasticsearch-data:
+    driver: local
