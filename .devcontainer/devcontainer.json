@@ -1,11 +1,14 @@
 {
-  "name": "CrewAI Email Triage Dev Environment",
+  "name": "CrewAI Email Triage Development",
   "image": "mcr.microsoft.com/devcontainers/python:3.11-bullseye",
   
   "features": {
     "ghcr.io/devcontainers/features/git:1": {},
     "ghcr.io/devcontainers/features/github-cli:1": {},
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "18"
+    }
   },
 
   "customizations": {
@@ -14,55 +17,101 @@
         "ms-python.python",
         "ms-python.pylint",
         "ms-python.black-formatter",
+        "ms-python.isort",
+        "ms-python.mypy-type-checker",
         "ms-toolsai.jupyter",
-        "charliermarsh.ruff",
-        "ms-vscode.test-adapter-converter",
-        "littlefoxteam.vscode-python-test-adapter",
-        "github.vscode-pull-request-github",
-        "eamodio.gitlens",
-        "ms-vscode.vscode-json",
+        "github.copilot",
+        "github.copilot-chat",
+        "esbenp.prettier-vscode",
         "redhat.vscode-yaml",
+        "tamasfe.even-better-toml",
+        "christian-kohler.path-intellisense",
+        "visualstudioexptteam.vscodeintellicode",
+        "ms-vscode.vscode-json",
         "yzhang.markdown-all-in-one",
         "davidanson.vscode-markdownlint",
+        "gruntfuggly.todo-tree",
+        "streetsidesoftware.code-spell-checker",
         "ms-azuretools.vscode-docker",
         "ms-vscode-remote.remote-containers"
       ],
-      
       "settings": {
         "python.defaultInterpreterPath": "/usr/local/bin/python",
-        "python.formatting.provider": "black",
-        "python.formatting.blackPath": "/usr/local/py-utils/bin/black",
+        "python.terminal.activateEnvironment": true,
         "python.linting.enabled": true,
         "python.linting.pylintEnabled": false,
         "python.linting.ruffEnabled": true,
-        "python.linting.ruffPath": "/usr/local/py-utils/bin/ruff",
+        "python.formatting.provider": "black",
+        "python.formatting.blackArgs": ["--line-length=88"],
+        "python.sortImports.args": ["--profile=black"],
         "python.testing.pytestEnabled": true,
         "python.testing.unittestEnabled": false,
-        "python.testing.autoTestDiscoverOnSaveEnabled": true,
+        "python.testing.pytestArgs": ["tests"],
         "editor.formatOnSave": true,
         "editor.codeActionsOnSave": {
-          "source.organizeImports": true
+          "source.organizeImports": true,
+          "source.fixAll": true
         },
-        "files.autoSave": "onFocusChange",
-        "terminal.integrated.defaultProfile.linux": "bash"
+        "files.exclude": {
+          "**/__pycache__": true,
+          "**/*.pyc": true,
+          "**/node_modules": true,
+          "**/.git": true,
+          "**/.DS_Store": true,
+          "**/Thumbs.db": true,
+          "**/.venv": true,
+          "**/venv": true,
+          "**/.pytest_cache": true,
+          "**/.mypy_cache": true,
+          "**/.ruff_cache": true,
+          "**/htmlcov": true,
+          "**/.coverage": true,
+          "**/dist": true,
+          "**/build": true,
+          "**/*.egg-info": true
+        },
+        "terminal.integrated.shell.linux": "/bin/bash",
+        "git.enableSmartCommit": true,
+        "git.confirmSync": false
       }
     }
   },
 
-  "forwardPorts": [8000, 8080, 3000],
-  
-  "postCreateCommand": "pip install -e '.[test]' && pre-commit install",
-  
-  "remoteUser": "vscode",
-  
-  "mounts": [
-    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
-  ],
-
   "containerEnv": {
     "PYTHONPATH": "/workspaces/crewai-email-triage/src",
-    "PYTEST_ADDOPTS": "--tb=short --strict-markers"
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PYTHONUNBUFFERED": "1",
+    "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+    "PIP_NO_CACHE_DIR": "1"
   },
 
-  "shutdownAction": "stopContainer"
+  "forwardPorts": [8000, 8080, 8081, 9090],
+  "portsAttributes": {
+    "8000": {
+      "label": "Application Server",
+      "onAutoForward": "notify"
+    },
+    "8080": {
+      "label": "Metrics Endpoint",
+      "onAutoForward": "silent"
+    },
+    "8081": {
+      "label": "Health Check",
+      "onAutoForward": "silent"
+    },
+    "9090": {
+      "label": "Prometheus",
+      "onAutoForward": "silent"
+    }
+  },
+
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+
+  "remoteUser": "vscode",
+  "userEnvProbe": "loginShell",
+
+  "shutdownAction": "stopContainer",
+
+  "workspaceFolder": "/workspaces/crewai-email-triage"
 }
+EOF < /dev/null
