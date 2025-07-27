@@ -1,0 +1,264 @@
+# =============================================================================
+# PRODUCTION DEPLOYMENT WORKFLOW
+# =============================================================================
+
+name: 🚀 Deploy to Production
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # =============================================================================
+  # BUILD AND PUSH DOCKER IMAGE
+  # =============================================================================
+  build-image:
+    name: 🏗️ Build & Push Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+      digest: ${{ steps.build.outputs.digest }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,prefix=sha-
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: production
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VERSION=${{ github.ref_name }}
+            VCS_REF=${{ github.sha }}
+
+      - name: Generate image name
+        id: image
+        run: |
+          echo "image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}" >> $GITHUB_OUTPUT
+
+  # =============================================================================
+  # SECURITY SCANNING
+  # =============================================================================
+  security-scan:
+    name: 🔒 Security Scan
+    runs-on: ubuntu-latest
+    needs: build-image
+    permissions:
+      security-events: write
+    
+    steps:
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ needs.build-image.outputs.image }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # =============================================================================
+  # DEPLOY TO STAGING
+  # =============================================================================
+  deploy-staging:
+    name: 🚀 Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build-image, security-scan]
+    environment: staging
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging'
+    
+    steps:
+      - name: Deploy to staging
+        run: |
+          echo "Deploying ${{ needs.build-image.outputs.image }} to staging"
+          # Add your staging deployment commands here
+          # Example: kubectl, docker-compose, or cloud provider CLI
+
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests against staging"
+          # Add smoke test commands here
+
+      - name: Notify deployment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: context.payload.deployment.id,
+              state: 'success',
+              environment_url: 'https://staging.crewai-email-triage.com',
+              description: 'Deployment to staging completed successfully'
+            });
+
+  # =============================================================================
+  # DEPLOY TO PRODUCTION
+  # =============================================================================
+  deploy-production:
+    name: 🚀 Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-image, security-scan]
+    environment: production
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    
+    steps:
+      - name: Deploy to production
+        run: |
+          echo "Deploying ${{ needs.build-image.outputs.image }} to production"
+          # Add your production deployment commands here
+          # Example: kubectl, docker-compose, or cloud provider CLI
+
+      - name: Run health checks
+        run: |
+          echo "Running health checks against production"
+          # Add health check commands here
+
+      - name: Update deployment status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: context.payload.deployment.id,
+              state: 'success',
+              environment_url: 'https://crewai-email-triage.com',
+              description: 'Deployment to production completed successfully'
+            });
+
+      - name: Create release announcement
+        if: github.event_name == 'release'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: release } = await github.rest.repos.getRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: context.payload.release.id
+            });
+            
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: release.id,
+              body: `🎉 **Release ${release.tag_name} has been deployed to production!**
+              
+              🔗 Production URL: https://crewai-email-triage.com
+              📊 Deployment Time: ${new Date().toISOString()}
+              🐳 Image: ${{ needs.build-image.outputs.image }}
+              
+              ## What's New
+              ${release.body || 'No release notes available'}
+              
+              Happy triaging! 📧✨`
+            });
+
+  # =============================================================================
+  # POST-DEPLOYMENT MONITORING
+  # =============================================================================
+  post-deployment:
+    name: 📊 Post-Deployment Monitoring
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    if: always() && needs.deploy-production.result == 'success'
+    
+    steps:
+      - name: Monitor deployment
+        run: |
+          echo "Setting up monitoring for production deployment"
+          # Add monitoring setup commands here
+
+      - name: Send notifications
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Send notifications to team channels
+            console.log('Sending deployment notifications');
+            // Add Slack, Teams, or email notifications here
+
+  # =============================================================================
+  # ROLLBACK CAPABILITY
+  # =============================================================================
+  rollback:
+    name: 🔄 Rollback
+    runs-on: ubuntu-latest
+    if: failure()
+    needs: [deploy-production]
+    environment: production
+    
+    steps:
+      - name: Rollback deployment
+        run: |
+          echo "Rolling back production deployment"
+          # Add rollback commands here
+
+      - name: Notify rollback
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Production Deployment Rollback',
+              body: `Production deployment has been rolled back due to deployment failure.
+              
+              **Deployment Details:**
+              - Commit: ${context.sha}
+              - Workflow: ${context.workflow}
+              - Run ID: ${context.runId}
+              
+              Please investigate the failure and redeploy when ready.`,
+              labels: ['deployment', 'rollback', 'urgent']
+            });

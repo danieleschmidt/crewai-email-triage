@@ -1,0 +1,286 @@
+{
+  // =============================================================================
+  // PYTHON CONFIGURATION
+  // =============================================================================
+  
+  "python.defaultInterpreterPath": "./venv/bin/python",
+  "python.terminal.activateEnvironment": true,
+  "python.envFile": "${workspaceFolder}/.env",
+  
+  // Formatting
+  "python.formatting.provider": "black",
+  "python.formatting.blackArgs": [
+    "--line-length=88",
+    "--target-version=py38"
+  ],
+  
+  // Linting
+  "python.linting.enabled": true,
+  "python.linting.pylintEnabled": false,
+  "python.linting.ruffEnabled": true,
+  "python.linting.banditEnabled": true,
+  "python.linting.mypyEnabled": true,
+  "python.linting.lintOnSave": true,
+  
+  // Testing
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+  "python.testing.autoTestDiscoverOnSaveEnabled": true,
+  "python.testing.pytestArgs": [
+    "tests",
+    "--tb=short",
+    "--strict-markers"
+  ],
+  
+  // Type checking
+  "python.analysis.typeCheckingMode": "strict",
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.autoFormatStrings": true,
+  
+  // =============================================================================
+  // EDITOR CONFIGURATION
+  // =============================================================================
+  
+  // General editor settings
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": true,
+  "editor.formatOnType": false,
+  "editor.insertSpaces": true,
+  "editor.tabSize": 4,
+  "editor.detectIndentation": true,
+  "editor.trimAutoWhitespace": true,
+  "editor.rulers": [88],
+  "editor.wordWrap": "bounded",
+  "editor.wordWrapColumn": 88,
+  
+  // Code actions
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": true,
+    "source.fixAll.ruff": true,
+    "source.fixAll": true
+  },
+  
+  // Suggestions and IntelliSense
+  "editor.suggest.insertMode": "replace",
+  "editor.acceptSuggestionOnCommitCharacter": false,
+  "editor.acceptSuggestionOnEnter": "on",
+  "editor.suggestSelection": "first",
+  
+  // =============================================================================
+  // FILE ASSOCIATIONS & EXCLUSIONS
+  // =============================================================================
+  
+  "files.associations": {
+    "*.toml": "toml",
+    "*.yml": "yaml",
+    "*.yaml": "yaml",
+    "Dockerfile*": "dockerfile",
+    "*.env*": "dotenv",
+    ".gitignore": "ignore"
+  },
+  
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/*.pyc": true,
+    "**/*.pyo": true,
+    "**/*.egg-info": true,
+    "**/build": true,
+    "**/dist": true,
+    "**/.coverage": true,
+    "**/htmlcov": true,
+    "**/.pytest_cache": true,
+    "**/.mypy_cache": true,
+    "**/.ruff_cache": true,
+    "**/node_modules": true,
+    "**/.DS_Store": true
+  },
+  
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/**": true,
+    "**/__pycache__/**": true,
+    "**/.pytest_cache/**": true,
+    "**/.mypy_cache/**": true,
+    "**/.ruff_cache/**": true
+  },
+  
+  // Auto save
+  "files.autoSave": "onFocusChange",
+  "files.autoSaveDelay": 1000,
+  
+  // =============================================================================
+  // TERMINAL CONFIGURATION
+  // =============================================================================
+  
+  "terminal.integrated.defaultProfile.linux": "bash",
+  "terminal.integrated.defaultProfile.osx": "zsh",
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.cwd": "${workspaceFolder}",
+  "terminal.integrated.env.linux": {
+    "PYTHONPATH": "${workspaceFolder}/src"
+  },
+  "terminal.integrated.env.osx": {
+    "PYTHONPATH": "${workspaceFolder}/src"
+  },
+  "terminal.integrated.env.windows": {
+    "PYTHONPATH": "${workspaceFolder}\\src"
+  },
+  
+  // =============================================================================
+  // EXTENSION SPECIFIC SETTINGS
+  // =============================================================================
+  
+  // Ruff
+  "ruff.enable": true,
+  "ruff.organizeImports": true,
+  "ruff.fixAll": true,
+  "ruff.lint.enable": true,
+  "ruff.format.enable": true,
+  
+  // Black
+  "black-formatter.args": [
+    "--line-length=88",
+    "--target-version=py38"
+  ],
+  
+  // MyPy
+  "mypy-type-checker.args": [
+    "--strict",
+    "--show-error-codes",
+    "--show-column-numbers"
+  ],
+  
+  // Pylint (disabled in favor of Ruff)
+  "pylint.enabled": false,
+  
+  // Git
+  "git.autofetch": true,
+  "git.confirmSync": false,
+  "git.enableSmartCommit": true,
+  "git.suggestSmartCommit": false,
+  
+  // GitLens
+  "gitlens.currentLine.enabled": true,
+  "gitlens.hovers.currentLine.over": "line",
+  "gitlens.blame.format": "${author}, ${date}",
+  "gitlens.blame.heatmap.enabled": false,
+  
+  // Markdown
+  "markdown.preview.breaks": true,
+  "markdown.preview.linkify": true,
+  "markdown.validate.enabled": true,
+  
+  // YAML
+  "yaml.format.enable": true,
+  "yaml.validate": true,
+  "yaml.hover": true,
+  "yaml.completion": true,
+  
+  // JSON
+  "json.format.enable": true,
+  "json.validate.enable": true,
+  
+  // Docker
+  "docker.showStartPage": false,
+  
+  // =============================================================================
+  // SEARCH CONFIGURATION
+  // =============================================================================
+  
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/bower_components": true,
+    "**/*.code-search": true,
+    "**/__pycache__": true,
+    "**/*.pyc": true,
+    "**/build": true,
+    "**/dist": true,
+    "**/.coverage": true,
+    "**/htmlcov": true,
+    "**/.pytest_cache": true,
+    "**/.mypy_cache": true,
+    "**/.ruff_cache": true
+  },
+  
+  "search.useGlobalIgnoreFiles": true,
+  "search.useIgnoreFiles": true,
+  
+  // =============================================================================
+  // INTELLISENSE & AUTOCOMPLETE
+  // =============================================================================
+  
+  "editor.quickSuggestions": {
+    "other": true,
+    "comments": false,
+    "strings": true
+  },
+  
+  "editor.parameterHints.enabled": true,
+  "editor.parameterHints.cycle": true,
+  "editor.suggest.snippetsPreventQuickSuggestions": false,
+  
+  // =============================================================================
+  // DEBUGGING CONFIGURATION
+  // =============================================================================
+  
+  "debug.console.acceptSuggestionOnEnter": "on",
+  "debug.inlineValues": true,
+  "debug.showBreakpointsInOverviewRuler": true,
+  
+  // =============================================================================
+  // WORKSPACE SPECIFIC TASKS
+  // =============================================================================
+  
+  "tasks.version": "2.0.0",
+  
+  // =============================================================================
+  // SECURITY SETTINGS
+  // =============================================================================
+  
+  "security.workspace.trust.untrustedFiles": "prompt",
+  "security.workspace.trust.banner": "always",
+  "security.workspace.trust.startupPrompt": "once",
+  
+  // =============================================================================
+  // PERFORMANCE SETTINGS
+  // =============================================================================
+  
+  "files.maxMemoryForLargeFilesMB": 4096,
+  "search.maxResults": 20000,
+  "editor.maxTokenizationLineLength": 20000,
+  
+  // =============================================================================
+  // UI CUSTOMIZATION
+  // =============================================================================
+  
+  "workbench.colorTheme": "Default Dark+",
+  "workbench.iconTheme": "vs-seti",
+  "workbench.tree.indent": 20,
+  "workbench.tree.renderIndentGuides": "always",
+  "workbench.editor.enablePreview": false,
+  "workbench.editor.enablePreviewFromQuickOpen": false,
+  "workbench.startupEditor": "welcomePage",
+  
+  // Explorer
+  "explorer.confirmDelete": true,
+  "explorer.confirmDragAndDrop": true,
+  "explorer.openEditors.visible": 5,
+  
+  // Breadcrumbs
+  "breadcrumbs.enabled": true,
+  "breadcrumbs.symbolPath": "on",
+  
+  // Minimap
+  "editor.minimap.enabled": true,
+  "editor.minimap.maxColumn": 88,
+  "editor.minimap.renderCharacters": false,
+  
+  // =============================================================================
+  // NOTIFICATION SETTINGS
+  // =============================================================================
+  
+  "extensions.ignoreRecommendations": false,
+  "update.mode": "start",
+  "telemetry.telemetryLevel": "error"
+}

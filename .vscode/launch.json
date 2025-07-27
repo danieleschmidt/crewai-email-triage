@@ -1,0 +1,310 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    // =============================================================================
+    // PYTHON DEBUGGING CONFIGURATIONS
+    // =============================================================================
+    {
+      "name": "Python: Current File",
+      "type": "python",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      }
+    },
+    {
+      "name": "Python: Triage CLI",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/triage.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      },
+      "args": [
+        "--message",
+        "Test email message",
+        "--pretty"
+      ]
+    },
+    {
+      "name": "Python: Triage CLI (Interactive)",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/triage.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      },
+      "args": []
+    },
+    {
+      "name": "Python: Module (crewai_email_triage)",
+      "type": "python",
+      "request": "launch",
+      "module": "crewai_email_triage",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      }
+    },
+    
+    // =============================================================================
+    // TESTING CONFIGURATIONS
+    // =============================================================================
+    {
+      "name": "Python: Current Test File",
+      "type": "python",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "${file}",
+        "-v",
+        "--tb=short"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      }
+    },
+    {
+      "name": "Python: All Tests",
+      "type": "python",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "tests/",
+        "-v",
+        "--tb=short"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      }
+    },
+    {
+      "name": "Python: Unit Tests",
+      "type": "python",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "-m",
+        "unit",
+        "tests/",
+        "-v",
+        "--tb=short"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      }
+    },
+    {
+      "name": "Python: Integration Tests",
+      "type": "python",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "-m",
+        "integration",
+        "tests/",
+        "-v",
+        "--tb=short"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      }
+    },
+    {
+      "name": "Python: Performance Tests",
+      "type": "python",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "-m",
+        "performance",
+        "tests/",
+        "-v",
+        "--benchmark-only"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      }
+    },
+    {
+      "name": "Python: Tests with Coverage",
+      "type": "python",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "tests/",
+        "--cov=src/crewai_email_triage",
+        "--cov-report=term-missing",
+        "--cov-report=html",
+        "-v"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      }
+    },
+    
+    // =============================================================================
+    // PERFORMANCE & PROFILING CONFIGURATIONS
+    // =============================================================================
+    {
+      "name": "Python: Performance Benchmarks",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/run_benchmarks.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      }
+    },
+    {
+      "name": "Python: Profile Application",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/triage.py",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      },
+      "args": [
+        "--message",
+        "Performance test message with lots of content to analyze",
+        "--verbose"
+      ],
+      "preLaunchTask": "Install Development Dependencies"
+    },
+    
+    // =============================================================================
+    // DEBUGGING SPECIFIC COMPONENTS
+    // =============================================================================
+    {
+      "name": "Debug: Classifier Agent",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/crewai_email_triage/classifier.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      }
+    },
+    {
+      "name": "Debug: Priority Agent",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/crewai_email_triage/priority.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      }
+    },
+    {
+      "name": "Debug: Summarizer Agent",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/crewai_email_triage/summarizer.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      }
+    },
+    {
+      "name": "Debug: Response Agent",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/crewai_email_triage/response.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      }
+    },
+    {
+      "name": "Debug: Pipeline",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/crewai_email_triage/pipeline.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      }
+    },
+    
+    // =============================================================================
+    // REMOTE DEBUGGING CONFIGURATIONS
+    // =============================================================================
+    {
+      "name": "Python: Remote Attach",
+      "type": "python",
+      "request": "attach",
+      "connect": {
+        "host": "localhost",
+        "port": 5678
+      },
+      "pathMappings": [
+        {
+          "localRoot": "${workspaceFolder}",
+          "remoteRoot": "/app"
+        }
+      ],
+      "justMyCode": true
+    },
+    {
+      "name": "Python: Container Attach",
+      "type": "python",
+      "request": "attach",
+      "connect": {
+        "host": "localhost",
+        "port": 5678
+      },
+      "pathMappings": [
+        {
+          "localRoot": "${workspaceFolder}",
+          "remoteRoot": "/workspace"
+        }
+      ],
+      "justMyCode": true
+    }
+  ]
+}

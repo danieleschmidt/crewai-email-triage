@@ -1,0 +1,181 @@
+# =============================================================================
+# DOCKER IGNORE FILE
+# =============================================================================
+
+# Git and version control
+.git/
+.gitignore
+.gitattributes
+.github/
+
+# Python cache and artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.benchmarks/
+
+# Linting and formatting
+.mypy_cache/
+.ruff_cache/
+.bandit/
+
+# Documentation builds
+docs/_build/
+docs/build/
+site/
+
+# Logs and temporary files
+*.log
+*.log.*
+logs/
+tmp/
+temp/
+.tmp/
+
+# Configuration files with secrets
+.env.local
+.env.production
+.env.staging
+config.json
+secrets.json
+credentials.json
+*.pem
+*.key
+*.crt
+
+# Application data
+data/
+*.db
+*.sqlite*
+emails/
+email_cache/
+
+# Development and debugging
+scratch/
+playground/
+profile.stats
+*.prof
+
+# Docker files (avoid recursive copy)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# CI/CD artifacts
+.ci/
+artifacts/
+test-results/
+test-reports/
+
+# Package manager files
+node_modules/
+package-lock.json
+yarn.lock
+
+# Backup and archive files
+*.bak
+*.backup
+*.old
+*.orig
+*.save
+*.tar.gz
+*.zip
+*.7z
+
+# Large files and media
+*.mp4
+*.avi
+*.mov
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.pdf
+*.csv
+*.xlsx
+data/
+datasets/
+
+# OS specific files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Security scan reports
+bandit-report.json
+safety-report.json
+security-reports/
+
+# Performance and profiling
+memory_profile.dat
+performance_results/
+
+# Cloud and deployment configs
+.aws/
+.azure/
+.gcloud/
+*.tfstate*
+.terraform/
+
+# README and documentation that should be included
+!README.md
+!LICENSE
+!CHANGELOG.md
+
+# Include specific configuration files needed for build
+!pyproject.toml
+!src/crewai_email_triage/default_config.json
