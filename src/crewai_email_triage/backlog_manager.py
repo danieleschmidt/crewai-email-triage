@@ -102,7 +102,13 @@ class BacklogManager:
                 with open(self.backlog_file, 'r') as f:
                     data = json.load(f)
                     for item_data in data.get('items', []):
-                        item = BacklogItem(**item_data)
+                        # Remove unknown fields that aren't part of BacklogItem
+                        filtered_data = {k: v for k, v in item_data.items() 
+                                       if k in ['id', 'title', 'description', 'type', 'status',
+                                               'business_value', 'time_criticality', 'risk_reduction', 'effort',
+                                               'links', 'acceptance_criteria', 'created_at', 'updated_at',
+                                               'blocked_reason', 'wsjf_score', 'aging_multiplier']}
+                        item = BacklogItem(**filtered_data)
                         self.backlog[item.id] = item
             except Exception as e:
                 print(f"Warning: Could not load existing backlog: {e}")
@@ -160,23 +166,66 @@ class BacklogManager:
         """Discover new tasks from codebase analysis"""
         repo_root = "/root/repo"
         
-        # Check for missing dependencies
-        if "pytest_dependencies" not in self.backlog:
-            self.backlog["pytest_dependencies"] = BacklogItem(
-                id="pytest_dependencies",
-                title="Install Missing Pytest Dependencies",
-                description="Several test files cannot run due to missing pytest dependency. Need to install test dependencies for comprehensive coverage.",
-                type=TaskType.INFRASTRUCTURE,
+        # Add bandit security warnings as tasks
+        if "bandit_security_review" not in self.backlog:
+            self.backlog["bandit_security_review"] = BacklogItem(
+                id="bandit_security_review",
+                title="Review and Address Bandit Security Warnings",
+                description="Bandit security scan found 11 low-severity issues including subprocess usage, try-except patterns, and random usage that need review.",
+                type=TaskType.SECURITY,
                 status=TaskStatus.READY,
                 business_value=5,
                 time_criticality=3,
-                risk_reduction=5,
-                effort=2,
+                risk_reduction=8,
+                effort=3,
                 acceptance_criteria=[
-                    "Install pytest and test dependencies from pyproject.toml[test]",
-                    "Verify all test files can be imported successfully", 
-                    "Run complete test suite without import errors",
-                    "Document test setup in README or CONTRIBUTING.md"
+                    "Review all 11 bandit security warnings in detail",
+                    "Address or document justification for each warning",
+                    "Configure .bandit file with appropriate suppressions where justified",
+                    "Ensure no actual security vulnerabilities remain",
+                    "Document security review process"
+                ]
+            )
+        
+        # Add continuous discovery task
+        if "continuous_backlog_discovery" not in self.backlog:
+            self.backlog["continuous_backlog_discovery"] = BacklogItem(
+                id="continuous_backlog_discovery", 
+                title="Implement Continuous Backlog Discovery",
+                description="Enhance the autonomous system to continuously discover new tasks from TODO comments, failing tests, and code analysis.",
+                type=TaskType.FEATURE,
+                status=TaskStatus.READY,
+                business_value=8,
+                time_criticality=5,
+                risk_reduction=3,
+                effort=5,
+                acceptance_criteria=[
+                    "Scan codebase for TODO/FIXME comments and convert to backlog items",
+                    "Monitor CI/CD for failing tests and create remediation tasks",
+                    "Analyze dependency vulnerabilities and create security tasks",
+                    "Implement automated task prioritization updates",
+                    "Create recurring discovery job"
+                ]
+            )
+            
+        # Add status reporting enhancement
+        if "enhanced_status_reporting" not in self.backlog:
+            self.backlog["enhanced_status_reporting"] = BacklogItem(
+                id="enhanced_status_reporting",
+                title="Enhance Autonomous Status Reporting",
+                description="Create comprehensive status reports with metrics, progress tracking, and automated documentation generation.",
+                type=TaskType.FEATURE,
+                status=TaskStatus.READY,
+                business_value=6,
+                time_criticality=4,
+                risk_reduction=2,
+                effort=3,
+                acceptance_criteria=[
+                    "Generate daily status reports in docs/status/",
+                    "Include WSJF metrics and trend analysis",
+                    "Track cycle time and completion rates",
+                    "Add visual progress indicators",
+                    "Implement automated report publishing"
                 ]
             )
             
@@ -374,6 +423,273 @@ class BacklogManager:
                 for status in TaskStatus
             }
         }
+    
+    def generate_enhanced_status_report(self) -> Dict[str, Any]:
+        """Generate enhanced status report with trends, cycle times, and visualizations"""
+        self._update_metrics()
+        
+        prioritized = self.get_prioritized_backlog()
+        next_item = self.get_next_actionable_item()
+        completed_items = [item for item in self.backlog.values() if item.status == TaskStatus.DONE]
+        
+        # Calculate cycle times for completed items
+        cycle_times = []
+        for item in completed_items:
+            if item.created_at and item.updated_at:
+                created = datetime.fromisoformat(item.created_at)
+                completed = datetime.fromisoformat(item.updated_at)
+                cycle_time_hours = (completed - created).total_seconds() / 3600
+                cycle_times.append(cycle_time_hours)
+        
+        avg_cycle_time = sum(cycle_times) / len(cycle_times) if cycle_times else 0
+        
+        # WSJF analysis
+        wsjf_scores = [item.wsjf_score for item in self.backlog.values()]
+        wsjf_analysis = {
+            "min": min(wsjf_scores) if wsjf_scores else 0,
+            "max": max(wsjf_scores) if wsjf_scores else 0,
+            "avg": sum(wsjf_scores) / len(wsjf_scores) if wsjf_scores else 0,
+            "high_priority_threshold": 5.0,
+            "high_priority_count": len([s for s in wsjf_scores if s >= 5.0])
+        }
+        
+        # Risk assessment
+        risk_assessment = self._assess_risks()
+        
+        # Progress indicators
+        total_effort = sum(item.effort for item in self.backlog.values())
+        completed_effort = sum(item.effort for item in completed_items)
+        progress_percentage = (completed_effort / total_effort * 100) if total_effort > 0 else 0
+        
+        return {
+            "session_metadata": {
+                "timestamp": datetime.now().isoformat(),
+                "report_version": "2.0",
+                "generated_by": "autonomous_backlog_manager"
+            },
+            
+            "executive_summary": {
+                "total_backlog_items": len(self.backlog),
+                "actionable_items": len(prioritized),
+                "completed_items": len(completed_items),
+                "blocked_items": len([i for i in self.backlog.values() if i.status == TaskStatus.BLOCKED]),
+                "completion_rate": f"{progress_percentage:.1f}%",
+                "avg_cycle_time_hours": avg_cycle_time,
+                "health_status": self._get_health_status()
+            },
+            
+            "wsjf_analysis": wsjf_analysis,
+            
+            "task_flow": {
+                "status_breakdown": {
+                    status.value: len([i for i in self.backlog.values() if i.status == status])
+                    for status in TaskStatus
+                },
+                "type_breakdown": {
+                    task_type.value: len([i for i in self.backlog.values() if i.type == task_type])
+                    for task_type in TaskType
+                },
+                "effort_distribution": self._get_effort_distribution()
+            },
+            
+            "priority_queue": {
+                "next_actionable": {
+                    "id": next_item.id,
+                    "title": next_item.title,
+                    "wsjf_score": next_item.wsjf_score,
+                    "effort": next_item.effort,
+                    "type": next_item.type.value
+                } if next_item else None,
+                "top_3_priorities": [
+                    {
+                        "id": item.id,
+                        "title": item.title,
+                        "wsjf_score": item.wsjf_score,
+                        "effort": item.effort,
+                        "type": item.type.value
+                    }
+                    for item in prioritized[:3]
+                ]
+            },
+            
+            "risk_assessment": risk_assessment,
+            
+            "performance_metrics": {
+                "cycle_times": cycle_times,
+                "velocity": len(completed_items) / max(1, avg_cycle_time) if avg_cycle_time > 0 else 0,
+                "completion_trend": self._calculate_completion_trend(),
+                "bottlenecks": self._identify_bottlenecks()
+            },
+            
+            "recommendations": self._generate_recommendations(),
+            
+            "visual_indicators": {
+                "progress_bar": self._create_progress_bar(progress_percentage),
+                "status_chart": self._create_status_chart(),
+                "priority_heat_map": self._create_priority_heatmap()
+            }
+        }
+    
+    def _assess_risks(self) -> Dict[str, Any]:
+        """Assess current risks in the backlog"""
+        blocked_items = [item for item in self.backlog.values() if item.status == TaskStatus.BLOCKED]
+        high_effort_items = [item for item in self.backlog.values() if item.effort >= 8]
+        aging_items = []
+        
+        for item in self.backlog.values():
+            if item.created_at:
+                created = datetime.fromisoformat(item.created_at)
+                age_days = (datetime.now() - created).days
+                if age_days > 7:  # Items older than 7 days
+                    aging_items.append({
+                        "id": item.id,
+                        "title": item.title,
+                        "age_days": age_days,
+                        "wsjf_score": item.wsjf_score
+                    })
+        
+        return {
+            "blocked_items": [
+                {
+                    "id": item.id,
+                    "title": item.title,
+                    "blocked_reason": item.blocked_reason,
+                    "wsjf_score": item.wsjf_score
+                }
+                for item in blocked_items
+            ],
+            "high_effort_items": [
+                {
+                    "id": item.id,
+                    "title": item.title,
+                    "effort": item.effort,
+                    "wsjf_score": item.wsjf_score
+                }
+                for item in high_effort_items
+            ],
+            "aging_items": aging_items,
+            "risk_score": len(blocked_items) * 3 + len(high_effort_items) * 2 + len(aging_items)
+        }
+    
+    def _get_health_status(self) -> str:
+        """Determine overall backlog health status"""
+        blocked_count = len([i for i in self.backlog.values() if i.status == TaskStatus.BLOCKED])
+        actionable_count = len(self.get_prioritized_backlog())
+        
+        if blocked_count > 2:
+            return "CRITICAL"
+        elif blocked_count > 0 or actionable_count == 0:
+            return "WARNING"
+        elif actionable_count > 5:
+            return "HEALTHY"
+        else:
+            return "STABLE"
+    
+    def _get_effort_distribution(self) -> Dict[str, int]:
+        """Get distribution of effort estimates"""
+        distribution = {"small": 0, "medium": 0, "large": 0, "epic": 0}
+        
+        for item in self.backlog.values():
+            if item.effort <= 3:
+                distribution["small"] += 1
+            elif item.effort <= 5:
+                distribution["medium"] += 1
+            elif item.effort <= 8:
+                distribution["large"] += 1
+            else:
+                distribution["epic"] += 1
+                
+        return distribution
+    
+    def _calculate_completion_trend(self) -> str:
+        """Calculate completion trend direction"""
+        completed_items = [item for item in self.backlog.values() if item.status == TaskStatus.DONE]
+        if len(completed_items) >= 2:
+            return "POSITIVE"
+        elif len(completed_items) == 1:
+            return "NEUTRAL"
+        else:
+            return "NEEDS_ATTENTION"
+    
+    def _identify_bottlenecks(self) -> List[str]:
+        """Identify potential bottlenecks"""
+        bottlenecks = []
+        
+        blocked_count = len([i for i in self.backlog.values() if i.status == TaskStatus.BLOCKED])
+        if blocked_count > 0:
+            bottlenecks.append(f"{blocked_count} blocked items requiring attention")
+        
+        high_effort_count = len([i for i in self.backlog.values() if i.effort >= 8])
+        if high_effort_count > 1:
+            bottlenecks.append(f"{high_effort_count} high-effort items may need decomposition")
+        
+        return bottlenecks
+    
+    def _generate_recommendations(self) -> List[str]:
+        """Generate actionable recommendations"""
+        recommendations = []
+        
+        next_item = self.get_next_actionable_item()
+        if next_item:
+            recommendations.append(f"Execute next priority: {next_item.title} (WSJF: {next_item.wsjf_score:.2f})")
+        
+        blocked_items = [item for item in self.backlog.values() if item.status == TaskStatus.BLOCKED]
+        if blocked_items:
+            recommendations.append(f"Review {len(blocked_items)} blocked items for unblocking opportunities")
+        
+        actionable_count = len(self.get_prioritized_backlog())
+        if actionable_count == 0:
+            recommendations.append("Refine NEW items to READY status to maintain flow")
+        
+        return recommendations
+    
+    def _create_progress_bar(self, percentage: float) -> str:
+        """Create ASCII progress bar"""
+        bar_length = 20
+        filled_length = int(bar_length * percentage / 100)
+        bar = "█" * filled_length + "░" * (bar_length - filled_length)
+        return f"[{bar}] {percentage:.1f}%"
+    
+    def _create_status_chart(self) -> Dict[str, str]:
+        """Create status visualization"""
+        status_counts = {
+            status.value: len([i for i in self.backlog.values() if i.status == status])
+            for status in TaskStatus
+        }
+        
+        total = sum(status_counts.values())
+        if total == 0:
+            return {}
+        
+        chart = {}
+        for status, count in status_counts.items():
+            if count > 0:
+                percentage = (count / total) * 100
+                chart[status] = f"{count} items ({percentage:.1f}%)"
+        
+        return chart
+    
+    def _create_priority_heatmap(self) -> Dict[str, int]:
+        """Create priority heatmap data"""
+        priority_ranges = {
+            "Critical (>8)": 0,
+            "High (5-8)": 0,  
+            "Medium (3-5)": 0,
+            "Low (<3)": 0
+        }
+        
+        for item in self.backlog.values():
+            score = item.wsjf_score
+            if score > 8:
+                priority_ranges["Critical (>8)"] += 1
+            elif score >= 5:
+                priority_ranges["High (5-8)"] += 1
+            elif score >= 3:
+                priority_ranges["Medium (3-5)"] += 1
+            else:
+                priority_ranges["Low (<3)"] += 1
+        
+        return priority_ranges
 
 
 def main():
