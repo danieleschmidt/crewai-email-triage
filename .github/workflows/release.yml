@@ -1,0 +1,307 @@
+name: Release Management
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - '.gitignore'
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - prerelease
+      dry_run:
+        description: 'Dry run (no actual release)'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  packages: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  # =============================================================================
+  # DETERMINE RELEASE TYPE
+  # =============================================================================
+  check-release:
+    name: Check Release Needed
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+      release_type: ${{ steps.check.outputs.release_type }}
+      current_version: ${{ steps.check.outputs.current_version }}
+      next_version: ${{ steps.check.outputs.next_version }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install semantic-release
+        run: |
+          python -m pip install --upgrade pip
+          pip install python-semantic-release
+
+      - name: Check for release
+        id: check
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "release_type=${{ github.event.inputs.release_type }}" >> $GITHUB_OUTPUT
+          else
+            # Analyze commits to determine if release is needed
+            if semantic-release version --dry-run --print; then
+              echo "should_release=true" >> $GITHUB_OUTPUT
+              echo "release_type=auto" >> $GITHUB_OUTPUT
+            else
+              echo "should_release=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+          
+          # Get current version
+          CURRENT_VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          
+          # Calculate next version
+          NEXT_VERSION=$(semantic-release version --dry-run --print 2>/dev/null || echo "$CURRENT_VERSION")
+          echo "next_version=$NEXT_VERSION" >> $GITHUB_OUTPUT
+
+  # =============================================================================
+  # PRE-RELEASE VALIDATION
+  # =============================================================================
+  validate-release:
+    name: Validate Release
+    runs-on: ubuntu-latest
+    needs: check-release
+    if: needs.check-release.outputs.should_release == 'true'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,test]"
+
+      - name: Run full test suite
+        run: make test-cov
+
+      - name: Run security checks
+        run: make security
+
+      - name: Build package
+        run: make build
+
+      - name: Verify package
+        run: make build-check
+
+  # =============================================================================
+  # CREATE RELEASE
+  # =============================================================================
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [check-release, validate-release]
+    if: needs.check-release.outputs.should_release == 'true' && !github.event.inputs.dry_run
+    outputs:
+      release_tag: ${{ steps.release.outputs.tag }}
+      release_version: ${{ steps.release.outputs.version }}
+      release_notes: ${{ steps.release.outputs.notes }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install semantic-release
+        run: |
+          python -m pip install --upgrade pip
+          pip install python-semantic-release
+
+      - name: Configure git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create release
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            semantic-release version --${{ github.event.inputs.release_type }}
+          else
+            semantic-release version
+          fi
+          
+          # Get the new version and tag
+          NEW_VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          NEW_TAG="v$NEW_VERSION"
+          
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$NEW_TAG" >> $GITHUB_OUTPUT
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          semantic-release changelog --unreleased > release_notes.md
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          cat release_notes.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.release.outputs.tag }}
+          name: Release ${{ steps.release.outputs.version }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: ${{ contains(steps.release.outputs.version, 'alpha') || contains(steps.release.outputs.version, 'beta') || contains(steps.release.outputs.version, 'rc') }}
+          generate_release_notes: true
+
+  # =============================================================================
+  # POST-RELEASE TASKS
+  # =============================================================================
+  post-release:
+    name: Post-release Tasks
+    runs-on: ubuntu-latest
+    needs: [create-release]
+    if: always() && needs.create-release.result == 'success'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.create-release.outputs.release_tag }}
+
+      - name: Update project metrics
+        run: |
+          # Update project metrics with new release info
+          echo "Updating project metrics for release ${{ needs.create-release.outputs.release_version }}"
+          
+          # Update .github/project-metrics.json
+          python << EOF
+          import json
+          import datetime
+          
+          with open('.github/project-metrics.json', 'r') as f:
+              metrics = json.load(f)
+          
+          metrics['project_info']['version'] = '${{ needs.create-release.outputs.release_version }}'
+          metrics['project_info']['last_updated'] = datetime.datetime.now().strftime('%Y-%m-%d')
+          
+          with open('.github/project-metrics.json', 'w') as f:
+              json.dump(metrics, f, indent=2)
+          EOF
+
+      - name: Create deployment tracking issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `🚀 Release ${{ needs.create-release.outputs.release_version }} Deployment Tracking`;
+            const body = `
+            ## Release Deployment Tracking
+            
+            **Release**: ${{ needs.create-release.outputs.release_version }}
+            **Tag**: ${{ needs.create-release.outputs.release_tag }}
+            **Created**: ${new Date().toISOString()}
+            
+            ### Deployment Checklist
+            - [ ] PyPI package published
+            - [ ] Docker image built and pushed
+            - [ ] Documentation updated
+            - [ ] Staging deployment verified
+            - [ ] Production deployment completed
+            - [ ] Post-deployment monitoring verified
+            - [ ] Release announcement sent
+            
+            ### Rollback Plan
+            If issues are discovered:
+            1. Revert to previous version tag
+            2. Redeploy previous stable version
+            3. Update monitoring alerts
+            4. Create hotfix release if needed
+            
+            ### Links
+            - [Release Notes](https://github.com/${{ github.repository }}/releases/tag/${{ needs.create-release.outputs.release_tag }})
+            - [PyPI Package](https://pypi.org/project/crewai-email-triage/${{ needs.create-release.outputs.release_version }}/)
+            - [Docker Image](https://github.com/${{ github.repository }}/pkgs/container/crewai-email-triage)
+            `;
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['release', 'deployment', 'tracking']
+            });
+
+      - name: Update documentation
+        run: |
+          echo "Updating documentation for release ${{ needs.create-release.outputs.release_version }}"
+          # Add any documentation update steps here
+
+      - name: Send notifications
+        run: |
+          echo "Sending release notifications..."
+          # Add notification logic here (Slack, email, etc.)
+
+  # =============================================================================
+  # DRY RUN SUMMARY
+  # =============================================================================
+  dry-run-summary:
+    name: Dry Run Summary
+    runs-on: ubuntu-latest
+    needs: [check-release, validate-release]
+    if: github.event.inputs.dry_run == 'true' && needs.check-release.outputs.should_release == 'true'
+    
+    steps:
+      - name: Display dry run results
+        run: |
+          echo "## 🧪 Dry Run Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Current Version**: ${{ needs.check-release.outputs.current_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Next Version**: ${{ needs.check-release.outputs.next_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Release Type**: ${{ needs.check-release.outputs.release_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### What would happen:" >> $GITHUB_STEP_SUMMARY
+          echo "1. ✅ Version bump from ${{ needs.check-release.outputs.current_version }} to ${{ needs.check-release.outputs.next_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "2. ✅ Git tag created: v${{ needs.check-release.outputs.next_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "3. ✅ GitHub release created" >> $GITHUB_STEP_SUMMARY
+          echo "4. ✅ PyPI package published" >> $GITHUB_STEP_SUMMARY
+          echo "5. ✅ Docker image built and pushed" >> $GITHUB_STEP_SUMMARY
+          echo "6. ✅ Deployment tracking issue created" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Note**: This was a dry run - no actual release was created."

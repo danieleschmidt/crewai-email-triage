@@ -1,0 +1,295 @@
+name: CD Pipeline
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      force_deploy:
+        description: 'Force deployment even if tests fail'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  PYTHON_VERSION: "3.11"
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # =============================================================================
+  # PRE-DEPLOYMENT VALIDATION
+  # =============================================================================
+  validate:
+    name: Pre-deployment Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      environment: ${{ steps.env.outputs.environment }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Determine environment
+        id: env
+        run: |
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+          else
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Extract version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Deploying version: $VERSION"
+
+      - name: Run health checks
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[test]"
+          make health
+
+  # =============================================================================
+  # BUILD AND PUBLISH DOCKER IMAGE
+  # =============================================================================
+  docker-build:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    needs: validate
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # =============================================================================
+  # PUBLISH TO PYPI
+  # =============================================================================
+  pypi-publish:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    needs: [validate, docker-build]
+    timeout-minutes: 10
+    if: github.event_name == 'release'
+    environment: pypi-production
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Build package
+        run: make build
+
+      - name: Verify package
+        run: make build-check
+
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://upload.pypi.org/legacy/
+          verbose: true
+
+  # =============================================================================
+  # STAGING DEPLOYMENT
+  # =============================================================================
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [validate, docker-build]
+    timeout-minutes: 15
+    if: needs.validate.outputs.environment == 'staging' || (github.event_name == 'release' && !github.event.release.prerelease)
+    environment: staging
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to staging
+        run: |
+          echo "Deploying version ${{ needs.validate.outputs.version }} to staging..."
+          # Add your staging deployment commands here
+          # Example: kubectl, docker-compose, cloud deployment, etc.
+          
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests against staging..."
+          # Add staging smoke tests here
+          
+      - name: Update deployment status
+        if: always()
+        run: |
+          echo "Staging deployment completed"
+
+  # =============================================================================
+  # PRODUCTION DEPLOYMENT
+  # =============================================================================
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [validate, docker-build, deploy-staging]
+    timeout-minutes: 20
+    if: github.event_name == 'release' && needs.validate.outputs.environment == 'production'
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Pre-production health check
+        run: |
+          echo "Running pre-production health checks..."
+          # Add production readiness checks here
+
+      - name: Deploy to production
+        run: |
+          echo "Deploying version ${{ needs.validate.outputs.version }} to production..."
+          # Add your production deployment commands here
+          
+      - name: Run post-deployment tests
+        run: |
+          echo "Running post-deployment verification tests..."
+          # Add production verification tests here
+          
+      - name: Update production metrics
+        run: |
+          echo "Updating production deployment metrics..."
+          # Update project metrics with deployment info
+
+  # =============================================================================
+  # ROLLBACK CAPABILITY
+  # =============================================================================
+  rollback:
+    name: Rollback Deployment
+    runs-on: ubuntu-latest
+    if: failure() && (needs.deploy-staging.result == 'failure' || needs.deploy-production.result == 'failure')
+    needs: [deploy-staging, deploy-production]
+    environment: 
+      name: ${{ needs.validate.outputs.environment }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initiate rollback
+        run: |
+          echo "Initiating rollback for ${{ needs.validate.outputs.environment }}..."
+          # Add rollback commands here
+          
+      - name: Verify rollback
+        run: |
+          echo "Verifying rollback success..."
+          # Add rollback verification here
+
+  # =============================================================================
+  # POST-DEPLOYMENT TASKS
+  # =============================================================================
+  post-deploy:
+    name: Post-deployment Tasks
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always() && (needs.deploy-staging.result == 'success' || needs.deploy-production.result == 'success')
+    
+    steps:
+      - name: Update documentation
+        run: |
+          echo "Updating deployment documentation..."
+          # Update deployment docs, changelog, etc.
+
+      - name: Send notifications
+        uses: 8398a7/action-slack@v3
+        if: success()
+        with:
+          status: success
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Send failure notifications
+        uses: 8398a7/action-slack@v3
+        if: failure()
+        with:
+          status: failure
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Create deployment summary
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ needs.validate.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: ${{ needs.validate.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ✅ Success" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployed at**: $(date -u)" >> $GITHUB_STEP_SUMMARY

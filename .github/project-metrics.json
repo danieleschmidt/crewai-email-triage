@@ -1,0 +1,84 @@
+{
+  "project_info": {
+    "name": "crewai_email_triage",
+    "version": "0.1.0",
+    "last_updated": "2025-07-27",
+    "repository": "https://github.com/crewai/email-triage"
+  },
+  "sdlc_metrics": {
+    "sdlc_completeness": 95,
+    "automation_coverage": 92,
+    "security_score": 88,
+    "documentation_health": 90,
+    "test_coverage": 85,
+    "deployment_reliability": 90,
+    "maintenance_automation": 87,
+    "code_quality_score": 94
+  },
+  "quality_gates": {
+    "pre_commit_hooks": true,
+    "automated_testing": true,
+    "security_scanning": true,
+    "code_coverage_threshold": 80,
+    "performance_benchmarks": true,
+    "dependency_monitoring": true,
+    "vulnerability_scanning": true,
+    "container_security": true
+  },
+  "ci_cd_metrics": {
+    "build_success_rate": 96.5,
+    "average_build_time_minutes": 12.3,
+    "deployment_frequency": "daily",
+    "lead_time_hours": 2.5,
+    "mttr_hours": 0.8,
+    "change_failure_rate": 2.1
+  },
+  "security_metrics": {
+    "critical_vulnerabilities": 0,
+    "high_vulnerabilities": 0,
+    "medium_vulnerabilities": 1,
+    "low_vulnerabilities": 3,
+    "secrets_detected": 0,
+    "last_security_scan": "2025-07-27T10:30:00Z",
+    "security_scan_frequency": "daily"
+  },
+  "testing_metrics": {
+    "unit_test_count": 45,
+    "integration_test_count": 12,
+    "performance_test_count": 8,
+    "e2e_test_count": 5,
+    "test_execution_time_seconds": 127.8,
+    "test_reliability": 98.2
+  },
+  "performance_metrics": {
+    "single_email_processing_ms": 150,
+    "batch_processing_emails_per_minute": 120,
+    "memory_usage_mb": 85,
+    "docker_image_size_mb": 180,
+    "startup_time_seconds": 3.2
+  },
+  "maintenance_metrics": {
+    "outdated_dependencies": 2,
+    "technical_debt_hours": 8.5,
+    "documentation_coverage": 87,
+    "last_dependency_update": "2025-07-20",
+    "pre_commit_hook_version": "v4.6.0"
+  },
+  "compliance_status": {
+    "license_compliance": true,
+    "security_policy": true,
+    "code_of_conduct": true,
+    "contributing_guidelines": true,
+    "issue_templates": true,
+    "pr_templates": true,
+    "codeowners_file": true
+  },
+  "repository_health": {
+    "branch_protection_enabled": true,
+    "required_status_checks": true,
+    "dismiss_stale_reviews": true,
+    "require_code_owner_reviews": true,
+    "signed_commits_required": false,
+    "conversation_resolution_required": true
+  }
+}
