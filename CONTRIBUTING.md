@@ -1,35 +1,23 @@
 # Contributing to CrewAI Email Triage
 
-Thank you for taking the time to contribute!
+## Quick Start
+• Fork repository from `main` branch
+• Install: `pip install -e .[test]` + `pre-commit install`
+• Test: `pytest -n auto -q` 
+• Lint: `ruff check . && bandit -r src -q`
 
-## Getting Started
-1. Fork the repository and create your branch from `main`.
-2. Install dependencies:
-   ```bash
-   pip install -e .[test]
-   ```
-   Install pre-commit hooks:
-   ```bash
-   pre-commit install
-   ```
-3. Ensure the test suite passes (runs in parallel by default):
-   ```bash
-   pytest -n auto -q
-   ```
-4. Run static analysis:
-   ```bash
-   ruff check .
-   bandit -r src -q
-   ```
-
-## Commit Messages
-- Use present-tense imperative style: `Add logging`, `Fix bug in triage`.
-- Keep commits focused and small.
+## Guidelines
+• Follow [Conventional Commits](https://conventionalcommits.org/) format
+• Reference [GitHub Flow](https://guides.github.com/introduction/flow/) for branching
+• See [Python PEP 8](https://pep8.org/) for style guidelines
+• Include tests and documentation with changes
 
 ## Pull Requests
-- Include a clear description of the change and link to open issues.
-- Update documentation and tests as needed.
-- Ensure CI checks pass before requesting review.
+• Link to relevant issues
+• Ensure CI passes
+• Follow [PR best practices](https://github.com/blog/1943-how-to-write-the-perfect-pull-request)
 
-## Security
-Report any security vulnerabilities privately by opening a security issue on GitHub.
+## Questions?
+• Check existing [issues](../../issues) and [discussions](../../discussions)
+• Review [Code of Conduct](CODE_OF_CONDUCT.md)
+• See [Security Policy](SECURITY.md) for vulnerability reports

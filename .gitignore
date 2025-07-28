@@ -1,549 +1,58 @@
-# Byte-compiled / optimized / DLL files
+# Python gitignore - see https://github.com/github/gitignore/blob/main/Python.gitignore
 __pycache__/
 *.py[cod]
-*$py.class
-
-# C extensions
 *.so
-
-# Distribution / packaging
-.Python
 build/
-develop-eggs/
 dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
 *.egg-info/
-.installed.cfg
+.Python
 *.egg
-MANIFEST
 
-# PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-cover/
-
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-
-# Flask stuff:
-instance/
-.webassets-cache
-
-# Scrapy stuff:
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-.pybuilder/
-target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv
-#   For a library or package, you might want to ignore these files since the code is
-#   intended to run in multiple environments; otherwise, check them in:
-# .python-version
-
-# pipenv
-#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
-#   However, in case of collaboration, if having platform-specific dependencies or dependencies
-#   having no cross-platform support, pipenv may install dependencies that don't work, or not
-#   install all needed dependencies.
-#Pipfile.lock
-
-# UV
-#   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-#uv.lock
-
-# poetry
-#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
-#poetry.lock
-
-# pdm
-#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
-#pdm.lock
-#   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
-#   in version control.
-#   https://pdm.fming.dev/latest/usage/project/#working-with-version-control
-.pdm.toml
-.pdm-python
-.pdm-build/
-
-# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
-__pypackages__/
-
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath parsed files
-*.sage.py
-
-# Environments
+# Virtual environments
 .env
 .venv
 env/
 venv/
 ENV/
-env.bak/
-venv.bak/
 
-# Spyder project settings
-.spyderproject
-.spyproject
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+*.cover
 
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# pytype static type analyzer
-.pytype/
-
-# Cython debug symbols
-cython_debug/
-
-# PyCharm
-#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
-#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#  and can be added to the global gitignore or merged into this file.  For a more nuclear
-#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
-#.idea/
-
-# Abstra
-# Abstra is an AI-powered process automation framework.
-# Ignore directories containing user credentials, local state, and settings.
-# Learn more at https://abstra.io/docs
-.abstra/
-
-# Visual Studio Code
-#  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
-#  that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
-#  and can be added to the global gitignore or merged into this file. However, if you prefer, 
-#  you could uncomment the following to ignore the enitre vscode folder
-# .vscode/
-
-# Ruff stuff:
-.ruff_cache/
-
-# PyPI configuration file
-.pypirc
-
-# Cursor
-#  Cursor is an AI-powered code editor. `.cursorignore` specifies files/directories to
-#  exclude from AI features like autocomplete and code analysis. Recommended for sensitive data
-#  refer to https://docs.cursor.com/context/ignore-files
-.cursorignore
-.cursorindexingignore
-
-# =============================================================================
-# CREWAI EMAIL TRIAGE SPECIFIC
-# =============================================================================
-
-# Application data and cache
-*.db
-*.sqlite
-*.sqlite3
-app.log
-audit.log
-performance.log
-
-# Configuration files with secrets
-config.json
-.env.local
-.env.production
-.env.staging
-
-# Email data and temporary files
-emails/
-temp_emails/
-email_cache/
-*.eml
-*.msg
-
-# =============================================================================
-# SECURITY & SECRETS
-# =============================================================================
-
-# Credentials and secrets
-credentials.json
-secrets.json
-*.pem
-*.key
-*.crt
-*.p12
-*.pfx
-service-account.json
-client_secret.json
-
-# OAuth tokens
-token.json
-refresh_token.json
-access_token.json
-
-# API keys and configuration
-.api_keys
-.secrets
-config/secrets/
-vault/
-
-# Bandit security reports
-bandit-report.json
-bandit-baseline.json
-
-# =============================================================================
-# DEVELOPMENT & TESTING
-# =============================================================================
-
-# Test artifacts
-test-results/
-test-reports/
-screenshots/
-recordings/
-*-report.xml
-*-report.html
-junit.xml
-
-# Performance and profiling
-*.prof
-*.stats
-profile.stats
-memory_profile.dat
-.benchmarks/
-performance_results/
-
-# Development databases
-dev.db
-test.db
-local.db
-
-# Temporary development files
-tmp/
-temp/
-.tmp/
-scratch/
-playground/
-
-# =============================================================================
-# BUILD & DISTRIBUTION
-# =============================================================================
-
-# Build artifacts
-*.whl
-*.tar.gz
-*.zip
-build-output/
-artifacts/
-
-# Docker build context
-.dockerignore.bak
-docker-compose.override.yml
-docker-compose.local.yml
-
-# Container runtime
-.docker/
-docker-data/
-
-# Release artifacts
-releases/
-packages/
-
-# =============================================================================
-# MONITORING & OBSERVABILITY
-# =============================================================================
-
-# Logs
-logs/
-*.log
-*.log.*
-log-*.txt
-
-# Metrics and monitoring
-metrics/
-prometheus/
-grafana/
-alerts/
-
-# Tracing
-traces/
-spans/
-jaeger/
-
-# Health check artifacts
-health-checks/
-status/
-
-# =============================================================================
-# CI/CD & DEPLOYMENT
-# =============================================================================
-
-# CI/CD artifacts
-.ci/
-.github/secrets/
-deployment/secrets/
-
-# Terraform state
-*.tfstate
-*.tfstate.backup
-.terraform/
-terraform.tfvars
-
-# Ansible
-*.retry
-.vault_pass
-
-# Kubernetes
-*.kubeconfig
-kube-config
-k8s-secrets/
-
-# Helm
-charts/*/charts/
-charts/*/Chart.lock
-
-# =============================================================================
-# DOCUMENTATION BUILDS
-# =============================================================================
-
-# MkDocs
-site/
-docs/_build/
-docs/build/
-docs/.doctrees/
-
-# Sphinx
-_build/
-_static/
-_templates/
-
-# =============================================================================
-# EDITOR & IDE SPECIFIC
-# =============================================================================
-
-# JetBrains IDEs
+# IDE and editors
+.vscode/
 .idea/
-*.iml
-*.ipr
-*.iws
-
-# Sublime Text
-*.sublime-project
-*.sublime-workspace
-
-# Atom
-.atom/
-
-# Emacs
-*~
-\#*\#
-/.emacs.desktop
-/.emacs.desktop.lock
-*.elc
-auto-save-list
-tramp
-.\#*
-
-# Vim
 *.swp
 *.swo
-*~
-.vimrc.local
 
-# =============================================================================
-# OPERATING SYSTEM SPECIFIC
-# =============================================================================
-
-# macOS
+# OS generated files
 .DS_Store
-.AppleDouble
-.LSOverride
-Icon
-._*
-.DocumentRevisions-V100
-.fseventsd
-.Spotlight-V100
-.TemporaryItems
-.Trashes
-.VolumeIcon.icns
-.com.apple.timemachine.donotpresent
-
-# Windows
 Thumbs.db
-Thumbs.db:encryptable
-ehthumbs.db
-ehthumbs_vista.db
-*.tmp
-*.temp
-Desktop.ini
-$RECYCLE.BIN/
-*.cab
-*.msi
-*.msix
-*.msm
-*.msp
-*.lnk
-
-# Linux
-*~
-.directory
-.Trash-*
-
-# =============================================================================
-# PACKAGE MANAGER SPECIFIC
-# =============================================================================
-
-# npm (for documentation tools)
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.npm
-.yarn-integrity
-package-lock.json
-yarn.lock
-
-# Bundler
-.bundle/
-vendor/bundle/
-
-# Composer
-vendor/
-composer.lock
-
-# =============================================================================
-# CLOUD & SERVICE PROVIDERS
-# =============================================================================
-
-# AWS
-.aws/
-aws-exports.js
-
-# Google Cloud
-gcloud/
-.gcloudignore
-
-# Azure
-.azure/
-
-# Firebase
-.firebase/
-firebase-debug.log
-firestore-debug.log
-
-# =============================================================================
-# BACKUP & ARCHIVE FILES
-# =============================================================================
-
-# Backup files
-*.bak
-*.backup
-*.old
-*.orig
-*.save
-*.swp
 *.tmp
 
-# Archive files
-*.7z
-*.dmg
-*.gz
-*.iso
-*.jar
-*.rar
-*.tar
-*.zip
+# Application specific
+*.db
+*.sqlite*
+*.log
+config.json
+.env.local
+emails/
+temp_emails/
+credentials.json
+*.pem
+*.key
+token.json
 
-# =============================================================================
-# LARGE FILES & BINARIES
-# =============================================================================
+# Development artifacts
+.ruff_cache/
+.mypy_cache/
+bandit-report.json
 
-# Large data files
-*.csv
-*.tsv
-*.xlsx
-*.xls
-data/
-datasets/
-*.parquet
-*.h5
-*.hdf5
+# Documentation builds
+docs/_build/
+site/
 
-# Media files
-*.mp4
-*.avi
-*.mov
-*.wmv
-*.mp3
-*.wav
-*.flac
-*.jpg
-*.jpeg
-*.png
-*.gif
-*.bmp
-*.tiff
-*.svg
-*.pdf
-
-# Binary executables
-*.exe
-*.dll
-*.so
-*.dylib
+# For full patterns see: https://github.com/github/gitignore/blob/main/Python.gitignore

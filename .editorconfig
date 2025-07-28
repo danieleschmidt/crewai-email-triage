@@ -1,146 +1,19 @@
-# EditorConfig is awesome: https://EditorConfig.org
-
-# top-most EditorConfig file
+# EditorConfig configuration - see https://EditorConfig.org
 root = true
 
-# =============================================================================
-# DEFAULT SETTINGS FOR ALL FILES
-# =============================================================================
+# Universal settings for consistency across editors
 [*]
-# Character encoding
-charset = utf-8
-
-# Line ending style
-end_of_line = lf
-
-# Insert final newline
-insert_final_newline = true
-
-# Trim trailing whitespace
+charset = utf-8              # UTF-8 encoding standard
+end_of_line = lf            # Unix line endings
+insert_final_newline = true # File should end with newline
 trim_trailing_whitespace = true
-
-# Indentation
 indent_style = space
 indent_size = 2
+max_line_length = 88        # Python Black standard
 
-# Maximum line length (for display guidance)
-max_line_length = 88
-
-# =============================================================================
-# PYTHON FILES
-# =============================================================================
+# Language-specific overrides
 [*.py]
-indent_size = 4
-max_line_length = 88
+indent_size = 4             # PEP 8 standard for Python
 
-# =============================================================================
-# MARKDOWN FILES
-# =============================================================================
 [*.md]
-# Don't trim trailing whitespace in markdown (can be significant)
-trim_trailing_whitespace = false
-max_line_length = 80
-
-# =============================================================================
-# YAML FILES
-# =============================================================================
-[*.{yml,yaml}]
-indent_size = 2
-
-# =============================================================================
-# JSON FILES
-# =============================================================================
-[*.json]
-indent_size = 2
-
-# =============================================================================
-# TOML FILES
-# =============================================================================
-[*.toml]
-indent_size = 2
-
-# =============================================================================
-# SHELL SCRIPTS
-# =============================================================================
-[*.{sh,bash,zsh}]
-indent_size = 2
-
-# =============================================================================
-# MAKEFILE
-# =============================================================================
-[{Makefile,*.mk}]
-indent_style = tab
-indent_size = 4
-
-# =============================================================================
-# DOCKER FILES
-# =============================================================================
-[{Dockerfile,*.dockerfile}]
-indent_size = 2
-
-# =============================================================================
-# CONFIGURATION FILES
-# =============================================================================
-[*.{ini,cfg,conf}]
-indent_size = 4
-
-# =============================================================================
-# WEB FILES
-# =============================================================================
-[*.{html,htm}]
-indent_size = 2
-
-[*.{css,scss,sass}]
-indent_size = 2
-
-[*.{js,jsx,ts,tsx}]
-indent_size = 2
-
-# =============================================================================
-# DOCUMENTATION FILES
-# =============================================================================
-[*.{rst,txt}]
-max_line_length = 80
-
-# =============================================================================
-# GITHUB WORKFLOWS
-# =============================================================================
-[.github/workflows/*.{yml,yaml}]
-indent_size = 2
-
-# =============================================================================
-# VSCODE SETTINGS
-# =============================================================================
-[.vscode/*.json]
-indent_size = 2
-
-# =============================================================================
-# PACKAGE MANAGER FILES
-# =============================================================================
-[{package.json,package-lock.json}]
-indent_size = 2
-
-[requirements*.txt]
-indent_size = 0
-
-# =============================================================================
-# LICENSE AND LEGAL FILES
-# =============================================================================
-[{LICENSE,LICENCE,COPYING}*]
-max_line_length = 80
-
-# =============================================================================
-# IGNORE PATTERNS
-# =============================================================================
-[*.{min.js,min.css}]
-# Don't format minified files
-insert_final_newline = false
-trim_trailing_whitespace = false
-
-[*.{pyc,pyo,egg-info}/**]
-# Ignore compiled Python files and build artifacts
-charset = unset
-end_of_line = unset
-insert_final_newline = unset
-trim_trailing_whitespace = unset
-indent_style = unset
+trim_trailing_whitespace = false  # Preserves markdown formatting
