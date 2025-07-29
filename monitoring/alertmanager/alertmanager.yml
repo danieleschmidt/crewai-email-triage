@@ -1,0 +1,253 @@
+# =============================================================================
+# ALERTMANAGER CONFIGURATION - ADVANCED NOTIFICATION ROUTING
+# =============================================================================
+
+global:
+  # SMTP configuration for email notifications
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'alerts@crewai-email-triage.com'
+  smtp_auth_username: 'alerts@crewai-email-triage.com'
+  smtp_auth_password: 'your-email-password'
+  smtp_require_tls: true
+
+  # Slack configuration (optional)
+  slack_api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+
+  # Default template files
+  templates:
+    - '/etc/alertmanager/templates/*.tmpl'
+
+# =============================================================================
+# ROUTING CONFIGURATION
+# =============================================================================
+route:
+  # Default settings for all alerts
+  group_by: ['alertname', 'service', 'severity']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+  receiver: 'default-receiver'
+
+  # Routing rules based on alert characteristics
+  routes:
+    # Critical alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 1h
+      routes:
+        # Application down - page immediately
+        - match:
+            alertname: ApplicationDown
+          receiver: 'pager-duty'
+          group_wait: 0s
+          repeat_interval: 5m
+
+        # Security alerts - immediate notification
+        - match:
+            category: security
+          receiver: 'security-team'
+          group_wait: 0s
+          repeat_interval: 30m
+
+    # Warning alerts - standard notification
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      group_wait: 1m
+      group_interval: 10m
+      repeat_interval: 4h
+
+    # Performance alerts - development team
+    - match:
+        category: performance
+      receiver: 'performance-team'
+      group_wait: 2m
+      repeat_interval: 2h
+
+    # Infrastructure alerts - ops team
+    - match:
+        category: infrastructure
+      receiver: 'ops-team'
+      group_wait: 1m
+      repeat_interval: 1h
+
+    # CI/CD alerts - development team
+    - match:
+        service: github-actions
+      receiver: 'dev-team'
+      group_wait: 5m
+      repeat_interval: 6h
+
+# =============================================================================
+# NOTIFICATION RECEIVERS
+# =============================================================================
+receivers:
+  # Default receiver (low priority)
+  - name: 'default-receiver'
+    email_configs:
+      - to: 'team@crewai-email-triage.com'
+        subject: '[CrewAI] Default Alert: {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          Service: {{ .Labels.service }}
+          Time: {{ .StartsAt }}
+          {{ end }}
+
+  # Critical alerts (high priority)
+  - name: 'critical-alerts'
+    email_configs:
+      - to: 'critical@crewai-email-triage.com'
+        subject: '[CRITICAL] CrewAI Alert: {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+        body: |
+          🚨 CRITICAL ALERT 🚨
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          Service: {{ .Labels.service }}
+          Category: {{ .Labels.category }}
+          Time: {{ .StartsAt }}
+          
+          Runbook: {{ .Annotations.runbook_url }}
+          Dashboard: {{ .Annotations.dashboard_url }}
+          {{ end }}
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/CRITICAL/WEBHOOK'
+        channel: '#alerts-critical'
+        title: 'Critical Alert - CrewAI Email Triage'
+        text: |
+          {{ range .Alerts }}
+          🚨 *{{ .Annotations.summary }}*
+          *Description:* {{ .Annotations.description }}
+          *Service:* {{ .Labels.service }}
+          *Severity:* {{ .Labels.severity }}
+          {{ end }}
+
+  # PagerDuty integration for immediate response
+  - name: 'pager-duty'
+    pagerduty_configs:
+      - routing_key: 'YOUR_PAGERDUTY_INTEGRATION_KEY'
+        description: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+        details:
+          service: '{{ range .Alerts }}{{ .Labels.service }}{{ end }}'
+          severity: '{{ range .Alerts }}{{ .Labels.severity }}{{ end }}'
+          description: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+
+  # Security team notifications
+  - name: 'security-team'
+    email_configs:
+      - to: 'security@crewai-email-triage.com'
+        subject: '[SECURITY] CrewAI Security Alert: {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+        body: |
+          🔒 SECURITY ALERT 🔒
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Service: {{ .Labels.service }}
+          Time: {{ .StartsAt }}
+          
+          Immediate investigation required.
+          {{ end }}
+
+  # Warning alerts
+  - name: 'warning-alerts'
+    email_configs:
+      - to: 'warnings@crewai-email-triage.com'
+        subject: '[WARNING] CrewAI: {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+        body: |
+          ⚠️ WARNING ALERT ⚠️
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Service: {{ .Labels.service }}
+          Time: {{ .StartsAt }}
+          {{ end }}
+
+  # Performance team
+  - name: 'performance-team'
+    email_configs:
+      - to: 'performance@crewai-email-triage.com'
+        subject: '[PERFORMANCE] CrewAI: {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+        body: |
+          📊 PERFORMANCE ALERT 📊
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Current Value: {{ .Annotations.value }}
+          Dashboard: {{ .Annotations.dashboard_url }}
+          Time: {{ .StartsAt }}
+          {{ end }}
+
+  # Operations team
+  - name: 'ops-team'
+    email_configs:
+      - to: 'ops@crewai-email-triage.com'
+        subject: '[INFRASTRUCTURE] CrewAI: {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+        body: |
+          🏗️ INFRASTRUCTURE ALERT 🏗️
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Service: {{ .Labels.service }}
+          Time: {{ .StartsAt }}
+          {{ end }}
+
+  # Development team
+  - name: 'dev-team'
+    email_configs:
+      - to: 'dev@crewai-email-triage.com'
+        subject: '[DEV] CrewAI: {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+        body: |
+          👨‍💻 DEVELOPMENT ALERT 👨‍💻
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Service: {{ .Labels.service }}
+          Time: {{ .StartsAt }}
+          {{ end }}
+
+# =============================================================================
+# INHIBITION RULES
+# =============================================================================
+inhibit_rules:
+  # If application is down, don't alert on high response times
+  - source_matchers:
+      - alertname="ApplicationDown"
+    target_matchers:
+      - alertname="HighResponseTime"
+    equal: ['service']
+
+  # If system is down, don't alert on application metrics
+  - source_matchers:
+      - alertname="SystemDown"
+    target_matchers:
+      - service="crewai-triage"
+    equal: ['instance']
+
+  # If there's a critical security alert, suppress warning security alerts
+  - source_matchers:
+      - severity="critical"
+      - category="security"
+    target_matchers:
+      - severity="warning"
+      - category="security"
+    equal: ['service']
+
+# =============================================================================
+# NOTIFICATION TEMPLATES
+# =============================================================================
+templates:
+  - '/etc/alertmanager/templates/email.tmpl'
+  - '/etc/alertmanager/templates/slack.tmpl'

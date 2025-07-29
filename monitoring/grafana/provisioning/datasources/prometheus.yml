@@ -1,0 +1,68 @@
+# =============================================================================
+# GRAFANA DATASOURCE CONFIGURATION
+# =============================================================================
+
+apiVersion: 1
+
+datasources:
+  # Primary Prometheus datasource
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    jsonData:
+      httpMethod: GET
+      queryTimeout: 60s
+      timeInterval: 15s
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: jaeger
+    uid: prometheus
+
+  # Loki for logs
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    editable: true
+    jsonData:
+      derivedFields:
+        - datasourceUid: jaeger
+          matcherRegex: 'trace_id=(\w+)'
+          name: TraceID
+          url: '$${__value.raw}'
+    uid: loki
+
+  # Jaeger for distributed tracing
+  - name: Jaeger
+    type: jaeger
+    access: proxy
+    url: http://jaeger:16686
+    editable: true
+    jsonData:
+      tracesToLogs:
+        datasourceUid: loki
+        tags: ['job', 'instance', 'pod', 'namespace']
+        mappedTags:
+          - key: service.name
+            value: job
+        mapTagNamesEnabled: false
+        spanStartTimeShift: 1h
+        spanEndTimeShift: 1h
+        filterByTraceID: false
+        filterBySpanID: false
+    uid: jaeger
+
+  # Prometheus for long-term storage (if using remote storage)
+  # - name: Prometheus-LTS
+  #   type: prometheus
+  #   access: proxy
+  #   url: http://prometheus-lts:9090
+  #   editable: false
+  #   jsonData:
+  #     httpMethod: GET
+  #     queryTimeout: 300s
+  #     timeInterval: 60s
+  #   uid: prometheus-lts

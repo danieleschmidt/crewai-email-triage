@@ -1,0 +1,137 @@
+# =============================================================================
+# RECORDING RULES - PERFORMANCE METRICS AGGREGATION
+# =============================================================================
+
+groups:
+  # =============================================================================
+  # APPLICATION PERFORMANCE RECORDING RULES
+  # =============================================================================
+  - name: crewai-performance-rules
+    interval: 30s
+    rules:
+      # Request rate recording rules
+      - record: crewai:http_requests_per_second
+        expr: rate(http_requests_total{job="crewai-triage"}[5m])
+
+      - record: crewai:http_requests_per_second:5m
+        expr: rate(http_requests_total{job="crewai-triage"}[5m])
+
+      - record: crewai:http_requests_per_second:1h
+        expr: rate(http_requests_total{job="crewai-triage"}[1h])
+
+      # Response time recording rules
+      - record: crewai:http_request_duration:p50
+        expr: histogram_quantile(0.50, rate(http_request_duration_seconds_bucket{job="crewai-triage"}[5m]))
+
+      - record: crewai:http_request_duration:p95
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="crewai-triage"}[5m]))
+
+      - record: crewai:http_request_duration:p99
+        expr: histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{job="crewai-triage"}[5m]))
+
+      # Error rate recording rules
+      - record: crewai:http_error_rate
+        expr: rate(http_requests_total{job="crewai-triage",status=~"5.."}[5m]) / rate(http_requests_total{job="crewai-triage"}[5m])
+
+      - record: crewai:http_error_rate:5m
+        expr: rate(http_requests_total{job="crewai-triage",status=~"5.."}[5m]) / rate(http_requests_total{job="crewai-triage"}[5m])
+
+      - record: crewai:http_error_rate:1h
+        expr: rate(http_requests_total{job="crewai-triage",status=~"5.."}[1h]) / rate(http_requests_total{job="crewai-triage"}[1h])
+
+  # =============================================================================
+  # EMAIL PROCESSING RECORDING RULES
+  # =============================================================================
+  - name: crewai-email-processing-rules
+    interval: 30s
+    rules:
+      # Email processing rates
+      - record: crewai:emails_processed_per_second
+        expr: rate(emails_processed_total{job="crewai-triage"}[5m])
+
+      - record: crewai:emails_classified_per_second
+        expr: rate(emails_classified_total{job="crewai-triage"}[5m])
+
+      - record: crewai:emails_summarized_per_second
+        expr: rate(emails_summarized_total{job="crewai-triage"}[5m])
+
+      # Email processing success rates
+      - record: crewai:email_classification_success_rate
+        expr: rate(emails_classified_successfully_total{job="crewai-triage"}[5m]) / rate(emails_classified_total{job="crewai-triage"}[5m])
+
+      - record: crewai:email_processing_success_rate
+        expr: rate(emails_processed_successfully_total{job="crewai-triage"}[5m]) / rate(emails_processed_total{job="crewai-triage"}[5m])
+
+      # Email processing latency
+      - record: crewai:email_processing_duration:p50
+        expr: histogram_quantile(0.50, rate(email_processing_duration_seconds_bucket{job="crewai-triage"}[5m]))
+
+      - record: crewai:email_processing_duration:p95
+        expr: histogram_quantile(0.95, rate(email_processing_duration_seconds_bucket{job="crewai-triage"}[5m]))
+
+  # =============================================================================
+  # SYSTEM RESOURCE RECORDING RULES
+  # =============================================================================
+  - name: crewai-system-rules
+    interval: 30s
+    rules:
+      # CPU utilization
+      - record: crewai:cpu_utilization
+        expr: 100 - (avg(irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+
+      # Memory utilization
+      - record: crewai:memory_utilization
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100
+
+      # Disk utilization
+      - record: crewai:disk_utilization
+        expr: (1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})) * 100
+
+      # Application memory usage
+      - record: crewai:app_memory_usage_gb
+        expr: process_resident_memory_bytes{job="crewai-triage"} / (1024*1024*1024)
+
+  # =============================================================================
+  # AVAILABILITY RECORDING RULES
+  # =============================================================================
+  - name: crewai-availability-rules
+    interval: 60s
+    rules:
+      # Service availability (SLA calculation)
+      - record: crewai:availability:5m
+        expr: avg_over_time(up{job="crewai-triage"}[5m])
+
+      - record: crewai:availability:1h
+        expr: avg_over_time(up{job="crewai-triage"}[1h])
+
+      - record: crewai:availability:24h
+        expr: avg_over_time(up{job="crewai-triage"}[24h])
+
+      # Service reliability (success rate)
+      - record: crewai:reliability:5m
+        expr: 1 - crewai:http_error_rate:5m
+
+      - record: crewai:reliability:1h
+        expr: 1 - crewai:http_error_rate:1h
+
+  # =============================================================================
+  # CI/CD PERFORMANCE RECORDING RULES
+  # =============================================================================
+  - name: crewai-cicd-rules
+    interval: 300s  # 5 minutes - less frequent for CI/CD metrics
+    rules:
+      # Build success rate
+      - record: crewai:build_success_rate:24h
+        expr: rate(github_actions_builds_total{status="success"}[24h]) / rate(github_actions_builds_total[24h])
+
+      # Average build duration
+      - record: crewai:build_duration:avg:24h
+        expr: avg_over_time(github_actions_build_duration_seconds[24h])
+
+      # Test coverage trend
+      - record: crewai:test_coverage:latest
+        expr: max(test_coverage_percentage{job="github-actions"})
+
+      # Deployment frequency
+      - record: crewai:deployment_frequency:7d
+        expr: rate(deployments_total{job="github-actions"}[7d]) * 86400  # per day
