@@ -1,0 +1,43 @@
+# Advanced Performance Profiling Configuration
+# Optimized for production email triage workloads
+
+profiling:
+  # Memory profiling with advanced heap analysis
+  memory:
+    enabled: true
+    heap_tracking: true
+    allocation_sampling_rate: 0.01
+    max_memory_threshold_mb: 512
+    gc_optimization: true
+    memory_pool_preallocation: 8192
+    
+  # CPU profiling with statistical sampling
+  cpu:
+    enabled: true
+    sampling_frequency: 100
+    flame_graph_generation: true
+    hotspot_detection_threshold: 0.05
+    profile_async_calls: true
+    
+  # I/O profiling for email processing bottlenecks
+  io:
+    enabled: true
+    track_file_operations: true
+    track_network_calls: true
+    buffer_size_optimization: 65536
+    connection_pool_monitoring: true
+
+# Performance targets for SLA monitoring
+targets:
+  email_classification_ms: 150
+  email_summarization_ms: 300
+  batch_processing_emails_per_second: 50
+  memory_usage_peak_mb: 256
+  gc_pause_time_ms: 10
+
+# Auto-optimization triggers
+optimization:
+  auto_gc_tuning: true
+  connection_pool_scaling: true
+  buffer_size_adaptation: true
+  query_plan_caching: true

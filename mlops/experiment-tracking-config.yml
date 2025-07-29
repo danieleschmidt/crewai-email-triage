@@ -1,0 +1,275 @@
+# MLflow Experiment Tracking Configuration
+# Comprehensive experiment management for email triage ML models
+
+mlflow:
+  tracking:
+    # MLflow server configuration
+    server:
+      host: "mlflow.company.com"
+      port: 5000
+      backend_store_uri: "postgresql://mlflow:${MLFLOW_DB_PASSWORD}@db.company.com:5432/mlflow"
+      default_artifact_root: "s3://ml-artifacts/mlflow/"
+      
+    # Experiment organization
+    experiments:
+      email_classification:
+        experiment_id: 1
+        description: "Email classification model experiments"
+        tags:
+          team: "ml_platform"
+          use_case: "email_triage"
+          priority: "high"
+          
+      email_summarization:
+        experiment_id: 2
+        description: "Email summarization model experiments"
+        tags:
+          team: "ml_platform"
+          use_case: "email_triage"
+          priority: "medium"
+          
+      response_generation:
+        experiment_id: 3
+        description: "Email response generation experiments"
+        tags:
+          team: "ml_platform"
+          use_case: "email_triage"
+          priority: "low"
+
+  # Automated logging configuration
+  auto_logging:
+    enabled: true
+    frameworks:
+      sklearn:
+        enabled: true
+        log_models: true
+        log_input_examples: true
+        log_model_signatures: true
+        
+      transformers:
+        enabled: true
+        log_models: false  # Models too large for MLflow
+        log_metrics: true
+        log_params: true
+        
+      pytorch:
+        enabled: true
+        log_models: true
+        log_every_n_epoch: 5
+        log_every_n_step: 100
+
+  # Custom metrics tracking
+  metrics:
+    classification_metrics:
+      - name: "accuracy"
+        higher_is_better: true
+        threshold: 0.90
+        
+      - name: "precision_weighted"
+        higher_is_better: true
+        threshold: 0.85
+        
+      - name: "recall_weighted"
+        higher_is_better: true
+        threshold: 0.85
+        
+      - name: "f1_weighted"
+        higher_is_better: true
+        threshold: 0.87
+        
+      - name: "inference_latency_p95_ms"
+        higher_is_better: false
+        threshold: 200
+        
+    business_metrics:
+      - name: "user_satisfaction_score"
+        higher_is_better: true
+        threshold: 4.2
+        
+      - name: "cost_per_classification_usd"
+        higher_is_better: false
+        threshold: 0.001
+        
+      - name: "false_positive_rate"
+        higher_is_better: false
+        threshold: 0.05
+
+  # Parameter tracking
+  parameters:
+    model_hyperparameters:
+      - "learning_rate"
+      - "batch_size"
+      - "num_epochs"
+      - "model_architecture"
+      - "optimizer"
+      - "weight_decay"
+      - "dropout_rate"
+      
+    data_parameters:
+      - "dataset_version"
+      - "train_size"
+      - "validation_size"
+      - "test_size"
+      - "data_preprocessing_version"
+      - "feature_extraction_method"
+      
+    infrastructure_parameters:
+      - "compute_instance_type"
+      - "gpu_count"
+      - "memory_gb"
+      - "training_duration_minutes"
+      - "total_cost_usd"
+
+  # Artifact management
+  artifacts:
+    model_artifacts:
+      log_model_checkpoints: true
+      checkpoint_frequency: "every_5_epochs"
+      retain_best_only: true
+      
+    data_artifacts:
+      log_training_data_sample: true
+      sample_size: 1000
+      log_feature_importance: true
+      log_confusion_matrix: true
+      
+    visualization_artifacts:
+      log_training_curves: true
+      log_validation_curves: true
+      log_hyperparameter_plots: true
+      log_model_architecture: true
+
+# Experiment comparison and analysis
+comparison:
+  baseline_models:
+    email_classification_baseline:
+      experiment_id: 1
+      run_id: "baseline_v1.0"
+      metrics:
+        accuracy: 0.82
+        f1_weighted: 0.81
+        inference_latency_p95_ms: 350
+        
+  champion_challenger:
+    enabled: true
+    champion_criteria:
+      - metric: "f1_weighted"
+        improvement_threshold: 0.02
+      - metric: "inference_latency_p95_ms"
+        degradation_threshold: 50
+        
+    promotion_process:
+      require_manual_approval: true
+      staging_validation_required: true
+      a_b_test_duration_days: 7
+
+# Model registry integration
+model_registry:
+  automatic_registration:
+    enabled: true
+    criteria:
+      - "accuracy > 0.90"
+      - "f1_weighted > 0.87"
+      - "inference_latency_p95_ms < 200"
+      
+  model_stages:
+    staging:
+      quality_gates:
+        - automated_tests_pass: true
+        - security_scan_pass: true
+        - performance_benchmark_pass: true
+        
+    production:
+      quality_gates:
+        - staging_validation_complete: true
+        - business_approval: true
+        - load_test_pass: true
+        - monitoring_setup_complete: true
+
+# Collaboration and notifications
+collaboration:
+  slack_integration:
+    webhook_url: "${SLACK_ML_WEBHOOK}"
+    notifications:
+      experiment_completion:
+        enabled: true
+        include_metrics: true
+        include_artifacts: false
+        
+      model_promotion:
+        enabled: true
+        include_comparison: true
+        tag_team_members: ["@ml-team"]
+        
+      experiment_failure:
+        enabled: true
+        include_error_details: true
+        priority: "high"
+
+  email_notifications:
+    enabled: true
+    recipients:
+      - "ml-team@company.com"
+      - "data-science-leads@company.com"
+      
+    triggers:
+      - "new_champion_model"
+      - "significant_performance_improvement"
+      - "experiment_budget_exceeded"
+
+# Data science workflow integration
+workflow_integration:
+  jupyter_notebooks:
+    auto_logging: true
+    experiment_tracking: true
+    artifact_logging: true
+    
+  model_training_scripts:
+    require_experiment_context: true
+    auto_tag_with_git_commit: true
+    log_system_metrics: true
+    
+  hyperparameter_tuning:
+    integration: "optuna"
+    log_all_trials: true
+    parallel_execution: true
+    early_stopping: true
+
+# Governance and compliance
+governance:
+  experiment_retention:
+    active_experiments: "indefinite"
+    completed_experiments: "2_years"
+    failed_experiments: "6_months"
+    
+  audit_logging:
+    track_all_changes: true
+    include_user_actions: true
+    retention_period: "5_years"
+    
+  access_control:
+    role_based_access: true
+    experiment_permissions:
+      - role: "data_scientist"
+        permissions: ["read", "write", "create_experiments"]
+      - role: "ml_engineer"
+        permissions: ["read", "write", "deploy_models"]
+      - role: "business_analyst"
+        permissions: ["read", "view_metrics"]
+
+# Performance optimization
+performance:
+  database_optimization:
+    connection_pooling: true
+    query_optimization: true
+    index_optimization: true
+    
+  artifact_storage:
+    compression: true
+    deduplication: true
+    lifecycle_management: true
+    
+  api_optimization:
+    caching: true
+    rate_limiting: true
+    async_operations: true

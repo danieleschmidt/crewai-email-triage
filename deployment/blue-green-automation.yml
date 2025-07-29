@@ -1,0 +1,74 @@
+# Blue-Green Deployment Automation for Email Triage Service
+# Advanced zero-downtime deployment with automated validation
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: blue-green-deployment-config
+data:
+  deployment_strategy: |
+    # Blue-Green Deployment Configuration
+    deployment:
+      type: "blue-green"
+      validation_timeout: "10m"
+      health_check_interval: "30s"
+      rollback_on_failure: true
+      
+    environments:
+      blue:
+        replicas: 3
+        resources:
+          cpu: "1000m"
+          memory: "1Gi"
+        ai_model_version: "v2.1.0"
+        
+      green:
+        replicas: 3
+        resources:
+          cpu: "1000m" 
+          memory: "1Gi"
+        ai_model_version: "v2.2.0"
+    
+    # Pre-deployment validation tests
+    validation:
+      smoke_tests:
+        - name: "email_classification_accuracy"
+          threshold: 0.95
+          sample_size: 100
+        - name: "response_latency"
+          threshold: "200ms"
+          percentile: "p95"
+        - name: "memory_leak_detection"
+          duration: "5m"
+          threshold_increase: "10%"
+      
+      integration_tests:
+        - gmail_api_connectivity
+        - database_performance
+        - ai_model_inference
+        - monitoring_stack_health
+    
+    # Traffic switching configuration
+    traffic_switching:
+      method: "dns_weighted_routing"
+      switch_duration: "30s"
+      validation_period: "5m"
+      
+    # Automatic rollback conditions
+    rollback_triggers:
+      - metric: "error_rate"
+        threshold: "1%"
+        duration: "2m"
+      - metric: "classification_accuracy"
+        threshold: "0.90"
+        duration: "5m"
+      - metric: "response_time_p99"
+        threshold: "1000ms"
+        duration: "3m"
+        
+    # Post-deployment validation
+    post_deployment:
+      monitoring_period: "1h"
+      performance_comparison: true
+      automated_scaling_test: true
+      email_processing_volume_test: true
