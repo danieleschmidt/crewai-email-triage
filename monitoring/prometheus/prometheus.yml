@@ -1,0 +1,131 @@
+# =============================================================================
+# PROMETHEUS CONFIGURATION - ADVANCED MONITORING SETUP
+# =============================================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+  external_labels:
+    cluster: 'crewai-email-triage'
+    environment: 'production'
+
+# =============================================================================
+# RULE FILES - ALERTING AND RECORDING RULES
+# =============================================================================
+rule_files:
+  - "rules/*.yml"
+
+# =============================================================================
+# ALERTING CONFIGURATION
+# =============================================================================
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+      timeout: 10s
+      api_version: v1
+
+# =============================================================================
+# SCRAPE CONFIGURATIONS
+# =============================================================================
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: '/metrics'
+
+  # Application metrics
+  - job_name: 'crewai-triage'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+    static_configs:
+      - targets: ['crewai-triage:8080']
+    metrics_path: '/metrics'
+    honor_labels: true
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 'crewai-triage:8080'
+
+  # Health check metrics
+  - job_name: 'health-checks'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['crewai-triage:8081']
+    metrics_path: '/health/metrics'
+
+  # Redis metrics (using redis_exporter)
+  - job_name: 'redis'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['redis-exporter:9121']
+
+  # System metrics (node_exporter)
+  - job_name: 'node'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # Docker container metrics
+  - job_name: 'docker'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+  # Grafana metrics
+  - job_name: 'grafana'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['grafana:3000']
+    metrics_path: '/metrics'
+
+  # Loki metrics
+  - job_name: 'loki'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['loki:3100']
+    metrics_path: '/metrics'
+
+  # Jaeger metrics
+  - job_name: 'jaeger'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['jaeger:16686']
+    metrics_path: '/metrics'
+
+  # GitHub Actions metrics (via webhook)
+  - job_name: 'github-actions'
+    scrape_interval: 60s
+    honor_timestamps: true
+    static_configs:
+      - targets: ['pushgateway:9091']
+    metrics_path: '/metrics'
+
+# =============================================================================
+# REMOTE STORAGE (Optional - for long-term storage)
+# =============================================================================
+# remote_write:
+#   - url: "https://prometheus-remote-write-endpoint.com/write"
+#     headers:
+#       Authorization: "Bearer YOUR_TOKEN"
+#     queue_config:
+#       max_samples_per_send: 1000
+#       max_shards: 5
+#       capacity: 2500
+
+# =============================================================================
+# STORAGE CONFIGURATION
+# =============================================================================
+storage:
+  tsdb:
+    retention.time: 15d
+    retention.size: 10GB
+    min-block-duration: 2h
+    max-block-duration: 25h

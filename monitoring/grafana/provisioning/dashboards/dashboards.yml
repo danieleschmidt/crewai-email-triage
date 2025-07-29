@@ -1,0 +1,61 @@
+# =============================================================================
+# GRAFANA DASHBOARD PROVISIONING CONFIGURATION
+# =============================================================================
+
+apiVersion: 1
+
+providers:
+  # Application dashboards
+  - name: 'crewai-app-dashboards'
+    orgId: 1
+    folder: 'CrewAI Email Triage'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards/application
+
+  # Infrastructure dashboards
+  - name: 'infrastructure-dashboards'
+    orgId: 1
+    folder: 'Infrastructure'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards/infrastructure
+
+  # Performance dashboards
+  - name: 'performance-dashboards'
+    orgId: 1
+    folder: 'Performance'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards/performance
+
+  # Security dashboards
+  - name: 'security-dashboards'
+    orgId: 1
+    folder: 'Security'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards/security
+
+  # CI/CD dashboards
+  - name: 'cicd-dashboards'
+    orgId: 1
+    folder: 'CI/CD'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards/cicd

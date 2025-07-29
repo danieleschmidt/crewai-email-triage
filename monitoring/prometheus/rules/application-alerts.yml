@@ -1,0 +1,162 @@
+# =============================================================================
+# APPLICATION ALERTING RULES - CREWAI EMAIL TRIAGE
+# =============================================================================
+
+groups:
+  # =============================================================================
+  # APPLICATION HEALTH ALERTS
+  # =============================================================================
+  - name: crewai-application-health
+    interval: 30s
+    rules:
+      - alert: ApplicationDown
+        expr: up{job="crewai-triage"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: crewai-triage
+          category: availability
+        annotations:
+          summary: "CrewAI Email Triage application is down"
+          description: "The CrewAI Email Triage application has been down for more than 1 minute. Instance: {{ $labels.instance }}"
+          runbook_url: "https://github.com/owner/repo/wiki/Runbooks#application-down"
+
+      - alert: HealthCheckFailing
+        expr: probe_success{job="health-checks"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: crewai-triage
+          category: health
+        annotations:
+          summary: "Application health check is failing"
+          description: "Health check endpoint has been failing for {{ $labels.instance }} for more than 2 minutes"
+
+      - alert: HighMemoryUsage
+        expr: (process_resident_memory_bytes{job="crewai-triage"} / (1024*1024*1024)) > 2
+        for: 5m
+        labels:
+          severity: warning
+          service: crewai-triage
+          category: resource
+        annotations:
+          summary: "High memory usage detected"
+          description: "Application memory usage is {{ $value }}GB, which exceeds the 2GB threshold"
+
+  # =============================================================================
+  # PERFORMANCE ALERTS
+  # =============================================================================
+  - name: crewai-performance
+    interval: 30s
+    rules:
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="crewai-triage"}[5m])) > 2
+        for: 3m
+        labels:
+          severity: warning
+          service: crewai-triage
+          category: performance
+        annotations:
+          summary: "High response time detected"
+          description: "95th percentile response time is {{ $value }}s, exceeding 2s threshold"
+          dashboard_url: "http://grafana:3000/d/crewai-performance"
+
+      - alert: HighErrorRate
+        expr: (rate(http_requests_total{job="crewai-triage",status=~"5.."}[5m]) / rate(http_requests_total{job="crewai-triage"}[5m])) * 100 > 5
+        for: 2m
+        labels:
+          severity: critical
+          service: crewai-triage
+          category: errors
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }}%, exceeding 5% threshold over the last 5 minutes"
+
+      - alert: EmailProcessingBacklog
+        expr: email_queue_size{job="crewai-triage"} > 100
+        for: 5m
+        labels:
+          severity: warning
+          service: crewai-triage
+          category: processing
+        annotations:
+          summary: "Email processing backlog detected"
+          description: "Email queue size is {{ $value }}, indicating processing delays"
+
+  # =============================================================================
+  # INFRASTRUCTURE ALERTS
+  # =============================================================================
+  - name: crewai-infrastructure
+    interval: 30s
+    rules:
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: redis
+          category: infrastructure
+        annotations:
+          summary: "Redis is down"
+          description: "Redis instance has been down for more than 1 minute"
+
+      - alert: HighCPUUsage
+        expr: (100 - (avg(irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: system
+          category: resource
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ $value }}%, exceeding 85% threshold"
+
+      - alert: HighDiskUsage
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 10
+        for: 2m
+        labels:
+          severity: critical
+          service: system
+          category: resource
+        annotations:
+          summary: "Low disk space"
+          description: "Available disk space is {{ $value }}%, below 10% threshold"
+
+  # =============================================================================
+  # SECURITY ALERTS
+  # =============================================================================
+  - name: crewai-security
+    interval: 60s
+    rules:
+      - alert: SuspiciousRequestPattern
+        expr: rate(http_requests_total{job="crewai-triage",status="429"}[5m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+          service: crewai-triage
+          category: security
+        annotations:
+          summary: "High rate of rate-limited requests"
+          description: "Detected {{ $value }} rate-limited requests per second, possible attack"
+
+      - alert: UnauthorizedAccess
+        expr: rate(http_requests_total{job="crewai-triage",status="401"}[5m]) > 2
+        for: 1m
+        labels:
+          severity: warning
+          service: crewai-triage
+          category: security
+        annotations:
+          summary: "High rate of unauthorized access attempts"
+          description: "Detected {{ $value }} unauthorized requests per second"
+
+      - alert: SecurityScanFailure
+        expr: security_scan_success{job="crewai-triage"} == 0
+        for: 0s
+        labels:
+          severity: critical
+          service: crewai-triage
+          category: security
+        annotations:
+          summary: "Security scan failure detected"
+          description: "Latest security scan has failed, immediate attention required"

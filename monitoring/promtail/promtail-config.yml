@@ -1,0 +1,206 @@
+# =============================================================================
+# PROMTAIL CONFIGURATION - ADVANCED LOG COLLECTION
+# =============================================================================
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+# =============================================================================
+# SCRAPE CONFIGURATIONS
+# =============================================================================
+scrape_configs:
+  # Application logs
+  - job_name: crewai-application
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: crewai-triage
+          service: application
+          __path__: /var/log/app/*.log
+    
+    pipeline_stages:
+      # Parse structured logs (JSON format)
+      - json:
+          expressions:
+            level: level
+            timestamp: timestamp
+            message: message
+            module: module
+            trace_id: trace_id
+            request_id: request_id
+      
+      # Extract timestamp
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano
+      
+      # Set log level as label
+      - labels:
+          level:
+          module:
+          service:
+      
+      # Extract trace information for correlation
+      - regex:
+          expression: '.*trace_id=(?P<trace_id>\w+).*'
+          source: message
+      
+      - labels:
+          trace_id:
+      
+      # Drop debug logs in production
+      - drop:
+          expression: ".*DEBUG.*"
+          older_than: "24h"
+
+  # System logs
+  - job_name: system-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: system
+          service: system
+          __path__: /var/log/syslog
+    
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<timestamp>\w+ \d+ \d+:\d+:\d+) (?P<hostname>\S+) (?P<process>\S+): (?P<message>.*)'
+      
+      - timestamp:
+          source: timestamp
+          format: "Jan 2 15:04:05"
+      
+      - labels:
+          hostname:
+          process:
+
+  # Docker container logs
+  - job_name: docker-containers
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: 'stream'
+      
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: 'service'
+    
+    pipeline_stages:
+      # Parse container logs based on service
+      - match:
+          selector: '{service="crewai-triage"}'
+          stages:
+            - json:
+                expressions:
+                  level: level
+                  message: message
+                  timestamp: timestamp
+            
+            - labels:
+                level:
+      
+      # Parse nginx logs (if using nginx)
+      - match:
+          selector: '{service="nginx"}'
+          stages:
+            - regex:
+                expression: '^(?P<remote_addr>\S+) - (?P<remote_user>\S+) \[(?P<time_local>[^\]]+)\] "(?P<method>\S+) (?P<path>\S+) (?P<protocol>\S+)" (?P<status>\d+) (?P<body_bytes_sent>\d+) "(?P<http_referer>[^"]*)" "(?P<http_user_agent>[^"]*)"'
+            
+            - labels:
+                method:
+                status:
+                path:
+
+  # Kubernetes logs (if running in k8s)
+  - job_name: kubernetes-pods
+    kubernetes_sd_configs:
+      - role: pod
+    
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_controller_name]
+        regex: ([0-9a-z-.]+?)(-[0-9a-f]{8,10})?
+        action: replace
+        target_label: __tmp_controller_name
+      
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        action: replace
+        target_label: app
+      
+      - source_labels: [__meta_kubernetes_pod_label_component]
+        action: replace
+        target_label: component
+      
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: pod
+      
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: namespace
+      
+      - source_labels: [__meta_kubernetes_pod_container_name]
+        action: replace
+        target_label: container
+    
+    pipeline_stages:
+      - cri: {}
+      
+      - match:
+          selector: '{app="crewai-triage"}'
+          stages:
+            - json:
+                expressions:
+                  level: level
+                  message: message
+                  timestamp: timestamp
+            
+            - labels:
+                level:
+
+  # Audit logs (security-focused)
+  - job_name: audit-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: audit
+          service: security
+          __path__: /var/log/audit/*.log
+    
+    pipeline_stages:
+      - regex:
+          expression: 'type=(?P<audit_type>\S+).*msg=audit\((?P<timestamp>[^)]+)\):.*'
+      
+      - timestamp:
+          source: timestamp
+          format: "1136239445.123:456"
+      
+      - labels:
+          audit_type:
+      
+      # Alert on suspicious activities
+      - match:
+          selector: '{audit_type=~"USER_LOGIN|USER_AUTH|SYSCALL"}'
+          action: keep
+
+# =============================================================================
+# LIMITS CONFIGURATION
+# =============================================================================
+limits_config:
+  readline_rate: 10000
+  readline_burst: 20000
