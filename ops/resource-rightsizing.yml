@@ -1,0 +1,122 @@
+# Intelligent Resource Rightsizing Configuration
+# ML-driven resource optimization for email triage workloads
+
+rightsizing:
+  # Analysis configuration
+  analysis:
+    collection_period_days: 14
+    analysis_frequency: "daily"
+    confidence_threshold: 0.85
+    cost_saving_threshold_percentage: 10
+    
+  # Resource profiles for different workload types
+  workload_profiles:
+    email_classification:
+      cpu_intensive: true
+      memory_pattern: "steady"
+      recommended_resources:
+        cpu_request: "500m"
+        cpu_limit: "1000m"
+        memory_request: "512Mi"
+        memory_limit: "1Gi"
+      scaling_characteristics:
+        horizontal_scaling_preferred: true
+        burst_capacity_needed: true
+        
+    email_summarization:
+      cpu_intensive: true
+      memory_pattern: "bursty"
+      recommended_resources:
+        cpu_request: "750m"
+        cpu_limit: "1500m"
+        memory_request: "1Gi"
+        memory_limit: "2Gi"
+      scaling_characteristics:
+        horizontal_scaling_preferred: false
+        vertical_scaling_preferred: true
+        
+    response_generation:
+      cpu_intensive: false
+      memory_pattern: "high_baseline"
+      ai_model_memory_requirements: "1.5Gi"
+      recommended_resources:
+        cpu_request: "300m"
+        cpu_limit: "800m"
+        memory_request: "2Gi"
+        memory_limit: "3Gi"
+      scaling_characteristics:
+        model_caching_critical: true
+        warm_startup_time_seconds: 45
+
+  # Rightsizing rules and policies
+  optimization_policies:
+    cpu_optimization:
+      # CPU rightsizing based on utilization patterns
+      underutilized_threshold: 20  # Less than 20% utilization
+      overutilized_threshold: 85   # More than 85% utilization
+      recommendation_actions:
+        - "reduce_cpu_request_by_percentage: 25"
+        - "reduce_cpu_limit_by_percentage: 20"
+        - "increase_replica_count_if_overutilized"
+        
+    memory_optimization:
+      # Memory rightsizing with safety margins
+      underutilized_threshold: 30  # Less than 30% utilization
+      overutilized_threshold: 80   # More than 80% utilization
+      oom_prevention_buffer: "20%"
+      recommendation_actions:
+        - "reduce_memory_request_by_percentage: 20"
+        - "maintain_memory_limit_buffer: 30%"
+        - "monitor_garbage_collection_frequency"
+
+  # Cost impact analysis
+  cost_analysis:
+    current_monthly_compute_cost: 2500  # USD
+    target_cost_reduction_percentage: 20
+    estimated_savings_per_optimization:
+      cpu_rightsizing: 300    # USD/month
+      memory_rightsizing: 450 # USD/month
+      instance_type_optimization: 200  # USD/month
+      
+  # Implementation strategy
+  implementation:
+    rollout_strategy: "gradual"
+    validation_period_hours: 24
+    rollback_triggers:
+      - "performance_degradation_threshold: 10%"
+      - "error_rate_increase_threshold: 0.5%"
+      - "user_impact_detected: true"
+      
+    testing_approach:
+      - canary_deployment_percentage: 10
+      - performance_benchmark_required: true
+      - user_acceptance_testing: true
+      - cost_validation_period_days: 7
+
+# Automated recommendations generation
+automation:
+  enabled: true
+  recommendation_frequency: "weekly"
+  auto_apply_safe_changes: true
+  safe_change_criteria:
+    - "cost_savings_over_10_percent"
+    - "confidence_score_over_90_percent"
+    - "no_user_impact_predicted"
+    - "rollback_plan_available"
+
+# Monitoring and alerting for rightsizing
+monitoring:
+  metrics_to_track:
+    - "resource_utilization_efficiency"
+    - "cost_per_email_processed"
+    - "rightsizing_recommendation_accuracy"
+    - "performance_impact_post_optimization"
+    
+  alerting:
+    rightsizing_opportunity_detected:
+      threshold: "15% cost savings available"
+      notification_channels: ["slack", "email"]
+    optimization_performance_impact:
+      threshold: "5% performance degradation"
+      priority: "high"
+      auto_rollback: true

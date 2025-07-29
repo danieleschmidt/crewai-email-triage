@@ -1,0 +1,226 @@
+# Mutation Testing Configuration for Email Triage Service
+# Uses mutmut for comprehensive mutation testing of critical components
+
+mutation_testing:
+  tool: "mutmut"
+  version: ">=2.4.0"
+  
+  # Core configuration
+  config:
+    source_directories:
+      - "src/crewai_email_triage/"
+    test_directories:
+      - "tests/"
+    test_command: "python -m pytest tests/ -x -q"
+    timeout_factor: 2.0
+    
+  # Mutation operators to apply
+  operators:
+    arithmetic:
+      enabled: true
+      mutations:
+        - "addition_to_subtraction"
+        - "subtraction_to_addition"
+        - "multiplication_to_division"
+        - "division_to_multiplication"
+        - "modulo_to_multiplication"
+    
+    comparison:
+      enabled: true
+      mutations:
+        - "equals_to_not_equals"
+        - "not_equals_to_equals"
+        - "less_than_to_greater_equal"
+        - "greater_than_to_less_equal"
+        - "less_equal_to_greater_than"
+        - "greater_equal_to_less_than"
+    
+    logical:
+      enabled: true
+      mutations:
+        - "and_to_or"
+        - "or_to_and"
+        - "not_to_identity"
+    
+    conditional:
+      enabled: true
+      mutations:
+        - "if_to_elif"
+        - "elif_to_if"
+        - "if_condition_negation"
+    
+    assignment:
+      enabled: true
+      mutations:
+        - "variable_assignment_deletion"
+        - "augmented_assignment_changes"
+
+  # Target modules for focused mutation testing
+  focus_modules:
+    critical_components:
+      - module: "src/crewai_email_triage/classifier.py"
+        priority: "high"
+        target_score: 85
+        functions:
+          - "classify_email"
+          - "calculate_confidence"
+          - "extract_features"
+      
+      - module: "src/crewai_email_triage/priority.py"
+        priority: "high"
+        target_score: 80
+        functions:
+          - "assign_priority"
+          - "priority_score_calculation"
+      
+      - module: "src/crewai_email_triage/sanitization.py"
+        priority: "critical"
+        target_score: 95
+        functions:
+          - "sanitize_email_content"
+          - "remove_malicious_content"
+          - "validate_email_format"
+    
+    business_logic:
+      - module: "src/crewai_email_triage/pipeline.py"
+        priority: "medium"
+        target_score: 75
+        functions:
+          - "process_email_batch"
+          - "handle_processing_errors"
+      
+      - module: "src/crewai_email_triage/response.py"
+        priority: "medium"
+        target_score: 70
+        functions:
+          - "generate_response"
+          - "select_response_template"
+
+  # Mutation testing strategies
+  strategies:
+    incremental_testing:
+      enabled: true
+      baseline_run_required: true
+      only_test_changed_files: false
+      git_diff_base: "main"
+    
+    coverage_guided:
+      enabled: true
+      minimum_coverage_threshold: 80
+      prioritize_uncovered_lines: true
+      exclude_trivial_mutants: true
+    
+    performance_aware:
+      enabled: true
+      max_mutation_time_minutes: 120
+      parallel_execution: true
+      max_workers: 4
+      timeout_per_mutant_seconds: 30
+
+  # Quality gates and thresholds
+  quality_gates:
+    mutation_score_threshold: 75
+    critical_component_threshold: 85
+    security_component_threshold: 95
+    
+    failure_conditions:
+      - "mutation_score_below_threshold"
+      - "critical_component_failure"
+      - "timeout_exceeded"
+      - "too_many_equivalent_mutants"
+
+  # Reporting and analysis
+  reporting:
+    output_format: ["html", "json", "junit"]
+    output_directory: "mutation-reports/"
+    include_source_code: true
+    generate_diff_reports: true
+    
+    metrics_to_track:
+      - "mutation_score_percentage"
+      - "killed_mutants_count" 
+      - "survived_mutants_count"
+      - "equivalent_mutants_count"
+      - "timeout_mutants_count"
+      - "coverage_percentage"
+      - "execution_time_minutes"
+    
+    survivability_analysis:
+      enabled: true
+      classify_surviving_mutants: true
+      generate_test_improvement_suggestions: true
+
+  # Integration with CI/CD
+  ci_integration:
+    run_on_pull_request: true
+    run_on_main_branch: true
+    fail_build_on_threshold: true
+    
+    differential_testing:
+      enabled: true
+      compare_with_baseline: true
+      only_report_regressions: false
+    
+    notifications:
+      slack_webhook: "${SLACK_MUTATION_WEBHOOK}"
+      email_recipients: ["dev-team@company.com"]
+      notify_on_regression: true
+
+# Custom mutation patterns for email processing domain
+custom_mutations:
+  email_specific:
+    - name: "confidence_threshold_mutations"
+      pattern: "confidence > 0.8"
+      mutations: ["confidence > 0.7", "confidence >= 0.8", "confidence > 0.9"]
+      
+    - name: "priority_level_mutations"
+      pattern: "priority == 'high'"
+      mutations: ["priority == 'medium'", "priority != 'high'", "priority == 'urgent'"]
+      
+    - name: "classification_boundary_mutations"
+      pattern: "score >= threshold"
+      mutations: ["score > threshold", "score <= threshold", "score < threshold"]
+      
+    - name: "email_size_limit_mutations"
+      pattern: "len(email_content) > 1000"
+      mutations: ["len(email_content) >= 1000", "len(email_content) > 500", "len(email_content) > 2000"]
+
+# Exclusion patterns to avoid testing non-critical code
+exclusions:
+  files:
+    - "*/test_*.py"
+    - "*/conftest.py"
+    - "*/__init__.py"
+    - "*/migrations/*"
+    
+  functions:
+    - "__str__"
+    - "__repr__"
+    - "__eq__"
+    - "__hash__"
+    
+  lines:
+    - "pragma: no mutate"
+    - "# mutmut: disable"
+    - "pass"
+    - "raise NotImplementedError"
+
+# Advanced mutation testing features
+advanced_features:
+  equivalent_mutant_detection:
+    enabled: true
+    timeout_multiplier: 1.5
+    heuristic_detection: true
+    
+  mutant_sampling:
+    enabled: false  # Run all mutants for comprehensive testing
+    sample_percentage: 20
+    
+  higher_order_mutations:
+    enabled: false  # Keep disabled for performance
+    max_order: 2
+    
+  semantic_mutations:
+    enabled: true
+    analyze_data_flow: true
+    context_aware_mutations: true
