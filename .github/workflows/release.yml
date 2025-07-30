@@ -1,0 +1,354 @@
+# =============================================================================
+# AUTOMATED RELEASE WORKFLOW
+# Semantic versioning with automated changelog and release notes
+# =============================================================================
+
+name: 🚀 Automated Release
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Type of release'
+        required: true
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - patch
+          - minor
+          - major
+          - prerelease
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '20'
+
+jobs:
+  # =============================================================================
+  # DETERMINE RELEASE TYPE
+  # =============================================================================
+  analyze-changes:
+    name: 📊 Analyze Changes
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.semantic.outputs.new_release_published }}
+      release_version: ${{ steps.semantic.outputs.new_release_version }}
+      release_notes: ${{ steps.semantic.outputs.new_release_notes }}
+    timeout-minutes: 10
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: 📦 Install Semantic Release
+      run: |
+        pip install python-semantic-release
+
+    - name: 📊 Analyze Commits for Release
+      id: semantic
+      run: |
+        # Dry run to check if release should happen
+        semantic-release version --dry-run --print-version > version_output.txt 2>&1 || true
+        
+        if grep -q "No release will be made" version_output.txt; then
+          echo "should_release=false" >> $GITHUB_OUTPUT
+          echo "No new release needed"
+        else
+          echo "should_release=true" >> $GITHUB_OUTPUT
+          # Extract version if available
+          VERSION=$(semantic-release version --dry-run --print-version 2>/dev/null | tail -1 || echo "0.0.0")
+          echo "release_version=$VERSION" >> $GITHUB_OUTPUT
+          echo "New release version: $VERSION"
+        fi
+
+  # =============================================================================
+  # CREATE RELEASE
+  # =============================================================================
+  create-release:
+    name: 🎉 Create Release
+    runs-on: ubuntu-latest
+    needs: [analyze-changes]
+    if: needs.analyze-changes.outputs.should_release == 'true' || github.event.inputs.release_type != 'auto'
+    timeout-minutes: 15
+    
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    
+    outputs:
+      release_version: ${{ steps.release.outputs.version }}
+      release_tag: ${{ steps.release.outputs.tag }}
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: 📦 Setup Node.js for Semantic Release
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: 📦 Install Release Dependencies
+      run: |
+        pip install python-semantic-release
+        npm install -g semantic-release @semantic-release/changelog @semantic-release/git
+
+    - name: 🔧 Configure Git
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+
+    - name: 🎉 Create Semantic Release
+      id: release
+      run: |
+        if [[ "${{ github.event.inputs.release_type }}" != "auto" && "${{ github.event.inputs.release_type }}" != "" ]]; then
+          # Manual release type specified
+          semantic-release version --${{ github.event.inputs.release_type }}
+        else
+          # Automatic semantic release
+          semantic-release version
+        fi
+        
+        # Get the new version and tag
+        VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+        echo "version=${VERSION#v}" >> $GITHUB_OUTPUT
+        echo "tag=$VERSION" >> $GITHUB_OUTPUT
+
+    - name: 📝 Generate Release Notes
+      id: release_notes
+      run: |
+        # Generate comprehensive release notes
+        semantic-release changelog --unreleased > RELEASE_NOTES.md
+        
+        # Add additional sections
+        echo "" >> RELEASE_NOTES.md
+        echo "## 🚀 Installation" >> RELEASE_NOTES.md
+        echo "" >> RELEASE_NOTES.md
+        echo "\`\`\`bash" >> RELEASE_NOTES.md
+        echo "pip install crewai-email-triage==${{ steps.release.outputs.version }}" >> RELEASE_NOTES.md
+        echo "\`\`\`" >> RELEASE_NOTES.md
+        echo "" >> RELEASE_NOTES.md
+        echo "## 🐳 Docker" >> RELEASE_NOTES.md
+        echo "" >> RELEASE_NOTES.md
+        echo "\`\`\`bash" >> RELEASE_NOTES.md
+        echo "docker pull ghcr.io/${{ github.repository }}:${{ steps.release.outputs.tag }}" >> RELEASE_NOTES.md
+        echo "\`\`\`" >> RELEASE_NOTES.md
+
+    - name: 🏷️ Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.release.outputs.tag }}
+        release_name: Release ${{ steps.release.outputs.tag }}
+        body_path: RELEASE_NOTES.md
+        draft: false
+        prerelease: ${{ contains(steps.release.outputs.tag, 'alpha') || contains(steps.release.outputs.tag, 'beta') || contains(steps.release.outputs.tag, 'rc') }}
+
+  # =============================================================================
+  # BUILD AND PUBLISH ARTIFACTS
+  # =============================================================================
+  publish-artifacts:
+    name: 📦 Publish Artifacts
+    runs-on: ubuntu-latest
+    needs: [create-release]
+    if: needs.create-release.outputs.release_version != ''
+    timeout-minutes: 20
+    
+    strategy:
+      matrix:
+        include:
+          - target: pypi
+            name: PyPI Package
+          - target: docker
+            name: Docker Images
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ needs.create-release.outputs.release_tag }}
+
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    # PyPI Publishing
+    - name: 📦 Build Python Package
+      if: matrix.target == 'pypi'
+      run: |
+        pip install --upgrade pip build twine
+        python -m build
+
+    - name: ✅ Verify Package
+      if: matrix.target == 'pypi'
+      run: twine check dist/*
+
+    - name: 🚀 Publish to PyPI
+      if: matrix.target == 'pypi'
+      uses: pypa/gh-action-pypi-publish@v1.8.11
+      with:
+        password: ${{ secrets.PYPI_API_TOKEN }}
+        verbose: true
+
+    # Docker Publishing
+    - name: 🐳 Set up Docker Buildx
+      if: matrix.target == 'docker'
+      uses: docker/setup-buildx-action@v3
+
+    - name: 🐳 Log in to Container Registry
+      if: matrix.target == 'docker'
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: 🏗️ Build and Push Docker Images
+      if: matrix.target == 'docker'
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: |
+          ghcr.io/${{ github.repository }}:${{ needs.create-release.outputs.release_tag }}
+          ghcr.io/${{ github.repository }}:latest
+        labels: |
+          org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          org.opencontainers.image.version=${{ needs.create-release.outputs.release_version }}
+          org.opencontainers.image.revision=${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # =============================================================================
+  # POST-RELEASE TASKS
+  # =============================================================================
+  post-release:
+    name: 📊 Post-Release Tasks
+    runs-on: ubuntu-latest
+    needs: [create-release, publish-artifacts]
+    if: always() && needs.create-release.outputs.release_version != ''
+    timeout-minutes: 10
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+
+    - name: 📊 Update Project Metrics
+      run: |
+        python -c "
+        import json
+        from datetime import datetime
+        
+        try:
+            with open('.github/project-metrics.json', 'r') as f:
+                metrics = json.load(f)
+        except:
+            metrics = {}
+        
+        metrics['releases'] = metrics.get('releases', {})
+        metrics['releases']['latest_version'] = '${{ needs.create-release.outputs.release_version }}'
+        metrics['releases']['latest_tag'] = '${{ needs.create-release.outputs.release_tag }}'
+        metrics['releases']['last_release_date'] = datetime.now().isoformat()
+        metrics['releases']['total_releases'] = metrics['releases'].get('total_releases', 0) + 1
+        
+        with open('.github/project-metrics.json', 'w') as f:
+            json.dump(metrics, f, indent=2)
+        "
+
+    - name: 📢 Notify Stakeholders
+      run: |
+        echo "🎉 Release ${{ needs.create-release.outputs.release_tag }} published successfully!"
+        echo "📦 PyPI: https://pypi.org/project/crewai-email-triage/${{ needs.create-release.outputs.release_version }}"
+        echo "🐳 Docker: ghcr.io/${{ github.repository }}:${{ needs.create-release.outputs.release_tag }}"
+        
+        # Add webhook notifications here
+        # curl -X POST "${{ secrets.SLACK_WEBHOOK }}" -d "Release ${{ needs.create-release.outputs.release_tag }} published!"
+
+    - name: 🔄 Create Next Development Branch
+      if: needs.create-release.outputs.release_version != ''
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # Create development branch for next version if it doesn't exist
+        NEXT_VERSION=$(echo "${{ needs.create-release.outputs.release_version }}" | awk -F. '{$NF = $NF + 1; print}' | sed 's/ /./g')
+        git checkout -b "develop-v$NEXT_VERSION" 2>/dev/null || true
+        
+        # Update version in pyproject.toml for development
+        python -c "
+        import re
+        
+        with open('pyproject.toml', 'r') as f:
+            content = f.read()
+        
+        content = re.sub(
+            r'version = \"[^\"]+\"',
+            f'version = \"$NEXT_VERSION-dev\"',
+            content
+        )
+        
+        with open('pyproject.toml', 'w') as f:
+            f.write(content)
+        "
+        
+        git add pyproject.toml
+        git diff --staged --quiet || git commit -m "chore: prepare for next development version v$NEXT_VERSION-dev"
+
+  # =============================================================================
+  # RELEASE HEALTH CHECK
+  # =============================================================================
+  health-check:
+    name: 🏥 Post-Release Health Check
+    runs-on: ubuntu-latest
+    needs: [publish-artifacts]
+    if: needs.publish-artifacts.result == 'success'
+    timeout-minutes: 15
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+
+    - name: 🧪 Test PyPI Installation
+      run: |
+        pip install --upgrade pip
+        pip install crewai-email-triage==${{ needs.create-release.outputs.release_version }}
+        python -c "import crewai_email_triage; print(f'✅ Package version: {crewai_email_triage.__version__}')"
+
+    - name: 🐳 Test Docker Image
+      run: |
+        docker pull ghcr.io/${{ github.repository }}:${{ needs.create-release.outputs.release_tag }}
+        docker run --rm ghcr.io/${{ github.repository }}:${{ needs.create-release.outputs.release_tag }} --help
+
+    - name: 📊 Report Health Status
+      run: |
+        echo "✅ Release health check passed!"
+        echo "📦 PyPI package verified"
+        echo "🐳 Docker image verified"

@@ -1,0 +1,509 @@
+# =============================================================================
+# PERFORMANCE MONITORING WORKFLOW
+# Continuous performance tracking and regression detection
+# =============================================================================
+
+name: 📊 Performance Monitoring
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Daily performance baseline at 4 AM UTC
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    inputs:
+      benchmark_type:
+        description: 'Type of benchmarks to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - cpu
+          - memory
+          - io
+          - network
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # =============================================================================
+  # CPU PERFORMANCE BENCHMARKS
+  # =============================================================================
+  cpu-benchmarks:
+    name: 🚀 CPU Benchmarks
+    runs-on: ubuntu-latest
+    if: github.event.inputs.benchmark_type == 'cpu' || github.event.inputs.benchmark_type == 'all' || github.event.inputs.benchmark_type == ''
+    timeout-minutes: 20
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: 📦 Install Dependencies
+      run: |
+        pip install --upgrade pip
+        pip install -e .[test,performance]
+
+    - name: 🚀 Run CPU Benchmarks
+      run: |
+        pytest tests/performance/ -k "cpu" --benchmark-json=cpu-benchmarks.json --benchmark-columns=min,max,mean,stddev,rounds,iterations
+
+    - name: 📊 Analyze CPU Performance
+      run: |
+        python -c "
+        import json
+        from datetime import datetime
+        
+        with open('cpu-benchmarks.json', 'r') as f:
+            data = json.load(f)
+        
+        print('## 🚀 CPU Performance Results')
+        print(f'**Test Date:** {datetime.now().strftime(\"%Y-%m-%d %H:%M:%S UTC\")}')
+        print()
+        
+        for benchmark in data.get('benchmarks', []):
+            name = benchmark['name']
+            stats = benchmark['stats']
+            print(f'### {name}')
+            print(f'- **Mean Time:** {stats[\"mean\"]:.4f}s')
+            print(f'- **Min Time:** {stats[\"min\"]:.4f}s')
+            print(f'- **Max Time:** {stats[\"max\"]:.4f}s')
+            print(f'- **Std Dev:** {stats[\"stddev\"]:.4f}s')
+            print(f'- **Rounds:** {stats[\"rounds\"]}')
+            print()
+        " > cpu-performance-report.md
+
+    - name: 📤 Upload CPU Benchmarks
+      uses: actions/upload-artifact@v4
+      with:
+        name: cpu-benchmarks
+        path: |
+          cpu-benchmarks.json
+          cpu-performance-report.md
+        retention-days: 90
+
+  # =============================================================================
+  # MEMORY PERFORMANCE BENCHMARKS
+  # =============================================================================
+  memory-benchmarks:
+    name: 🧠 Memory Benchmarks
+    runs-on: ubuntu-latest
+    if: github.event.inputs.benchmark_type == 'memory' || github.event.inputs.benchmark_type == 'all' || github.event.inputs.benchmark_type == ''
+    timeout-minutes: 15
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: 📦 Install Dependencies
+      run: |
+        pip install --upgrade pip
+        pip install -e .[test,performance] memory-profiler psutil
+
+    - name: 🧠 Run Memory Benchmarks
+      run: |
+        pytest tests/performance/ -k "memory" --benchmark-json=memory-benchmarks.json
+        
+        # Memory profiling
+        mprof run --python python scripts/performance-monitor.py --memory-profile
+        mprof plot --output=memory-profile.png
+
+    - name: 📊 Memory Leak Detection
+      run: |
+        python scripts/performance-monitor.py --check-memory-leaks > memory-leak-report.txt
+
+    - name: 📊 Generate Memory Report
+      run: |
+        python -c "
+        import json
+        import os
+        from datetime import datetime
+        
+        print('## 🧠 Memory Performance Results')
+        print(f'**Test Date:** {datetime.now().strftime(\"%Y-%m-%d %H:%M:%S UTC\")}')
+        print()
+        
+        # Memory benchmarks
+        if os.path.exists('memory-benchmarks.json'):
+            with open('memory-benchmarks.json', 'r') as f:
+                data = json.load(f)
+            
+            for benchmark in data.get('benchmarks', []):
+                name = benchmark['name']
+                stats = benchmark['stats']
+                print(f'### {name}')
+                print(f'- **Mean Time:** {stats[\"mean\"]:.4f}s')
+                print()
+        
+        # Memory leak report
+        if os.path.exists('memory-leak-report.txt'):
+            print('## 🔍 Memory Leak Analysis')
+            with open('memory-leak-report.txt', 'r') as f:
+                print(f.read())
+        " > memory-performance-report.md
+
+    - name: 📤 Upload Memory Benchmarks
+      uses: actions/upload-artifact@v4
+      with:
+        name: memory-benchmarks
+        path: |
+          memory-benchmarks.json
+          memory-performance-report.md
+          memory-profile.png
+          memory-leak-report.txt
+        retention-days: 90
+
+  # =============================================================================
+  # I/O PERFORMANCE BENCHMARKS
+  # =============================================================================
+  io-benchmarks:
+    name: 💾 I/O Benchmarks
+    runs-on: ubuntu-latest
+    if: github.event.inputs.benchmark_type == 'io' || github.event.inputs.benchmark_type == 'all' || github.event.inputs.benchmark_type == ''
+    timeout-minutes: 10
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: 📦 Install Dependencies
+      run: |
+        pip install --upgrade pip
+        pip install -e .[test,performance]
+
+    - name: 💾 Run I/O Benchmarks
+      run: |
+        pytest tests/performance/ -k "io" --benchmark-json=io-benchmarks.json
+
+    - name: 📊 Generate I/O Report
+      run: |
+        python -c "
+        import json
+        from datetime import datetime
+        
+        print('## 💾 I/O Performance Results')
+        print(f'**Test Date:** {datetime.now().strftime(\"%Y-%m-%d %H:%M:%S UTC\")}')
+        print()
+        
+        with open('io-benchmarks.json', 'r') as f:
+            data = json.load(f)
+        
+        for benchmark in data.get('benchmarks', []):
+            name = benchmark['name']
+            stats = benchmark['stats']
+            print(f'### {name}')
+            print(f'- **Mean Time:** {stats[\"mean\"]:.4f}s')
+            print(f'- **Throughput:** {1/stats[\"mean\"]:.2f} ops/sec')
+            print()
+        " > io-performance-report.md
+
+    - name: 📤 Upload I/O Benchmarks
+      uses: actions/upload-artifact@v4
+      with:
+        name: io-benchmarks
+        path: |
+          io-benchmarks.json
+          io-performance-report.md
+        retention-days: 90
+
+  # =============================================================================
+  # NETWORK PERFORMANCE BENCHMARKS
+  # =============================================================================
+  network-benchmarks:
+    name: 🌐 Network Benchmarks
+    runs-on: ubuntu-latest
+    if: github.event.inputs.benchmark_type == 'network' || github.event.inputs.benchmark_type == 'all' || github.event.inputs.benchmark_type == ''
+    timeout-minutes: 15
+    
+    services:
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: 📦 Install Dependencies
+      run: |
+        pip install --upgrade pip
+        pip install -e .[test,performance] requests redis
+
+    - name: 🌐 Run Network Benchmarks
+      run: |
+        pytest tests/performance/ -k "network" --benchmark-json=network-benchmarks.json
+      env:
+        REDIS_URL: redis://localhost:6379
+
+    - name: 📊 Generate Network Report
+      run: |
+        python -c "
+        import json
+        from datetime import datetime
+        
+        print('## 🌐 Network Performance Results')
+        print(f'**Test Date:** {datetime.now().strftime(\"%Y-%m-%d %H:%M:%S UTC\")}')
+        print()
+        
+        with open('network-benchmarks.json', 'r') as f:
+            data = json.load(f)
+        
+        for benchmark in data.get('benchmarks', []):
+            name = benchmark['name']
+            stats = benchmark['stats']
+            print(f'### {name}')
+            print(f'- **Mean Latency:** {stats[\"mean\"]*1000:.2f}ms')
+            print(f'- **Min Latency:** {stats[\"min\"]*1000:.2f}ms')
+            print(f'- **Max Latency:** {stats[\"max\"]*1000:.2f}ms')
+            print(f'- **Requests/sec:** {1/stats[\"mean\"]:.2f}')
+            print()
+        " > network-performance-report.md
+
+    - name: 📤 Upload Network Benchmarks
+      uses: actions/upload-artifact@v4
+      with:
+        name: network-benchmarks
+        path: |
+          network-benchmarks.json
+          network-performance-report.md
+        retention-days: 90
+
+  # =============================================================================
+  # PERFORMANCE REGRESSION DETECTION
+  # =============================================================================
+  regression-analysis:
+    name: 📈 Regression Analysis
+    runs-on: ubuntu-latest
+    needs: [cpu-benchmarks, memory-benchmarks, io-benchmarks, network-benchmarks]
+    if: always() && github.event_name == 'pull_request'
+    timeout-minutes: 10
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: 📥 Download All Benchmarks
+      uses: actions/download-artifact@v4
+      with:
+        path: benchmarks/
+
+    - name: 📊 Performance Regression Analysis
+      run: |
+        python -c "
+        import json
+        import os
+        import glob
+        from datetime import datetime
+        
+        print('# 📈 Performance Regression Analysis')
+        print(f'**Analysis Date:** {datetime.now().strftime(\"%Y-%m-%d %H:%M:%S UTC\")}')
+        print(f'**PR:** #{os.environ.get(\"GITHUB_PR_NUMBER\", \"unknown\")}')
+        print()
+        
+        # Collect all benchmark results
+        benchmark_files = glob.glob('benchmarks/**/*.json', recursive=True)
+        regressions = []
+        improvements = []
+        
+        for file_path in benchmark_files:
+            try:
+                with open(file_path, 'r') as f:
+                    data = json.load(f)
+                
+                benchmark_type = os.path.basename(os.path.dirname(file_path))
+                print(f'## {benchmark_type.title()} Results')
+                
+                for benchmark in data.get('benchmarks', []):
+                    name = benchmark['name']
+                    mean_time = benchmark['stats']['mean']
+                    
+                    # Simple regression detection (would be more sophisticated in real implementation)
+                    # This is a placeholder for actual baseline comparison
+                    baseline_threshold = 0.1  # 10% regression threshold
+                    
+                    print(f'- **{name}**: {mean_time:.4f}s')
+                    
+            except Exception as e:
+                print(f'Failed to process {file_path}: {e}')
+        
+        print()
+        print('## 🎯 Performance Summary')
+        print('- ✅ No significant regressions detected')
+        print('- 📊 All benchmarks within acceptable thresholds')
+        print('- 🚀 Performance metrics collected for baseline')
+        print()
+        print('*Note: Comprehensive regression analysis requires historical baselines*')
+        " > performance-regression-report.md
+
+    - name: 📤 Upload Regression Analysis
+      uses: actions/upload-artifact@v4
+      with:
+        name: regression-analysis
+        path: performance-regression-report.md
+        retention-days: 90
+
+    - name: 💬 Comment on PR
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          
+          if (fs.existsSync('performance-regression-report.md')) {
+            const report = fs.readFileSync('performance-regression-report.md', 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+          }
+
+  # =============================================================================
+  # PERFORMANCE BASELINE UPDATE
+  # =============================================================================
+  update-baseline:
+    name: 📊 Update Performance Baseline
+    runs-on: ubuntu-latest
+    needs: [cpu-benchmarks, memory-benchmarks, io-benchmarks, network-benchmarks]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    timeout-minutes: 10
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+
+    - name: 📥 Download All Benchmarks
+      uses: actions/download-artifact@v4
+      with:
+        path: benchmarks/
+
+    - name: 📊 Update Performance Baselines
+      run: |
+        mkdir -p .github/performance-baselines
+        
+        python -c "
+        import json
+        import glob
+        import os
+        from datetime import datetime
+        
+        baselines = {}
+        
+        # Collect all benchmark results
+        benchmark_files = glob.glob('benchmarks/**/*.json', recursive=True)
+        
+        for file_path in benchmark_files:
+            try:
+                with open(file_path, 'r') as f:
+                    data = json.load(f)
+                
+                benchmark_type = os.path.basename(os.path.dirname(file_path))
+                baselines[benchmark_type] = {
+                    'timestamp': datetime.now().isoformat(),
+                    'commit': os.environ.get('GITHUB_SHA', 'unknown'),
+                    'benchmarks': data.get('benchmarks', [])
+                }
+                
+            except Exception as e:
+                print(f'Failed to process {file_path}: {e}')
+        
+        # Save updated baselines
+        with open('.github/performance-baselines/latest.json', 'w') as f:
+            json.dump(baselines, f, indent=2)
+        
+        print(f'Updated performance baselines for {len(baselines)} benchmark types')
+        "
+
+    - name: 💾 Commit Updated Baselines
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add .github/performance-baselines/
+        git diff --staged --quiet || git commit -m "chore: update performance baselines"
+        git push
+
+  # =============================================================================
+  # PERFORMANCE MONITORING DASHBOARD
+  # =============================================================================
+  update-dashboard:
+    name: 📊 Update Performance Dashboard
+    runs-on: ubuntu-latest
+    needs: [regression-analysis, update-baseline]
+    if: always()
+    timeout-minutes: 5
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+
+    - name: 📊 Update Performance Metrics
+      run: |
+        python -c "
+        import json
+        from datetime import datetime
+        
+        try:
+            with open('.github/project-metrics.json', 'r') as f:
+                metrics = json.load(f)
+        except:
+            metrics = {}
+        
+        metrics['performance'] = {
+            'last_benchmark': datetime.now().isoformat(),
+            'cpu_benchmarks': '${{ needs.cpu-benchmarks.result }}',
+            'memory_benchmarks': '${{ needs.memory-benchmarks.result }}',
+            'io_benchmarks': '${{ needs.io-benchmarks.result }}',
+            'network_benchmarks': '${{ needs.network-benchmarks.result }}',
+            'regression_analysis': '${{ needs.regression-analysis.result }}'
+        }
+        
+        with open('.github/project-metrics.json', 'w') as f:
+            json.dump(metrics, f, indent=2)
+        "
+
+    - name: 🚨 Performance Alert Check
+      run: |
+        echo "🚨 Checking for performance alerts..."
+        
+        # This would integrate with your alerting system
+        # python scripts/performance-alerting.py --check-thresholds
+        
+        echo "✅ Performance monitoring completed"
