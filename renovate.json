@@ -1,0 +1,28 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:base"],
+  "packageRules": [
+    {
+      "matchPackagePatterns": ["^pytest"],
+      "groupName": "pytest packages"
+    },
+    {
+      "matchPackagePatterns": ["^ruff"],
+      "groupName": "ruff packages"
+    },
+    {
+      "matchDepTypes": ["devDependencies"],
+      "automerge": true,
+      "automergeType": "pr"
+    }
+  ],
+  "schedule": ["before 6am on monday"],
+  "timezone": "UTC",
+  "labels": ["dependencies"],
+  "assignees": ["@maintainers"],
+  "reviewers": ["@maintainers"],
+  "prHourlyLimit": 2,
+  "prConcurrentLimit": 10,
+  "commitMessagePrefix": "chore:",
+  "semanticCommits": "enabled"
+}
