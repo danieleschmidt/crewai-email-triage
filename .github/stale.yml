@@ -1,0 +1,28 @@
+# Stale bot configuration for repository maintenance
+daysUntilStale: 60
+daysUntilClose: 7
+exemptLabels:
+  - pinned
+  - security
+  - bug
+  - enhancement
+  - "help wanted"
+  - "good first issue"
+
+staleLabel: stale
+markComment: >
+  This issue has been automatically marked as stale because it has not had
+  recent activity. It will be closed if no further activity occurs. Thank you
+  for your contributions.
+closeComment: >
+  This issue has been automatically closed due to inactivity. If you believe
+  this issue is still relevant, please reopen it with updated information.
+
+pulls:
+  daysUntilStale: 30
+  daysUntilClose: 7
+  markComment: >
+    This pull request has been automatically marked as stale because it has not had
+    recent activity. It will be closed if no further activity occurs.
+  closeComment: >
+    This pull request has been automatically closed due to inactivity.

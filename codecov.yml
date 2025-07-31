@@ -1,0 +1,35 @@
+# Codecov configuration for advanced coverage reporting
+coverage:
+  status:
+    project:
+      default:
+        target: 80%
+        threshold: 2%
+    patch:
+      default:
+        target: 85%
+        threshold: 5%
+  
+  ignore:
+    - "tests/*"
+    - "docs/*"
+    - "scripts/*"
+    - "**/__init__.py"
+    - "**/test_*.py"
+  
+  range: 70..100
+  round: down
+  precision: 2
+
+comment:
+  layout: "reach,diff,flags,tree"
+  behavior: default
+  require_changes: false
+  require_base: false
+  require_head: true
+  branches:
+    - main
+    - develop
+
+github_checks:
+  annotations: true
