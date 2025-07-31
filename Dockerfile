@@ -5,7 +5,7 @@
 # =============================================================================
 # BUILD STAGE - Development dependencies and build tools
 # =============================================================================
-FROM python:3.11-slim as builder
+FROM python:3.13-slim as builder
 
 # Set build arguments
 ARG BUILD_DATE
@@ -79,7 +79,7 @@ USER builduser
 # =============================================================================
 # PRODUCTION STAGE - Minimal runtime image
 # =============================================================================
-FROM python:3.11-slim as production
+FROM python:3.13-slim as production
 
 # Set production arguments and labels
 ARG BUILD_DATE
@@ -215,7 +215,7 @@ CMD ["python", "-m", "pytest", "tests/", "-v", "--cov=src/crewai_email_triage"]
 # =============================================================================
 # DOCUMENTATION STAGE - For building documentation
 # =============================================================================
-FROM python:3.11-slim as documentation
+FROM python:3.13-slim as documentation
 
 # Install documentation dependencies
 RUN pip install \
