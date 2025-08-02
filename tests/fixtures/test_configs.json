@@ -1,0 +1,175 @@
+{
+  "basic_config": {
+    "classifier": {
+      "urgent": ["urgent", "asap", "critical", "emergency"],
+      "work": ["meeting", "project", "deadline", "review"],
+      "personal": ["family", "friend", "birthday"],
+      "spam": ["unsubscribe", "marketing", "promotion"]
+    },
+    "priority": {
+      "scores": {
+        "urgent": 10,
+        "high": 8,
+        "medium": 5,
+        "low": 2,
+        "spam": 0
+      }
+    }
+  },
+  "minimal_config": {
+    "classifier": {
+      "urgent": ["urgent"],
+      "work": ["work"]
+    },
+    "priority": {
+      "scores": {
+        "urgent": 10,
+        "work": 5
+      }
+    }
+  },
+  "comprehensive_config": {
+    "classifier": {
+      "urgent": [
+        "urgent", "asap", "critical", "emergency", "immediate", "rush",
+        "crisis", "alert", "breaking", "time-sensitive", "high-priority"
+      ],
+      "work": [
+        "meeting", "project", "deadline", "review", "feedback", "presentation",
+        "report", "analysis", "planning", "schedule", "task", "milestone",
+        "deliverable", "requirement", "specification", "approval"
+      ],
+      "personal": [
+        "family", "friend", "birthday", "anniversary", "vacation", "holiday",
+        "wedding", "graduation", "celebration", "reunion", "party", "dinner"
+      ],
+      "spam": [
+        "unsubscribe", "marketing", "promotion", "advertisement", "deal",
+        "discount", "offer", "sale", "lottery", "winner", "congratulations",
+        "free", "click here", "limited time", "act now", "buy now"
+      ],
+      "newsletter": [
+        "newsletter", "update", "digest", "bulletin", "announcement",
+        "notification", "alert", "summary", "weekly", "monthly"
+      ],
+      "automated": [
+        "noreply", "no-reply", "automated", "system", "notification",
+        "alert", "bounce", "delivery", "confirmation", "receipt"
+      ]
+    },
+    "priority": {
+      "scores": {
+        "urgent": 10,
+        "high": 8,
+        "medium": 5, 
+        "low": 2,
+        "spam": 0,
+        "newsletter": 1,
+        "automated": 1
+      },
+      "sender_boosts": {
+        "boss@company.com": 3,
+        "manager@company.com": 2,
+        "hr@company.com": 2,
+        "support@company.com": 1
+      },
+      "time_decay": {
+        "enabled": true,
+        "hours_threshold": 24,
+        "decay_factor": 0.1
+      }
+    },
+    "response": {
+      "templates": {
+        "urgent": "Thank you for your urgent message. I will address this immediately and provide an update within the hour.",
+        "work": "Thank you for your message. I will review this and respond within 24 hours during business days.",
+        "personal": "Thanks for reaching out! I'll get back to you soon.",
+        "spam": null,
+        "newsletter": null,
+        "automated": "This appears to be an automated message. No response is needed."
+      },
+      "auto_respond": {
+        "enabled": false,
+        "categories": ["urgent"],
+        "business_hours_only": true
+      }
+    },
+    "processing": {
+      "batch_size": 50,
+      "parallel_processing": true,
+      "max_workers": 4,
+      "timeout_seconds": 30,
+      "retry_attempts": 3,
+      "rate_limit": {
+        "requests_per_minute": 60,
+        "burst_size": 10
+      }
+    }
+  },
+  "security_focused_config": {
+    "classifier": {
+      "urgent": ["urgent", "security", "breach", "vulnerability"],
+      "work": ["meeting", "project"],
+      "spam": ["phishing", "scam", "malware"]
+    },
+    "priority": {
+      "scores": {
+        "urgent": 10,
+        "work": 5,
+        "spam": 0
+      }
+    },
+    "security": {
+      "scan_attachments": true,
+      "block_suspicious_links": true,
+      "quarantine_spam": true,
+      "log_security_events": true
+    }
+  },
+  "performance_config": {
+    "classifier": {
+      "urgent": ["urgent"] * 100,
+      "work": ["work"] * 100,
+      "spam": ["spam"] * 100
+    },
+    "priority": {
+      "scores": {
+        "urgent": 10,
+        "work": 5,
+        "spam": 0
+      }
+    },
+    "processing": {
+      "batch_size": 1000,
+      "parallel_processing": true,
+      "max_workers": 8,
+      "timeout_seconds": 5,
+      "memory_limit_mb": 512
+    }
+  },
+  "invalid_config": {
+    "classifier": "not_an_object",
+    "priority": {
+      "scores": "not_an_object"
+    }
+  },
+  "empty_config": {},
+  "edge_case_config": {
+    "classifier": {
+      "": ["empty_category"],
+      "UpperCase": ["mixed_case"],
+      "with-dashes": ["special-chars"],
+      "with_underscores": ["more_special_chars"],
+      "unicode_category": ["unicode_测试", "emoji_😀"]
+    },
+    "priority": {
+      "scores": {
+        "": 0,
+        "negative": -1,
+        "float": 5.5,
+        "very_high": 999,
+        "string_score": "not_a_number"
+      }
+    }
+  }
+}

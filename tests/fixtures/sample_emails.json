@@ -1,0 +1,240 @@
+{
+  "urgent_emails": [
+    {
+      "id": "urgent_001",
+      "subject": "CRITICAL: Production server down",
+      "sender": "alerts@company.com",
+      "recipient": "devops@company.com",
+      "body": "URGENT: Production server monitoring detected complete outage. Immediate action required. Customer impact is severe.",
+      "timestamp": "2025-08-02T14:30:00Z",
+      "headers": {
+        "Message-ID": "critical-alert-001@company.com",
+        "Priority": "1",
+        "X-Priority": "1",
+        "Importance": "high"
+      },
+      "attachments": ["server_logs.txt", "error_report.pdf"],
+      "expected_classification": {
+        "category": "urgent",
+        "priority": "critical",
+        "confidence": 0.95
+      }
+    },
+    {
+      "id": "urgent_002", 
+      "subject": "ASAP: Client presentation needs immediate review",
+      "sender": "manager@company.com",
+      "recipient": "team@company.com",
+      "body": "The client presentation is in 2 hours and we need your review ASAP. Please check slides 5-10 for accuracy and respond immediately.",
+      "timestamp": "2025-08-02T13:15:00Z",
+      "headers": {
+        "Message-ID": "presentation-review-001@company.com",
+        "Priority": "1"
+      },
+      "attachments": ["presentation.pptx"],
+      "expected_classification": {
+        "category": "urgent",
+        "priority": "high",
+        "confidence": 0.90
+      }
+    }
+  ],
+  "work_emails": [
+    {
+      "id": "work_001",
+      "subject": "Weekly project status update",
+      "sender": "project.manager@company.com",
+      "recipient": "team@company.com", 
+      "body": "Please find attached the weekly project status report. Review your assigned tasks and update progress by Friday.",
+      "timestamp": "2025-08-02T09:00:00Z",
+      "headers": {
+        "Message-ID": "weekly-status-001@company.com"
+      },
+      "attachments": ["project_status.xlsx"],
+      "expected_classification": {
+        "category": "work",
+        "priority": "medium",
+        "confidence": 0.85
+      }
+    },
+    {
+      "id": "work_002",
+      "subject": "Code review requested: Feature XYZ",
+      "sender": "developer@company.com",
+      "recipient": "senior.dev@company.com",
+      "body": "I've completed the implementation of Feature XYZ. Could you please review the pull request when you have time? No rush, but would appreciate feedback by end of week.",
+      "timestamp": "2025-08-02T11:30:00Z",
+      "headers": {
+        "Message-ID": "code-review-001@company.com"
+      },
+      "attachments": [],
+      "expected_classification": {
+        "category": "work",
+        "priority": "medium",
+        "confidence": 0.80
+      }
+    },
+    {
+      "id": "work_003",
+      "subject": "Meeting invitation: Architecture planning",
+      "sender": "architect@company.com",
+      "recipient": "engineering@company.com",
+      "body": "Let's schedule a meeting to discuss the new microservices architecture. Please confirm your availability for next week.",
+      "timestamp": "2025-08-02T10:45:00Z",
+      "headers": {
+        "Message-ID": "meeting-invite-001@company.com"
+      },
+      "attachments": ["architecture_draft.pdf"],
+      "expected_classification": {
+        "category": "work",
+        "priority": "medium",
+        "confidence": 0.88
+      }
+    }
+  ],
+  "personal_emails": [
+    {
+      "id": "personal_001",
+      "subject": "Happy Birthday!",
+      "sender": "friend@personal.com",
+      "recipient": "user@company.com",
+      "body": "Hope you have a wonderful birthday! Let's celebrate this weekend. Are you free for dinner Saturday?",
+      "timestamp": "2025-08-02T08:00:00Z",
+      "headers": {
+        "Message-ID": "birthday-001@personal.com"
+      },
+      "attachments": ["birthday_card.jpg"],
+      "expected_classification": {
+        "category": "personal",
+        "priority": "low",
+        "confidence": 0.92
+      }
+    },
+    {
+      "id": "personal_002",
+      "subject": "Family reunion planning",
+      "sender": "family@personal.com",
+      "recipient": "user@company.com",
+      "body": "We're planning the annual family reunion for July. Please let us know if you can attend and if you have any dietary restrictions.",
+      "timestamp": "2025-08-02T19:00:00Z",
+      "headers": {
+        "Message-ID": "reunion-001@personal.com"
+      },
+      "attachments": [],
+      "expected_classification": {
+        "category": "personal",
+        "priority": "low",
+        "confidence": 0.85
+      }
+    }
+  ],
+  "spam_emails": [
+    {
+      "id": "spam_001",
+      "subject": "CONGRATULATIONS! You've won $1,000,000!!!",
+      "sender": "winner@lottery-scam.com",
+      "recipient": "user@company.com",
+      "body": "You have won our international lottery! Click here to claim your prize. Send us your bank details to process the payment immediately!",
+      "timestamp": "2025-08-02T03:22:00Z",
+      "headers": {
+        "Message-ID": "scam-001@lottery-scam.com"
+      },
+      "attachments": [],
+      "expected_classification": {
+        "category": "spam",
+        "priority": "low",
+        "confidence": 0.98
+      }
+    },
+    {
+      "id": "spam_002",
+      "subject": "Unsubscribe from our amazing deals newsletter",
+      "sender": "marketing@deals.com",
+      "recipient": "user@company.com",
+      "body": "We noticed you haven't opened our emails. Click here to unsubscribe or here for more amazing deals and promotions!",
+      "timestamp": "2025-08-02T12:45:00Z",
+      "headers": {
+        "Message-ID": "marketing-001@deals.com"
+      },
+      "attachments": [],
+      "expected_classification": {
+        "category": "spam",
+        "priority": "low",
+        "confidence": 0.85
+      }
+    }
+  ],
+  "edge_cases": [
+    {
+      "id": "edge_001",
+      "subject": "",
+      "sender": "noreply@system.com",
+      "recipient": "user@company.com",
+      "body": "",
+      "timestamp": "2025-08-02T00:00:00Z",
+      "headers": {
+        "Message-ID": "empty-001@system.com"
+      },
+      "attachments": [],
+      "expected_classification": {
+        "category": "unknown",
+        "priority": "low",
+        "confidence": 0.1
+      }
+    },
+    {
+      "id": "edge_002",
+      "subject": "Re: Re: Re: Re: Re: Question about something",
+      "sender": "chatty@company.com",
+      "recipient": "user@company.com",
+      "body": "Thanks for the quick response! Just one more quick question about the thing we discussed...",
+      "timestamp": "2025-08-02T16:30:00Z",
+      "headers": {
+        "Message-ID": "long-thread-001@company.com",
+        "In-Reply-To": "question-001@company.com"
+      },
+      "attachments": [],
+      "expected_classification": {
+        "category": "work",
+        "priority": "low",
+        "confidence": 0.6
+      }
+    },
+    {
+      "id": "edge_003",
+      "subject": "Mixed urgent work and personal content",
+      "sender": "colleague.friend@company.com",
+      "recipient": "user@company.com",
+      "body": "URGENT: Can you review the quarterly report by EOD? Also, happy birthday! Hope you have a great celebration tonight.",
+      "timestamp": "2025-08-02T17:00:00Z", 
+      "headers": {
+        "Message-ID": "mixed-content-001@company.com"
+      },
+      "attachments": ["quarterly_report.pdf"],
+      "expected_classification": {
+        "category": "urgent",
+        "priority": "high",
+        "confidence": 0.75
+      }
+    }
+  ],
+  "performance_test_emails": [
+    {
+      "id": "perf_001",
+      "subject": "Performance test email with large body",
+      "sender": "performance@test.com",
+      "recipient": "user@company.com",
+      "body": "This is a performance test email with a very long body. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. " * 100,
+      "timestamp": "2025-08-02T20:00:00Z",
+      "headers": {
+        "Message-ID": "performance-001@test.com"
+      },
+      "attachments": [],
+      "expected_classification": {
+        "category": "unknown",
+        "priority": "low",
+        "confidence": 0.3
+      }
+    }
+  ]
+}
