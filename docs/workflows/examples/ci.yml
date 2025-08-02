@@ -1,0 +1,633 @@
+# =============================================================================
+# CONTINUOUS INTEGRATION WORKFLOW
+# =============================================================================
+# This workflow runs on every pull request and provides comprehensive
+# validation including testing, code quality, security scanning, and build validation.
+
+name: Continuous Integration
+
+on:
+  pull_request:
+    branches: [main, develop]
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "18"
+  POETRY_VERSION: "1.6.1"
+
+permissions:
+  contents: read
+  security-events: write
+  checks: write
+  pull-requests: write
+
+jobs:
+  # =============================================================================
+  # PRE-FLIGHT CHECKS
+  # =============================================================================
+  preflight:
+    name: Pre-flight Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      python-matrix: ${{ steps.matrix.outputs.python-matrix }}
+      skip-tests: ${{ steps.changes.outputs.skip-tests }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect File Changes
+        uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            python:
+              - 'src/**/*.py'
+              - 'tests/**/*.py'
+              - 'pyproject.toml'
+              - 'requirements*.txt'
+            docs:
+              - 'docs/**/*'
+              - '*.md'
+            config:
+              - '*.yml'
+              - '*.yaml'
+              - '*.json'
+              - 'Dockerfile'
+              - 'docker-compose*.yml'
+            skip-tests:
+              - 'docs/**/*'
+              - '*.md'
+              - '.github/**/*'
+              - '.gitignore'
+
+      - name: Setup Python Matrix
+        id: matrix
+        run: |
+          if [[ "${{ steps.changes.outputs.python }}" == "true" ]]; then
+            echo "python-matrix=[\"3.8\", \"3.9\", \"3.10\", \"3.11\", \"3.12\"]" >> $GITHUB_OUTPUT
+          else
+            echo "python-matrix=[\"3.11\"]" >> $GITHUB_OUTPUT
+          fi
+
+  # =============================================================================
+  # CODE QUALITY CHECKS
+  # =============================================================================
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: preflight
+    if: needs.preflight.outputs.skip-tests != 'true'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,test]"
+
+      - name: Cache Pre-commit
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      - name: Run Pre-commit Hooks
+        run: pre-commit run --all-files --show-diff-on-failure
+
+      - name: Run Ruff Linting
+        run: |
+          ruff check src tests --output-format=github
+          ruff format --check src tests
+
+      - name: Run Type Checking
+        run: mypy src tests
+
+      - name: Check Import Sorting
+        run: isort --check-only --diff src tests
+
+      - name: Validate pyproject.toml
+        run: python -m pip install --dry-run -e .
+
+  # =============================================================================
+  # UNIT TESTS
+  # =============================================================================
+  unit-tests:
+    name: Unit Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: preflight
+    if: needs.preflight.outputs.skip-tests != 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ${{ fromJson(needs.preflight.outputs.python-matrix) }}
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_crewai
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[test,performance]"
+
+      - name: Setup Test Environment
+        run: |
+          mkdir -p logs data temp
+          cp .env.example .env
+        env:
+          REDIS_URL: redis://localhost:6379/0
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_crewai
+
+      - name: Run Unit Tests
+        run: |
+          pytest tests/ \
+            -v \
+            --tb=short \
+            --cov=src/crewai_email_triage \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --cov-fail-under=80 \
+            --junit-xml=test-results.xml \
+            -n auto \
+            -m "not integration and not performance"
+        env:
+          PYTHONPATH: src
+          CREWAI_ENV: testing
+
+      - name: Upload Coverage to Codecov
+        if: matrix.python-version == env.PYTHON_VERSION
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: test-results-${{ matrix.python-version }}
+          path: |
+            test-results.xml
+            coverage.xml
+            htmlcov/
+
+  # =============================================================================
+  # INTEGRATION TESTS
+  # =============================================================================
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [preflight, unit-tests]
+    if: needs.preflight.outputs.skip-tests != 'true'
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_crewai
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[test]"
+
+      - name: Setup Integration Test Environment
+        run: |
+          mkdir -p logs data temp
+          cp .env.example .env
+        env:
+          REDIS_URL: redis://localhost:6379/0
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_crewai
+
+      - name: Run Integration Tests
+        run: |
+          pytest tests/integration/ \
+            -v \
+            --tb=short \
+            --junit-xml=integration-results.xml \
+            -m integration
+        env:
+          PYTHONPATH: src
+          CREWAI_ENV: testing
+
+      - name: Upload Integration Test Results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: integration-test-results
+          path: integration-results.xml
+
+  # =============================================================================
+  # SECURITY SCANNING
+  # =============================================================================
+  security-scan:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: preflight
+    permissions:
+      security-events: write
+      contents: read
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install Security Tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install bandit[toml] safety semgrep
+
+      - name: Run Bandit Security Analysis
+        run: |
+          bandit -r src/ -f json -o bandit-report.json
+          bandit -r src/ -f txt
+
+      - name: Upload Bandit Results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: bandit-report
+          path: bandit-report.json
+
+      - name: Run Safety Dependency Check
+        run: |
+          safety check --json --output safety-report.json || true
+          safety check
+
+      - name: Upload Safety Results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: safety-report
+          path: safety-report.json
+
+      - name: Run Semgrep SAST
+        run: |
+          semgrep --config=auto src/ --json --output=semgrep-report.json
+          semgrep --config=auto src/
+
+      - name: Upload Semgrep Results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: semgrep-report
+          path: semgrep-report.json
+
+      - name: Run Secret Detection
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+          extra_args: --debug --only-verified
+
+  # =============================================================================
+  # BUILD VALIDATION
+  # =============================================================================
+  build-validation:
+    name: Build Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: preflight
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install Build Dependencies
+        run: |
+          python -m pip install --upgrade pip build twine
+
+      - name: Build Package
+        run: |
+          python -m build
+
+      - name: Validate Package
+        run: |
+          python -m twine check dist/*
+
+      - name: Test Package Installation
+        run: |
+          pip install dist/*.whl
+          python -c "import crewai_email_triage; print(crewai_email_triage.__version__)"
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: python-package
+          path: dist/
+
+  # =============================================================================
+  # DOCKER BUILD VALIDATION
+  # =============================================================================
+  docker-build:
+    name: Docker Build Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: preflight
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Development Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: development
+          tags: crewai-email-triage:dev
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          outputs: type=docker,dest=/tmp/dev-image.tar
+
+      - name: Build Production Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: production
+          tags: crewai-email-triage:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          outputs: type=docker,dest=/tmp/prod-image.tar
+
+      - name: Test Docker Images
+        run: |
+          # Load and test development image
+          docker load -i /tmp/dev-image.tar
+          docker run --rm crewai-email-triage:dev python -c "import crewai_email_triage; print('Dev image works')"
+          
+          # Load and test production image
+          docker load -i /tmp/prod-image.tar
+          docker run --rm crewai-email-triage:latest --help
+
+      - name: Upload Docker Images
+        uses: actions/upload-artifact@v3
+        with:
+          name: docker-images
+          path: /tmp/*.tar
+
+  # =============================================================================
+  # PERFORMANCE TESTING (Optional)
+  # =============================================================================
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [preflight, unit-tests]
+    if: |
+      needs.preflight.outputs.skip-tests != 'true' && 
+      (github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'performance'))
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[test,performance]"
+
+      - name: Run Performance Benchmarks
+        run: |
+          pytest tests/performance/ \
+            -v \
+            --benchmark-only \
+            --benchmark-json=benchmark-results.json \
+            -m performance
+        env:
+          PYTHONPATH: src
+          REDIS_URL: redis://localhost:6379/0
+
+      - name: Upload Benchmark Results
+        uses: actions/upload-artifact@v3
+        with:
+          name: benchmark-results
+          path: benchmark-results.json
+
+  # =============================================================================
+  # DOCUMENTATION VALIDATION
+  # =============================================================================
+  docs-validation:
+    name: Documentation Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install Documentation Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[docs]"
+
+      - name: Validate Markdown
+        uses: DavidAnson/markdownlint-cli2-action@v13
+        with:
+          globs: |
+            **/*.md
+            !node_modules/**
+
+      - name: Build Documentation
+        run: |
+          mkdocs build --strict
+
+      - name: Upload Documentation
+        uses: actions/upload-artifact@v3
+        with:
+          name: documentation
+          path: site/
+
+  # =============================================================================
+  # RESULTS SUMMARY
+  # =============================================================================
+  ci-summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [
+      code-quality,
+      unit-tests,
+      integration-tests,
+      security-scan,
+      build-validation,
+      docker-build,
+      docs-validation
+    ]
+    if: always()
+    steps:
+      - name: Check Job Results
+        run: |
+          echo "Code Quality: ${{ needs.code-quality.result }}"
+          echo "Unit Tests: ${{ needs.unit-tests.result }}"
+          echo "Integration Tests: ${{ needs.integration-tests.result }}"
+          echo "Security Scan: ${{ needs.security-scan.result }}"
+          echo "Build Validation: ${{ needs.build-validation.result }}"
+          echo "Docker Build: ${{ needs.docker-build.result }}"
+          echo "Docs Validation: ${{ needs.docs-validation.result }}"
+
+      - name: Determine Overall Result
+        run: |
+          if [[ "${{ needs.code-quality.result }}" == "failure" || \
+                "${{ needs.unit-tests.result }}" == "failure" || \
+                "${{ needs.integration-tests.result }}" == "failure" || \
+                "${{ needs.build-validation.result }}" == "failure" || \
+                "${{ needs.docker-build.result }}" == "failure" ]]; then
+            echo "❌ CI Failed - Required checks failed"
+            exit 1
+          elif [[ "${{ needs.security-scan.result }}" == "failure" ]]; then
+            echo "⚠️ CI Passed with Warnings - Security scan failed"
+            exit 0
+          else
+            echo "✅ CI Passed - All checks successful"
+          fi
+
+      - name: Update PR Status
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const results = {
+              'code-quality': '${{ needs.code-quality.result }}',
+              'unit-tests': '${{ needs.unit-tests.result }}',
+              'integration-tests': '${{ needs.integration-tests.result }}',
+              'security-scan': '${{ needs.security-scan.result }}',
+              'build-validation': '${{ needs.build-validation.result }}',
+              'docker-build': '${{ needs.docker-build.result }}',
+              'docs-validation': '${{ needs.docs-validation.result }}'
+            };
+            
+            const summary = Object.entries(results)
+              .map(([job, result]) => `${job}: ${result === 'success' ? '✅' : result === 'failure' ? '❌' : '⚠️'}`)
+              .join('\n');
+              
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## CI Results\n\n${summary}`
+            });
+
+  # =============================================================================
+  # CLEANUP
+  # =============================================================================
+  cleanup:
+    name: Cleanup
+    runs-on: ubuntu-latest
+    needs: [ci-summary]
+    if: always()
+    steps:
+      - name: Clean Up Artifacts
+        run: echo "Cleanup completed"

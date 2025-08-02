@@ -1,0 +1,702 @@
+# =============================================================================
+# COMPREHENSIVE SECURITY SCANNING WORKFLOW
+# =============================================================================
+# This workflow performs comprehensive security analysis including SAST, DAST,
+# container scanning, dependency analysis, and compliance checks.
+
+name: Security Scan
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  push:
+    branches: [main, develop]
+    paths:
+      - 'src/**'
+      - 'requirements*.txt'
+      - 'pyproject.toml'
+      - 'Dockerfile'
+      - '.github/workflows/security-scan.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'src/**'
+      - 'requirements*.txt'
+      - 'pyproject.toml'
+      - 'Dockerfile'
+  workflow_dispatch:
+    inputs:
+      scan_type:
+        description: 'Type of security scan'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+        - full
+        - sast-only
+        - container-only
+        - dependencies-only
+
+env:
+  PYTHON_VERSION: "3.11"
+  SCAN_TYPE: ${{ github.event.inputs.scan_type || 'full' }}
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  id-token: write
+
+jobs:
+  # =============================================================================
+  # STATIC APPLICATION SECURITY TESTING (SAST)
+  # =============================================================================
+  sast-analysis:
+    name: SAST Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: contains(fromJson('["full", "sast-only"]'), env.SCAN_TYPE)
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Security Analysis Tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install bandit[toml] semgrep safety dlint
+
+      - name: Run Bandit SAST Scan
+        run: |
+          echo "🔍 Running Bandit security analysis..."
+          bandit -r src/ \
+            -f json \
+            -o bandit-results.json \
+            --confidence-level medium \
+            --severity-level medium
+          
+          # Also generate human-readable report
+          bandit -r src/ \
+            -f txt \
+            -o bandit-report.txt \
+            --confidence-level medium \
+            --severity-level medium
+
+      - name: Run Semgrep SAST Scan
+        run: |
+          echo "🔍 Running Semgrep analysis..."
+          semgrep \
+            --config=auto \
+            --json \
+            --output=semgrep-results.json \
+            --severity=ERROR \
+            --severity=WARNING \
+            src/
+          
+          # Generate readable report
+          semgrep \
+            --config=auto \
+            --text \
+            --output=semgrep-report.txt \
+            src/
+
+      - name: Run Dlint Security Linter
+        run: |
+          echo "🔍 Running Dlint security linter..."
+          python -m dlint src/ --json > dlint-results.json || true
+          python -m dlint src/ > dlint-report.txt || true
+
+      - name: Upload SAST Results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: sast-results
+          path: |
+            bandit-results.json
+            bandit-report.txt
+            semgrep-results.json
+            semgrep-report.txt
+            dlint-results.json
+            dlint-report.txt
+
+      - name: Upload Bandit SARIF Results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: bandit-results.json
+          category: bandit
+
+  # =============================================================================
+  # DEPENDENCY VULNERABILITY SCANNING
+  # =============================================================================
+  dependency-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: contains(fromJson('["full", "dependencies-only"]'), env.SCAN_TYPE)
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,test]"
+          pip install safety pip-audit cyclonedx-bom
+
+      - name: Run Safety Dependency Check
+        run: |
+          echo "🔍 Running Safety dependency vulnerability scan..."
+          safety check \
+            --json \
+            --output safety-results.json \
+            --continue-on-error || true
+          
+          safety check \
+            --output safety-report.txt \
+            --continue-on-error || true
+
+      - name: Run Pip-Audit Scan
+        run: |
+          echo "🔍 Running pip-audit vulnerability scan..."
+          pip-audit \
+            --format=json \
+            --output=pip-audit-results.json \
+            --progress-spinner=off || true
+          
+          pip-audit \
+            --format=columns \
+            --output=pip-audit-report.txt \
+            --progress-spinner=off || true
+
+      - name: Generate Software Bill of Materials (SBOM)
+        run: |
+          echo "📋 Generating Software Bill of Materials..."
+          cyclonedx-py \
+            -o sbom.json \
+            --format json \
+            .
+          
+          cyclonedx-py \
+            -o sbom.xml \
+            --format xml \
+            .
+
+      - name: License Compliance Check
+        run: |
+          echo "⚖️ Checking license compliance..."
+          pip-licenses \
+            --format=json \
+            --output-file=licenses.json \
+            --with-urls \
+            --with-description || true
+          
+          pip-licenses \
+            --format=plain \
+            --output-file=licenses.txt || true
+
+      - name: Upload Dependency Scan Results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: dependency-scan-results
+          path: |
+            safety-results.json
+            safety-report.txt
+            pip-audit-results.json
+            pip-audit-report.txt
+            sbom.json
+            sbom.xml
+            licenses.json
+            licenses.txt
+
+  # =============================================================================
+  # CONTAINER SECURITY SCANNING
+  # =============================================================================
+  container-scan:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: contains(fromJson('["full", "container-only"]'), env.SCAN_TYPE)
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image for Scanning
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: production
+          tags: crewai-email-triage:scan
+          outputs: type=docker,dest=/tmp/image.tar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Load Docker Image
+        run: docker load -i /tmp/image.tar
+
+      - name: Run Trivy Container Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'crewai-email-triage:scan'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+
+      - name: Run Trivy Filesystem Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-fs-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+
+      - name: Run Docker Bench Security
+        run: |
+          echo "🔍 Running Docker Bench Security..."
+          docker run --rm --net host --pid host --userns host --cap-add audit_control \
+            -e DOCKER_CONTENT_TRUST=$DOCKER_CONTENT_TRUST \
+            -v /etc:/etc:ro \
+            -v /var/lib:/var/lib:ro \
+            -v /var/run/docker.sock:/var/run/docker.sock:ro \
+            -v /usr/lib/systemd:/usr/lib/systemd:ro \
+            -v /etc/systemd:/etc/systemd:ro \
+            --label docker_bench_security \
+            docker/docker-bench-security:latest > docker-bench-results.txt || true
+
+      - name: Run Hadolint Dockerfile Linter
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          format: sarif
+          output-file: hadolint-results.sarif
+          no-fail: true
+
+      - name: Upload Container Scan Results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: container-scan-results
+          path: |
+            trivy-results.sarif
+            trivy-fs-results.sarif
+            docker-bench-results.txt
+            hadolint-results.sarif
+
+      - name: Upload Trivy SARIF Results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-container
+
+      - name: Upload Hadolint SARIF Results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: hadolint-results.sarif
+          category: hadolint
+
+  # =============================================================================
+  # SECRET DETECTION
+  # =============================================================================
+  secret-scan:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: contains(fromJson('["full", "sast-only"]'), env.SCAN_TYPE)
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run TruffleHog Secret Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+          extra_args: --debug --only-verified --json > trufflehog-results.json
+
+      - name: Run GitLeaks Secret Scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE}}
+        with:
+          config-path: .gitleaks.toml
+
+      - name: Upload Secret Scan Results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: secret-scan-results
+          path: |
+            trufflehog-results.json
+            gitleaks-report.json
+
+  # =============================================================================
+  # COMPLIANCE AND GOVERNANCE
+  # =============================================================================
+  compliance-check:
+    name: Compliance Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: env.SCAN_TYPE == 'full'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Compliance Tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install licensecheck reuse
+
+      - name: Check REUSE Compliance
+        run: |
+          echo "📋 Checking REUSE compliance..."
+          reuse lint > reuse-compliance.txt || true
+
+      - name: License Compatibility Check
+        run: |
+          echo "⚖️ Checking license compatibility..."
+          licensecheck \
+            --format json \
+            --output licenses-check.json \
+            src/ || true
+
+      - name: Generate Compliance Report
+        run: |
+          echo "📊 Generating compliance report..."
+          cat > compliance-report.md << EOF
+          # Compliance Report
+          
+          ## REUSE Compliance
+          \`\`\`
+          $(cat reuse-compliance.txt)
+          \`\`\`
+          
+          ## License Check Results
+          \`\`\`json
+          $(cat licenses-check.json)
+          \`\`\`
+          EOF
+
+      - name: Upload Compliance Results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: compliance-results
+          path: |
+            reuse-compliance.txt
+            licenses-check.json
+            compliance-report.md
+
+  # =============================================================================
+  # INFRASTRUCTURE AS CODE SECURITY
+  # =============================================================================
+  iac-security:
+    name: Infrastructure as Code Security
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: env.SCAN_TYPE == 'full'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Run Checkov IaC Scan
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: .
+          framework: dockerfile,github_configuration,yaml,json
+          output_format: sarif
+          output_file_path: checkov-results.sarif
+          quiet: true
+          soft_fail: true
+
+      - name: Run Terrascan IaC Scan
+        uses: tenable/terrascan-action@main
+        with:
+          iac_type: 'docker'
+          iac_version: 'v1'
+          policy_type: 'docker'
+          only_warn: true
+          sarif_upload: true
+
+      - name: Upload IaC Security Results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: iac-security-results
+          path: |
+            checkov-results.sarif
+            terrascan-results.sarif
+
+      - name: Upload Checkov SARIF Results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: checkov-results.sarif
+          category: checkov
+
+  # =============================================================================
+  # SECURITY REPORT GENERATION
+  # =============================================================================
+  security-report:
+    name: Generate Security Report
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [
+      sast-analysis,
+      dependency-scan,
+      container-scan,
+      secret-scan,
+      compliance-check,
+      iac-security
+    ]
+    if: always()
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Report Generator
+        run: |
+          pip install jinja2 markdown
+
+      - name: Generate Comprehensive Security Report
+        run: |
+          python << 'EOF'
+          import json
+          import os
+          from datetime import datetime
+          
+          # Initialize report data
+          report_data = {
+              'scan_date': datetime.now().isoformat(),
+              'repository': '${{ github.repository }}',
+              'branch': '${{ github.ref_name }}',
+              'commit': '${{ github.sha }}',
+              'workflow_run': '${{ github.run_id }}',
+              'scan_type': '${{ env.SCAN_TYPE }}',
+              'summary': {
+                  'critical': 0,
+                  'high': 0,
+                  'medium': 0,
+                  'low': 0,
+                  'info': 0
+              },
+              'findings': []
+          }
+          
+          # Process artifacts and generate consolidated report
+          artifact_dirs = [d for d in os.listdir('.') if os.path.isdir(d) and 'results' in d]
+          
+          for artifact_dir in artifact_dirs:
+              for file in os.listdir(artifact_dir):
+                  if file.endswith('.json') and 'results' in file:
+                      try:
+                          with open(os.path.join(artifact_dir, file), 'r') as f:
+                              data = json.load(f)
+                              # Process findings (implementation would depend on tool format)
+                              print(f"Processing {file} from {artifact_dir}")
+                      except Exception as e:
+                          print(f"Error processing {file}: {e}")
+          
+          # Generate markdown report
+          markdown_report = f"""
+          # Security Scan Report
+          
+          **Repository:** {report_data['repository']}
+          **Branch:** {report_data['branch']}
+          **Scan Date:** {report_data['scan_date']}
+          **Scan Type:** {report_data['scan_type']}
+          
+          ## Summary
+          
+          | Severity | Count |
+          |----------|-------|
+          | Critical | {report_data['summary']['critical']} |
+          | High     | {report_data['summary']['high']} |
+          | Medium   | {report_data['summary']['medium']} |
+          | Low      | {report_data['summary']['low']} |
+          | Info     | {report_data['summary']['info']} |
+          
+          ## Scan Results
+          
+          ### SAST Analysis
+          - **Bandit:** Static analysis of Python code for security issues
+          - **Semgrep:** Pattern-based static analysis
+          - **Dlint:** Security-focused linter
+          
+          ### Dependency Scanning
+          - **Safety:** Known vulnerability database check
+          - **Pip-Audit:** PyPI package vulnerability scanner
+          - **SBOM:** Software Bill of Materials generated
+          
+          ### Container Security
+          - **Trivy:** Container and filesystem vulnerability scanner
+          - **Hadolint:** Dockerfile linter
+          - **Docker Bench:** Docker security benchmark
+          
+          ### Secret Detection
+          - **TruffleHog:** Git repository secret scanner
+          - **Gitleaks:** Fast secret detection
+          
+          ### Compliance
+          - **REUSE:** License and copyright compliance
+          - **License Check:** License compatibility analysis
+          
+          ## Recommendations
+          
+          1. Address all critical and high severity findings immediately
+          2. Review medium severity findings for business impact
+          3. Implement regular security scanning in CI/CD pipeline
+          4. Keep dependencies updated with automated tools
+          5. Follow secure coding practices and guidelines
+          
+          ## Next Steps
+          
+          - Review individual tool reports for detailed findings
+          - Create security issues for high-priority findings
+          - Update security policies and procedures as needed
+          - Schedule regular security reviews and audits
+          """
+          
+          with open('security-report.md', 'w') as f:
+              f.write(markdown_report)
+          
+          with open('security-report.json', 'w') as f:
+              json.dump(report_data, f, indent=2)
+          
+          print("✅ Security report generated successfully")
+          EOF
+
+      - name: Upload Security Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-report
+          path: |
+            security-report.md
+            security-report.json
+
+      - name: Comment Security Report on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('security-report.md', 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🛡️ Security Scan Results\n\n${report}`
+            });
+
+  # =============================================================================
+  # NOTIFICATION AND ALERTS
+  # =============================================================================
+  notify:
+    name: Security Notifications
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [security-report]
+    if: always() && (github.event_name == 'schedule' || github.event_name == 'push')
+    steps:
+      - name: Download Security Report
+        uses: actions/download-artifact@v3
+        with:
+          name: security-report
+
+      - name: Send Slack Notification
+        if: env.SLACK_WEBHOOK_URL != ''
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              text: "🛡️ Security Scan Completed",
+              attachments: [{
+                color: "${{ job.status == 'success' && 'good' || 'danger' }}",
+                fields: [{
+                  title: "Repository",
+                  value: "${{ github.repository }}",
+                  short: true
+                }, {
+                  title: "Branch",
+                  value: "${{ github.ref_name }}",
+                  short: true
+                }, {
+                  title: "Status",
+                  value: "${{ job.status }}",
+                  short: true
+                }, {
+                  title: "Workflow",
+                  value: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+                  short: false
+                }]
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Create Security Issue
+        if: github.event_name == 'schedule' && failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('security-report.md', 'utf8');
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 Security Scan Failed - ${new Date().toISOString().split('T')[0]}`,
+              body: `## Security Scan Failure\n\nThe scheduled security scan has failed. Please review the results and take appropriate action.\n\n${report}`,
+              labels: ['security', 'bug', 'high-priority']
+            });
+
+  # =============================================================================
+  # CLEANUP
+  # =============================================================================
+  cleanup:
+    name: Cleanup
+    runs-on: ubuntu-latest
+    needs: [notify]
+    if: always()
+    steps:
+      - name: Clean Up Temporary Files
+        run: |
+          echo "🧹 Cleaning up temporary files..."
+          # Cleanup would happen automatically with artifact retention policies
