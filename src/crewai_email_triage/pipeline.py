@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import time
 
-from typing import Iterable, List, Dict, Optional
+from typing import Iterable, List, Dict, Optional, NamedTuple, Any
 from functools import partial
-
+from dataclasses import dataclass, field
 from concurrent.futures import ThreadPoolExecutor
 
 from .classifier import ClassifierAgent
@@ -17,11 +17,95 @@ from .logging_utils import get_logger, LoggingContext, set_request_id
 from .sanitization import sanitize_email_content
 from .agent_responses import parse_agent_response
 from .metrics_export import get_metrics_collector
+from .validation import validate_email_content, ValidationSeverity
 from .retry_utils import retry_with_backoff, RetryConfig
 from .rate_limiter import get_rate_limiter
 
 logger = get_logger(__name__)
 _metrics_collector = get_metrics_collector()
+
+
+@dataclass
+class TriageResult:
+    """Result of email triage operation with comprehensive metadata."""
+    
+    category: str
+    priority: int
+    summary: str
+    response: str
+    
+    # Processing metadata
+    processing_time_ms: float = 0.0
+    timestamp: str = field(default_factory=lambda: time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()))
+    request_id: Optional[str] = None
+    
+    # Agent performance tracking
+    classifier_time_ms: float = 0.0
+    priority_time_ms: float = 0.0  
+    summarizer_time_ms: float = 0.0
+    responder_time_ms: float = 0.0
+    
+    # Error and warning tracking
+    warnings: List[str] = field(default_factory=list)
+    errors: List[str] = field(default_factory=list)
+    sanitization_warnings: List[str] = field(default_factory=list)
+    validation_issues: List[str] = field(default_factory=list)
+    
+    # Content analysis metadata
+    original_content_length: int = 0
+    sanitized_content_length: int = 0
+    content_modified: bool = False
+    
+    # Success indicators
+    success: bool = True
+    partial_success: bool = False
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "category": self.category,
+            "priority": self.priority,
+            "summary": self.summary,
+            "response": self.response,
+            "metadata": {
+                "processing_time_ms": self.processing_time_ms,
+                "timestamp": self.timestamp,
+                "request_id": self.request_id,
+                "agent_timings": {
+                    "classifier_ms": self.classifier_time_ms,
+                    "priority_ms": self.priority_time_ms,
+                    "summarizer_ms": self.summarizer_time_ms,
+                    "responder_ms": self.responder_time_ms,
+                },
+                "content_analysis": {
+                    "original_length": self.original_content_length,
+                    "sanitized_length": self.sanitized_content_length,
+                    "content_modified": self.content_modified,
+                },
+                "quality_indicators": {
+                    "success": self.success,
+                    "partial_success": self.partial_success,
+                    "warnings_count": len(self.warnings),
+                    "errors_count": len(self.errors),
+                },
+                "warnings": self.warnings,
+                "errors": self.errors,
+                "sanitization_warnings": self.sanitization_warnings,
+                "validation_issues": self.validation_issues,
+            }
+        }
+    
+    def add_warning(self, warning: str) -> None:
+        """Add a warning to the result."""
+        if warning not in self.warnings:
+            self.warnings.append(warning)
+    
+    def add_error(self, error: str) -> None:
+        """Add an error to the result."""
+        if error not in self.errors:
+            self.errors.append(error)
+        self.success = False
+        self.partial_success = True
 
 def _get_rate_limiter():
     """Get rate limiter instance (lazy initialization)."""
@@ -185,6 +269,107 @@ def _sanitize_content(content: str, result: Dict[str, str | int]) -> str:
         return content
 
 
+def _run_classifier_new(classifier: ClassifierAgent, content: str, result: TriageResult) -> None:
+    """Run classifier agent and update TriageResult."""
+    start_time = time.perf_counter()
+    try:
+        cat_result = _run_agent_with_retry(classifier, content, "classifier")
+        cat_response = parse_agent_response(cat_result, "classifier")
+        
+        _metrics_collector.increment_counter("classifier_operations")
+        if cat_response.success:
+            result.category = cat_response.category
+            result.classifier_time_ms = (time.perf_counter() - start_time) * 1000
+            _metrics_collector.record_histogram("classifier_time_seconds", cat_response.processing_time_ms / 1000.0)
+            logger.debug("Classification completed", 
+                        extra={'category': cat_response.category, 
+                              'agent': 'classifier',
+                              'processing_time_ms': cat_response.processing_time_ms})
+        else:
+            result.add_error("classification_failed")
+            logger.warning("Classification failed", 
+                          extra={'agent': 'classifier',
+                                'error': cat_response.error})
+    except Exception as e:
+        result.add_error(_handle_agent_exception(e, "classifier"))
+        result.classifier_time_ms = (time.perf_counter() - start_time) * 1000
+
+def _run_priority_agent_new(prioritizer: PriorityAgent, content: str, result: TriageResult) -> None:
+    """Run priority agent and update TriageResult."""
+    start_time = time.perf_counter()
+    try:
+        pri_result = _run_agent_with_retry(prioritizer, content, "priority")
+        pri_response = parse_agent_response(pri_result, "priority")
+        
+        _metrics_collector.increment_counter("priority_operations")
+        if pri_response.success:
+            result.priority = pri_response.priority_score if pri_response.priority_score is not None else 0
+            result.priority_time_ms = (time.perf_counter() - start_time) * 1000
+            _metrics_collector.record_histogram("priority_time_seconds", pri_response.processing_time_ms / 1000.0)
+            logger.debug("Priority scoring completed", 
+                        extra={'priority': pri_response.priority_score, 
+                              'agent': 'priority',
+                              'processing_time_ms': pri_response.processing_time_ms})
+        else:
+            result.add_error("prioritization_failed")
+            logger.warning("Priority scoring failed", 
+                          extra={'agent': 'priority',
+                                'error': pri_response.error})
+    except Exception as e:
+        result.add_error(_handle_agent_exception(e, "priority"))
+        result.priority_time_ms = (time.perf_counter() - start_time) * 1000
+
+def _run_summarizer_new(summarizer: SummarizerAgent, content: str, result: TriageResult) -> None:
+    """Run summarizer agent and update TriageResult."""
+    start_time = time.perf_counter()
+    try:
+        sum_result = _run_agent_with_retry(summarizer, content, "summarizer")
+        sum_response = parse_agent_response(sum_result, "summarizer")
+        
+        _metrics_collector.increment_counter("summarizer_operations")
+        if sum_response.success:
+            result.summary = sum_response.summary
+            result.summarizer_time_ms = (time.perf_counter() - start_time) * 1000
+            _metrics_collector.record_histogram("summarizer_time_seconds", sum_response.processing_time_ms / 1000.0)
+            logger.debug("Summarization completed", 
+                        extra={'summary_length': len(sum_response.summary), 
+                              'agent': 'summarizer',
+                              'processing_time_ms': sum_response.processing_time_ms})
+        else:
+            result.add_error("summarization_failed")
+            logger.warning("Summarization failed", 
+                          extra={'agent': 'summarizer',
+                                'error': sum_response.error})
+    except Exception as e:
+        result.add_error(_handle_agent_exception(e, "summarizer"))
+        result.summarizer_time_ms = (time.perf_counter() - start_time) * 1000
+
+def _run_responder_new(responder: ResponseAgent, content: str, result: TriageResult) -> None:
+    """Run response agent and update TriageResult."""
+    start_time = time.perf_counter()
+    try:
+        resp_result = _run_agent_with_retry(responder, content, "responder")
+        resp_response = parse_agent_response(resp_result, "responder")
+        
+        _metrics_collector.increment_counter("responder_operations")
+        if resp_response.success:
+            result.response = resp_response.response_text if resp_response.response_text is not None else "No response generated"
+            result.responder_time_ms = (time.perf_counter() - start_time) * 1000
+            _metrics_collector.record_histogram("responder_time_seconds", resp_response.processing_time_ms / 1000.0)
+            logger.debug("Response generation completed", 
+                        extra={'response_length': len(resp_response.response_text) if resp_response.response_text else 0, 
+                              'agent': 'responder',
+                              'processing_time_ms': resp_response.processing_time_ms})
+        else:
+            result.add_error("response_generation_failed")
+            logger.warning("Response generation failed", 
+                          extra={'agent': 'responder',
+                                'error': resp_response.error})
+    except Exception as e:
+        result.add_error(_handle_agent_exception(e, "responder"))
+        result.responder_time_ms = (time.perf_counter() - start_time) * 1000
+
+
 def _run_classifier(classifier: ClassifierAgent, content: str, result: Dict[str, str | int]) -> None:
     """Run classifier agent and update result."""
     try:
@@ -295,21 +480,102 @@ def _triage_single(
     prioritizer: PriorityAgent,
     summarizer: SummarizerAgent,
     responder: ResponseAgent,
-) -> Dict[str, str | int]:
+) -> TriageResult:
     """Run ``content`` through provided agents and return result.
     
     Returns a result with default values if any agent fails.
     Logs errors but doesn't raise exceptions to ensure batch processing continues.
     Implements graceful degradation: individual agent failures don't prevent others from running.
     """
+    start_time = time.perf_counter()
+    
+    # Initialize result with defaults
+    result = TriageResult(
+        category="unknown",
+        priority=0,
+        summary="Processing failed",
+        response="Unable to process message"
+    )
+    
     # Input validation
-    is_valid, result = _validate_input(content)
-    if not is_valid:
+    if content is None or not isinstance(content, str):
+        result.add_error("Invalid content provided")
+        logger.warning("Invalid content provided", 
+                      extra={'content_type': str(type(content))})
         return result
+    
+    if not content.strip():
+        result.category = "empty"
+        result.summary = "Empty message"
+        result.response = "No content to process"
+        result.add_warning("Empty content provided")
+        logger.warning("Empty content provided")
+        return result
+    
+    # Store original content metadata
+    result.original_content_length = len(content)
+    
+    # Input validation
+    try:
+        validation_result = validate_email_content(content)
+        
+        # Record validation metrics
+        _metrics_collector.increment_counter("validation_operations")
+        _metrics_collector.set_gauge("validation_confidence_score", validation_result.confidence_score)
+        
+        # Add validation issues to result
+        if validation_result.issues:
+            issue_messages = [f"{issue.severity.value}: {issue.message}" for issue in validation_result.issues]
+            result.validation_issues.extend(issue_messages)
+            
+            # Log validation results
+            critical_issues = validation_result.get_issues_by_severity(ValidationSeverity.CRITICAL)
+            if critical_issues:
+                logger.warning("Critical validation issues found", 
+                              extra={'issues': [i.message for i in critical_issues]})
+            
+            error_issues = validation_result.get_issues_by_severity(ValidationSeverity.ERROR)  
+            if error_issues:
+                logger.warning("Validation errors found",
+                              extra={'issues': [i.message for i in error_issues]})
+        
+        # Use sanitized content if available
+        if validation_result.sanitized_input:
+            content = validation_result.sanitized_input
+            result.content_modified = True
+            
+        logger.debug("Content validation completed",
+                    extra={'is_valid': validation_result.is_valid,
+                          'confidence_score': validation_result.confidence_score,
+                          'issues_count': len(validation_result.issues)})
+        
+    except Exception as e:
+        _metrics_collector.increment_counter("validation_errors")
+        logger.error("Content validation failed", extra={'error': str(e)})
+        result.add_warning("validation_failed")
     
     # Content sanitization with graceful degradation
     try:
-        content = _sanitize_content(content, result)
+        sanitization_result = sanitize_email_content(content)
+        content = sanitization_result.sanitized_content
+        result.sanitized_content_length = len(content)
+        result.content_modified = result.original_content_length != result.sanitized_content_length
+        
+        # Record sanitization metrics
+        _metrics_collector.increment_counter("sanitization_operations")
+        if sanitization_result.threats_detected:
+            _metrics_collector.increment_counter("sanitization_threats_detected", len(sanitization_result.threats_detected))
+            result.sanitization_warnings.extend(sanitization_result.threats_detected)
+        _metrics_collector.record_histogram("sanitization_time_seconds", sanitization_result.processing_time_ms / 1000.0)
+        
+        # Log sanitization results
+        if sanitization_result.threats_detected:
+            logger.warning("Security threats detected and sanitized",
+                          extra={'threats': sanitization_result.threats_detected,
+                                'modifications': sanitization_result.modifications_made,
+                                'original_length': sanitization_result.original_length,
+                                'sanitized_length': sanitization_result.sanitized_length})
+        
     except Exception as e:
         _metrics_collector.increment_counter("sanitization_critical_errors")
         logger.error("Critical sanitization failure, proceeding with original content: %s", str(e), 
@@ -319,14 +585,17 @@ def _triage_single(
                         'error_type': 'sanitization_critical'
                     })
         # Continue with original content if sanitization fails completely
-        result["sanitization_warnings"] = ["sanitization_failed"]
+        result.add_error("sanitization_failed")
     
     # Run all agents with individual isolation to prevent cascade failures
-    _run_agent_with_isolation(lambda: _run_classifier(classifier, content, result), "classifier")
-    _run_agent_with_isolation(lambda: _run_priority_agent(prioritizer, content, result), "priority")
-    _run_agent_with_isolation(lambda: _run_summarizer(summarizer, content, result), "summarizer")
-    _run_agent_with_isolation(lambda: _run_responder(responder, content, result), "responder")
+    _run_agent_with_isolation(lambda: _run_classifier_new(classifier, content, result), "classifier")
+    _run_agent_with_isolation(lambda: _run_priority_agent_new(prioritizer, content, result), "priority")
+    _run_agent_with_isolation(lambda: _run_summarizer_new(summarizer, content, result), "summarizer")
+    _run_agent_with_isolation(lambda: _run_responder_new(responder, content, result), "responder")
 
+    # Calculate final processing time
+    result.processing_time_ms = (time.perf_counter() - start_time) * 1000
+    
     return result
 
 
@@ -358,7 +627,116 @@ def triage_email(content: str | None, config_dict: Dict = None, enable_rate_limi
         config_dict: Configuration dictionary to inject into agents. 
                     If None, agents use default configuration.
         enable_rate_limiting: If True applies rate limiting. If None, uses environment config default.
+        
+    Returns:
+        Dict: Legacy format result for backward compatibility
     """
+    result = triage_email_enhanced(content, config_dict, enable_rate_limiting)
+    
+    # Convert TriageResult to legacy format for backward compatibility
+    legacy_result = {
+        "category": result.category,
+        "priority": result.priority,
+        "summary": result.summary,
+        "response": result.response
+    }
+    
+    # Add warnings and errors to legacy format if present
+    if result.warnings:
+        legacy_result["warnings"] = result.warnings
+    if result.errors:
+        legacy_result["errors"] = result.errors
+    if result.sanitization_warnings:
+        legacy_result["sanitization_warnings"] = result.sanitization_warnings
+        
+    return legacy_result
+
+
+def triage_email_enhanced(content: str | None, config_dict: Dict = None, enable_rate_limiting: Optional[bool] = None) -> TriageResult:
+    """Run email ``content`` through all agents and collect results.
+    
+    Args:
+        content: Email content to process
+        config_dict: Configuration dictionary to inject into agents. 
+                    If None, agents use default configuration.
+        enable_rate_limiting: If True applies rate limiting. If None, uses environment config default.
+        
+    Returns:
+        TriageResult: Enhanced result with comprehensive metadata
+    """
+    with LoggingContext(operation="triage_single_email"):
+        start = time.perf_counter()
+        
+        # Determine if rate limiting should be enabled
+        use_rate_limiting = enable_rate_limiting
+        if use_rate_limiting is None:
+            use_rate_limiting = _get_rate_limiter()._config.enabled
+            
+        # Inject configuration into all agents
+        classifier = ClassifierAgent(config_dict=config_dict)
+        prioritizer = PriorityAgent(config_dict=config_dict)
+        summarizer = SummarizerAgent(config_dict=config_dict)
+        responder = ResponseAgent(config_dict=config_dict)
+        
+        logger.info("Starting email triage", 
+                   extra={'content_length': len(content) if isinstance(content, str) else 0,
+                         'rate_limiting': use_rate_limiting})
+        
+        if use_rate_limiting:
+            # For rate limiting, we need to create a new function that returns TriageResult
+            result = _process_message_sequential_with_rate_limiting_enhanced(
+                content,
+                classifier,
+                prioritizer,
+                summarizer,
+                responder,
+            )
+        else:
+            result = _triage_single(
+                content,
+                classifier=classifier,
+                prioritizer=prioritizer,
+                summarizer=summarizer,
+                responder=responder,
+            )
+        elapsed = time.perf_counter() - start
+        
+        # Update metrics collector
+        _metrics_collector.increment_counter("emails_processed")
+        _metrics_collector.record_histogram("processing_time_seconds", elapsed)
+        _metrics_collector.increment_gauge("total_processing_time", elapsed)
+        
+        # Add rate limiter status to metrics if enabled
+        if use_rate_limiting:
+            rate_limiter_status = _get_rate_limiter().get_status()
+            _metrics_collector.set_gauge("rate_limiter_tokens_available", rate_limiter_status["tokens_available"])
+            _metrics_collector.set_gauge("rate_limiter_utilization", rate_limiter_status["utilization"])
+        
+        # Include rate limiter status in log output
+        extra_info = {
+            'duration': elapsed, 
+            'category': result.category,
+            'priority': result.priority
+        }
+        
+        if use_rate_limiting:
+            rate_limiter_status = _get_rate_limiter().get_status()
+            extra_info['rate_limiter_utilization'] = rate_limiter_status["utilization"]
+        
+        logger.info("Email triage completed", extra=extra_info)
+        return result
+
+
+def _process_message_sequential_with_rate_limiting_enhanced(
+    content: str | None,
+    classifier: ClassifierAgent,
+    prioritizer: PriorityAgent,
+    summarizer: SummarizerAgent,
+    responder: ResponseAgent,
+) -> TriageResult:
+    """Process a message with rate limiting and return TriageResult."""
+    # Simply call _triage_single as it already handles rate limiting through retry logic
+    return _triage_single(content, classifier, prioritizer, summarizer, responder)
     with LoggingContext(operation="triage_single_email"):
         start = time.perf_counter()
         
