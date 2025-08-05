@@ -45,7 +45,7 @@ test = [
     "pytest-xdist~=3.8.0",
     "pytest-mock~=3.14.1",
     "pytest-asyncio~=1.1.0",
-    "pytest-benchmark~=4.0.0",
+    "pytest-benchmark~=5.1.0",
     "coverage[toml]~=7.10.2",
 ]
 dev = [
