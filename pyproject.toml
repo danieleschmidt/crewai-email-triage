@@ -66,7 +66,7 @@ docs = [
 performance = [
     "memory-profiler~=0.61.0",
     "py-spy~=0.4.1",
-    "line-profiler~=4.1.0",
+    "line-profiler~=5.0.0",
 ]
 
 [project.urls]
