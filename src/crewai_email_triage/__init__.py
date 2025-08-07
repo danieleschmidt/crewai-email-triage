@@ -1,32 +1,69 @@
 """CrewAI Email Triage package."""
 
-from importlib.metadata import PackageNotFoundError, version as _pkg_version
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
 from pathlib import Path
+
 import tomllib
 
-from .core import process_email
 from .agent import Agent, LegacyAgent
-from .classifier import ClassifierAgent
-from .summarizer import SummarizerAgent
-from .response import ResponseAgent
-from .priority import PriorityAgent
-from .pipeline import triage_email, triage_email_enhanced, triage_batch, TriageResult
-from .provider import GmailProvider
-from .sanitization import sanitize_email_content, EmailSanitizer, SanitizationConfig
 from .agent_responses import (
-    AgentResponse, ClassificationResponse, PriorityResponse, 
-    SummaryResponse, ResponseGenerationResponse, parse_agent_response
+    AgentResponse,
+    ClassificationResponse,
+    PriorityResponse,
+    ResponseGenerationResponse,
+    SummaryResponse,
+    parse_agent_response,
 )
-from .rate_limiter import RateLimiter, RateLimitConfig, get_rate_limiter
+from .cache import (
+    LRUCache,
+    SmartCache,
+    cached_agent_operation,
+    get_persistent_cache,
+    get_smart_cache,
+)
 from .circuit_breaker import CircuitBreaker, CircuitBreakerConfig
-from .retry_utils import retry_with_backoff, RetryConfig
+from .classifier import ClassifierAgent
+from .core import process_email
+from .health import HealthChecker, HealthMonitor, HealthStatus, get_health_checker
 from .logging_utils import get_logger, setup_structured_logging
-from .metrics_export import get_metrics_collector, MetricsCollector
-from .health import get_health_checker, HealthChecker, HealthMonitor, HealthStatus
-from .validation import get_email_validator, validate_email_content, EmailValidator, ValidationResult, ConfigValidator
-from .cache import get_smart_cache, get_persistent_cache, SmartCache, LRUCache, cached_agent_operation
-from .performance import get_performance_tracker, get_resource_monitor, Timer, timed, enable_performance_monitoring
-
+from .metrics_export import MetricsCollector, get_metrics_collector
+from .performance import (
+    Timer,
+    enable_performance_monitoring,
+    get_performance_tracker,
+    get_resource_monitor,
+    timed,
+)
+from .pipeline import (
+    EmailTriagePipeline,
+    TriageResult,
+    triage_batch,
+    triage_email,
+    triage_email_enhanced,
+)
+from .priority import PriorityAgent
+from .provider import GmailProvider
+from .rate_limiter import RateLimitConfig, RateLimiter, get_rate_limiter
+from .response import ResponseAgent
+from .retry_utils import RetryConfig, retry_with_backoff
+from .sanitization import EmailSanitizer, SanitizationConfig, sanitize_email_content
+from .summarizer import SummarizerAgent
+from .validation import (
+    ConfigValidator,
+    EmailValidator,
+    ValidationResult,
+    get_email_validator,
+    validate_email_content,
+)
+from .scalability import (
+    AdaptiveScalingProcessor,
+    BatchOptimizationConfig,
+    ProcessingStats,
+    benchmark_performance,
+    get_adaptive_processor,
+    process_batch_with_scaling,
+)
 
 
 def _read_version_from_pyproject() -> str:
@@ -54,9 +91,10 @@ __all__ = [
     "ResponseAgent",
     "PriorityAgent",
     "triage_email",
-    "triage_email_enhanced", 
+    "triage_email_enhanced",
     "triage_batch",
     "TriageResult",
+    "EmailTriagePipeline",
     "GmailProvider",
     "sanitize_email_content",
     "EmailSanitizer",
@@ -68,7 +106,7 @@ __all__ = [
     "ResponseGenerationResponse",
     "parse_agent_response",
     "RateLimiter",
-    "RateLimitConfig", 
+    "RateLimitConfig",
     "get_rate_limiter",
     "CircuitBreaker",
     "CircuitBreakerConfig",
@@ -79,7 +117,7 @@ __all__ = [
     "get_metrics_collector",
     "MetricsCollector",
     "get_health_checker",
-    "HealthChecker", 
+    "HealthChecker",
     "HealthMonitor",
     "HealthStatus",
     "get_email_validator",
@@ -88,7 +126,7 @@ __all__ = [
     "ValidationResult",
     "ConfigValidator",
     "get_smart_cache",
-    "get_persistent_cache", 
+    "get_persistent_cache",
     "SmartCache",
     "LRUCache",
     "cached_agent_operation",
@@ -97,5 +135,11 @@ __all__ = [
     "Timer",
     "timed",
     "enable_performance_monitoring",
+    "AdaptiveScalingProcessor",
+    "BatchOptimizationConfig",
+    "ProcessingStats",
+    "benchmark_performance",
+    "get_adaptive_processor",
+    "process_batch_with_scaling",
     "__version__",
 ]

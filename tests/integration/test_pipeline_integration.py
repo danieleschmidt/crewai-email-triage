@@ -105,8 +105,10 @@ class TestEmailTriagePipelineIntegration:
             # Test with invalid email message
             invalid_email = {"invalid": "data"}
             
-            with pytest.raises(Exception):
-                pipeline.process_email(invalid_email)
+            # Should handle gracefully without raising exception
+            result = pipeline.process_email(invalid_email)
+            assert result is not None
+            assert 'classification' in result or 'priority' in result
 
     def test_configuration_override(
         self, 

@@ -1,19 +1,23 @@
 """Retry utilities with exponential backoff and circuit breaker for network operations."""
 
-import time
-import random
 import logging
+import random
+import time
 from functools import wraps
-from typing import Any, Callable, Type, Tuple, Optional
+from typing import Any, Callable, Optional, Tuple, Type
 
-from .circuit_breaker import get_circuit_breaker, CircuitBreakerConfig, CircuitBreakerError
+from .circuit_breaker import (
+    CircuitBreakerConfig,
+    CircuitBreakerError,
+    get_circuit_breaker,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class RetryConfig:
     """Configuration for retry behavior."""
-    
+
     def __init__(
         self,
         max_attempts: int = 3,
@@ -49,7 +53,7 @@ class RetryConfig:
             raise ValueError("max_delay must be >= base_delay")
         if exponential_factor <= 1:
             raise ValueError("exponential_factor must be > 1")
-            
+
         self.max_attempts = max_attempts
         self.base_delay = base_delay
         self.max_delay = max_delay
@@ -63,7 +67,7 @@ class RetryConfig:
     def from_env(cls) -> "RetryConfig":
         """Create retry config from environment variables."""
         from .env_config import get_retry_config
-        
+
         env_config = get_retry_config()
         return cls(
             max_attempts=env_config.max_attempts,
@@ -88,18 +92,18 @@ def calculate_delay(attempt: int, config: RetryConfig) -> float:
     """
     if attempt <= 0:
         return 0.0
-    
+
     # Exponential backoff: base_delay * (exponential_factor ^ (attempt-1))
     delay = config.base_delay * (config.exponential_factor ** (attempt - 1))
-    
+
     # Cap at max_delay
     delay = min(delay, config.max_delay)
-    
+
     # Add jitter if enabled
     if config.jitter:
         jitter_factor = random.uniform(0.5, 1.5)
         delay *= jitter_factor
-    
+
     return delay
 
 
@@ -115,19 +119,19 @@ def retry_with_backoff(config: Optional[RetryConfig] = None, circuit_breaker_nam
     """
     if config is None:
         config = RetryConfig.from_env()
-    
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs) -> Any:
             breaker_name = circuit_breaker_name or f"{func.__module__}.{func.__name__}"
-            
+
             if config.enable_circuit_breaker:
                 circuit_breaker = get_circuit_breaker(breaker_name, config.circuit_breaker_config)
-                
+
                 # Use circuit breaker to wrap the entire retry operation
                 def retry_operation():
                     return _execute_with_retry(func, config, *args, **kwargs)
-                
+
                 try:
                     return circuit_breaker.call(retry_operation)
                 except CircuitBreakerError:
@@ -141,7 +145,7 @@ def retry_with_backoff(config: Optional[RetryConfig] = None, circuit_breaker_nam
             else:
                 # Original retry logic without circuit breaker
                 return _execute_with_retry(func, config, *args, **kwargs)
-        
+
         return wrapper
     return decorator
 
@@ -162,7 +166,7 @@ def _execute_with_retry(func: Callable, config: RetryConfig, *args, **kwargs) ->
         Last exception if all retries fail
     """
     last_exception = None
-    
+
     for attempt in range(1, config.max_attempts + 1):
         try:
             result = func(*args, **kwargs)
@@ -175,10 +179,10 @@ def _execute_with_retry(func: Callable, config: RetryConfig, *args, **kwargs) ->
                     'success': True
                 })
             return result
-            
+
         except config.retryable_exceptions as e:
             last_exception = e
-            
+
             if attempt == config.max_attempts:
                 logger.error("Function failed after all retry attempts", extra={
                     'function': func.__name__,
@@ -189,7 +193,7 @@ def _execute_with_retry(func: Callable, config: RetryConfig, *args, **kwargs) ->
                     'success': False
                 })
                 break
-            
+
             delay = calculate_delay(attempt, config)
             logger.warning("Function failed, retrying with backoff", extra={
                 'function': func.__name__,
@@ -200,9 +204,9 @@ def _execute_with_retry(func: Callable, config: RetryConfig, *args, **kwargs) ->
                 'retry_delay': delay,
                 'operation': 'retry_execute'
             })
-            
+
             time.sleep(delay)
-            
+
         except Exception as e:
             # Non-retryable exception, re-raise immediately
             logger.error("Function failed with non-retryable exception", extra={
@@ -213,7 +217,7 @@ def _execute_with_retry(func: Callable, config: RetryConfig, *args, **kwargs) ->
                 'retryable': False
             })
             raise
-    
+
     # If we get here, all retries were exhausted
     raise last_exception
 

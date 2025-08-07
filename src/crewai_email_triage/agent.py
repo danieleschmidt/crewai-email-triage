@@ -1,6 +1,7 @@
 """Abstract Base Agent implementation for CrewAI Email Triage."""
 
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
 
 from .core import process_email
