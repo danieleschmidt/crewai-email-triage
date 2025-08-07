@@ -109,6 +109,7 @@ markers = [
     "security: Security tests",
     "slow: Slow running tests",
     "network: Tests requiring network access",
+    "e2e: End-to-end tests",
 ]
 filterwarnings = [
     "error",

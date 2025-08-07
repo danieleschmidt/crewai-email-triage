@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 import re
 import time
 from dataclasses import dataclass, field
-from typing import Dict, Any, Optional, List, Union
-import logging
+from typing import Any, Dict, List, Optional, Union
 
 logger = logging.getLogger(__name__)
 
@@ -24,14 +24,14 @@ class AgentResponseError(Exception):
 @dataclass
 class AgentResponse:
     """Base class for structured agent responses."""
-    
+
     agent_type: str
     success: bool
     raw_output: str
     processing_time_ms: float = 0.0
     error_message: Optional[str] = None
     timestamp: float = field(default_factory=time.time)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert response to dictionary."""
         return {
@@ -47,11 +47,11 @@ class AgentResponse:
 @dataclass
 class ClassificationResponse(AgentResponse):
     """Structured response from email classification agent."""
-    
+
     category: Optional[str] = None
     confidence: Optional[float] = None
     matched_keywords: List[str] = field(default_factory=list)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert response to dictionary."""
         base_dict = super().to_dict()
@@ -63,19 +63,19 @@ class ClassificationResponse(AgentResponse):
         return base_dict
 
 
-@dataclass 
+@dataclass
 class PriorityResponse(AgentResponse):
     """Structured response from priority scoring agent."""
-    
+
     priority_score: Optional[int] = None
     reasoning: Optional[str] = None
     factors: List[str] = field(default_factory=list)
-    
+
     def validate_priority_score(self) -> None:
         """Validate priority score is in valid range."""
         if self.priority_score is not None and not (0 <= self.priority_score <= 10):
             raise ValueError(f"Priority score {self.priority_score} is out of range (0-10)")
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert response to dictionary."""
         base_dict = super().to_dict()
@@ -90,17 +90,17 @@ class PriorityResponse(AgentResponse):
 @dataclass
 class SummaryResponse(AgentResponse):
     """Structured response from email summarization agent."""
-    
+
     summary: Optional[str] = None
     key_points: List[str] = field(default_factory=list)
     word_count: Optional[int] = None
-    
+
     def __post_init__(self):
         """Validate and truncate summary length if necessary."""
         if self.summary and len(self.summary) > MAX_SUMMARY_LENGTH:
             self.summary = self.summary[:MAX_SUMMARY_LENGTH-3] + "..."
             logger.debug(f"Summary truncated to {MAX_SUMMARY_LENGTH} characters")
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert response to dictionary."""
         base_dict = super().to_dict()
@@ -115,11 +115,11 @@ class SummaryResponse(AgentResponse):
 @dataclass
 class ResponseGenerationResponse(AgentResponse):
     """Structured response from email response generation agent."""
-    
+
     response_text: Optional[str] = None
     response_type: Optional[str] = None
     tone: Optional[str] = None
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert response to dictionary."""
         base_dict = super().to_dict()
@@ -152,19 +152,19 @@ def parse_agent_response(raw_output: Optional[str], agent_type: str) -> AgentRes
         If agent_type is unknown
     """
     start_time = time.perf_counter()
-    
+
     # Handle None or empty input
     if not raw_output:
         error_msg = "Empty or None output from agent"
         return _create_error_response(agent_type, "", error_msg, start_time)
-    
+
     # Clean up the output
     cleaned_output = raw_output.strip()
-    
+
     # Check for unknown agent type first (should raise exception)
     if agent_type not in ["classifier", "priority", "summarizer", "responder"]:
         raise AgentResponseError(f"Unknown agent type: {agent_type}")
-    
+
     try:
         if agent_type == "classifier":
             return _parse_classification_response(cleaned_output, start_time)
@@ -174,7 +174,7 @@ def parse_agent_response(raw_output: Optional[str], agent_type: str) -> AgentRes
             return _parse_summary_response(cleaned_output, start_time)
         elif agent_type == "responder":
             return _parse_response_generation_response(cleaned_output, start_time)
-            
+
     except Exception as e:
         error_msg = f"Failed to parse {agent_type} response: {str(e)}"
         logger.error(error_msg, extra={'raw_output': raw_output, 'agent_type': agent_type})
@@ -184,7 +184,7 @@ def parse_agent_response(raw_output: Optional[str], agent_type: str) -> AgentRes
 def _create_error_response(agent_type: str, raw_output: str, error_msg: str, start_time: float) -> AgentResponse:
     """Create an error response for failed parsing."""
     processing_time = (time.perf_counter() - start_time) * MILLISECONDS_PER_SECOND
-    
+
     if agent_type == "classifier":
         return ClassificationResponse(
             agent_type=agent_type,
@@ -230,10 +230,10 @@ def _create_error_response(agent_type: str, raw_output: str, error_msg: str, sta
 def _parse_classification_response(raw_output: str, start_time: float) -> ClassificationResponse:
     """Parse classification agent output."""
     processing_time = (time.perf_counter() - start_time) * MILLISECONDS_PER_SECOND
-    
+
     # Handle case-insensitive matching
     match = re.match(r'^\s*category\s*:\s*(.+)\s*$', raw_output, re.IGNORECASE)
-    
+
     if not match:
         return ClassificationResponse(
             agent_type="classifier",
@@ -242,15 +242,15 @@ def _parse_classification_response(raw_output: str, start_time: float) -> Classi
             processing_time_ms=processing_time,
             error_message="Failed to parse category from output"
         )
-    
+
     category = match.group(1).strip().lower()
-    
+
     # Validate category
     valid_categories = {"urgent", "work", "general", "spam", "unknown", "classification_error", "empty"}
     if category not in valid_categories:
         # Allow any category but log warning
         logger.warning("Unknown category detected", extra={'category': category})
-    
+
     return ClassificationResponse(
         agent_type="classifier",
         success=True,
@@ -264,10 +264,10 @@ def _parse_classification_response(raw_output: str, start_time: float) -> Classi
 def _parse_priority_response(raw_output: str, start_time: float) -> PriorityResponse:
     """Parse priority agent output."""
     processing_time = (time.perf_counter() - start_time) * MILLISECONDS_PER_SECOND
-    
+
     # Handle case-insensitive matching
     match = re.match(r'^\s*priority\s*:\s*(.+)\s*$', raw_output, re.IGNORECASE)
-    
+
     if not match:
         return PriorityResponse(
             agent_type="priority",
@@ -276,13 +276,13 @@ def _parse_priority_response(raw_output: str, start_time: float) -> PriorityResp
             processing_time_ms=processing_time,
             error_message="Failed to parse priority from output"
         )
-    
+
     priority_str = match.group(1).strip()
-    
+
     try:
         # Handle float input by converting to int
         priority_score = int(float(priority_str))
-        
+
         # Clamp to valid range
         if priority_score < 0:
             priority_score = 0
@@ -290,7 +290,7 @@ def _parse_priority_response(raw_output: str, start_time: float) -> PriorityResp
         elif priority_score > 10:
             priority_score = 10
             logger.warning("Priority score above 10, clamped to 10")
-            
+
         return PriorityResponse(
             agent_type="priority",
             success=True,
@@ -299,7 +299,7 @@ def _parse_priority_response(raw_output: str, start_time: float) -> PriorityResp
             priority_score=priority_score,
             reasoning=f"Parsed score: {priority_str}"
         )
-        
+
     except ValueError:
         return PriorityResponse(
             agent_type="priority",
@@ -313,10 +313,10 @@ def _parse_priority_response(raw_output: str, start_time: float) -> PriorityResp
 def _parse_summary_response(raw_output: str, start_time: float) -> SummaryResponse:
     """Parse summary agent output."""
     processing_time = (time.perf_counter() - start_time) * MILLISECONDS_PER_SECOND
-    
+
     # Handle case-insensitive matching
     match = re.match(r'^\s*summary\s*:\s*(.+)\s*$', raw_output, re.IGNORECASE | re.DOTALL)
-    
+
     if not match:
         return SummaryResponse(
             agent_type="summarizer",
@@ -325,9 +325,9 @@ def _parse_summary_response(raw_output: str, start_time: float) -> SummaryRespon
             processing_time_ms=processing_time,
             error_message="Failed to parse summary from output"
         )
-    
+
     summary = match.group(1).strip()
-    
+
     # Handle empty summary
     if not summary:
         return SummaryResponse(
@@ -337,18 +337,18 @@ def _parse_summary_response(raw_output: str, start_time: float) -> SummaryRespon
             processing_time_ms=processing_time,
             error_message="Empty summary content"
         )
-    
+
     # Truncate if too long
     if len(summary) > MAX_SUMMARY_LENGTH:
         summary = summary[:MAX_SUMMARY_LENGTH-3] + "..."
         logger.debug(f"Summary truncated to {MAX_SUMMARY_LENGTH} characters")
-    
+
     # Calculate word count
     word_count = len(summary.split()) if summary else 0
-    
+
     # Extract key points (simple word extraction)
     key_points = [word.lower() for word in summary.split() if len(word) > 3][:5]
-    
+
     return SummaryResponse(
         agent_type="summarizer",
         success=True,
@@ -363,10 +363,10 @@ def _parse_summary_response(raw_output: str, start_time: float) -> SummaryRespon
 def _parse_response_generation_response(raw_output: str, start_time: float) -> ResponseGenerationResponse:
     """Parse response generation agent output."""
     processing_time = (time.perf_counter() - start_time) * MILLISECONDS_PER_SECOND
-    
+
     # Handle case-insensitive matching
     match = re.match(r'^\s*response\s*:\s*(.+)\s*$', raw_output, re.IGNORECASE | re.DOTALL)
-    
+
     if not match:
         return ResponseGenerationResponse(
             agent_type="responder",
@@ -375,9 +375,9 @@ def _parse_response_generation_response(raw_output: str, start_time: float) -> R
             processing_time_ms=processing_time,
             error_message="Failed to parse response from output"
         )
-    
+
     response_text = match.group(1).strip()
-    
+
     # Handle empty response
     if not response_text:
         return ResponseGenerationResponse(
@@ -387,12 +387,12 @@ def _parse_response_generation_response(raw_output: str, start_time: float) -> R
             processing_time_ms=processing_time,
             error_message="Empty response content"
         )
-    
+
     # Truncate if too long
     if len(response_text) > MAX_RESPONSE_LENGTH:
         response_text = response_text[:MAX_RESPONSE_LENGTH-3] + "..."
         logger.debug(f"Response truncated to {MAX_RESPONSE_LENGTH} characters")
-    
+
     # Determine response type
     response_type = "acknowledgment"
     if any(word in response_text.lower() for word in ["question", "?"]):
@@ -401,14 +401,14 @@ def _parse_response_generation_response(raw_output: str, start_time: float) -> R
         response_type = "scheduling"
     elif any(word in response_text.lower() for word in ["thanks", "thank you"]):
         response_type = "acknowledgment"
-    
+
     # Determine tone
     tone = "professional"
     if any(word in response_text.lower() for word in ["urgent", "immediately", "asap"]):
         tone = "urgent"
     elif any(word in response_text.lower() for word in ["please", "kindly", "appreciate"]):
         tone = "polite"
-    
+
     return ResponseGenerationResponse(
         agent_type="responder",
         success=True,
@@ -427,7 +427,7 @@ def extract_value_from_response(response: AgentResponse) -> Union[str, int, None
     """
     if not response.success:
         return None
-        
+
     if isinstance(response, ClassificationResponse):
         return response.category
     elif isinstance(response, PriorityResponse):
@@ -453,5 +453,5 @@ def create_agent_response_wrapper(agent_run_func, agent_type: str):
         except Exception as e:
             error_msg = f"Agent execution failed: {str(e)}"
             return _create_error_response(agent_type, "", error_msg, start_time)
-    
+
     return wrapper

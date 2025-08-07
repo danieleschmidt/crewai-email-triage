@@ -21,18 +21,19 @@ Security Benefits:
 - Automatic file permission hardening
 """
 
-import os
+import base64
 import json
-import threading
-import tempfile
 import logging
-from typing import Dict, List, Tuple, Optional
+import os
+import tempfile
+import threading
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
 from cryptography.fernet import Fernet
+from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.backends import default_backend
-import base64
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -56,7 +57,7 @@ class SecureCredentialManager:
         manager.store_credential("gmail", "user@gmail.com", "password123")
         password = manager.get_credential("gmail", "user@gmail.com")
     """
-    
+
     def __init__(self, keyring_file: Optional[str] = None):
         """
         Initialize secure credential manager.
@@ -66,7 +67,7 @@ class SecureCredentialManager:
                          If None, uses default location in user's home directory.
         """
         self._lock = threading.Lock()
-        
+
         # Set up keyring file path
         if keyring_file is None:
             home_dir = Path.home()
@@ -75,13 +76,13 @@ class SecureCredentialManager:
         else:
             self._keyring_file = Path(keyring_file)
             self._keyring_file.parent.mkdir(mode=0o700, exist_ok=True)
-        
+
         # Initialize encryption
         self._salt_file = self._keyring_file.parent / '.salt'
         self._fernet = self._initialize_encryption()
-        
+
         logger.info(f"SecureCredentialManager initialized with keyring: {self._keyring_file}")
-    
+
     def _initialize_encryption(self) -> Fernet:
         """
         Initialize encryption system with key derivation.
@@ -98,7 +99,7 @@ class SecureCredentialManager:
             with open(self._salt_file, 'wb') as f:
                 f.write(salt)
             os.chmod(self._salt_file, 0o600)
-        
+
         # Derive encryption key from system entropy and salt
         password = os.urandom(32)  # Use system entropy as password
         kdf = PBKDF2HMAC(
@@ -109,9 +110,9 @@ class SecureCredentialManager:
             backend=default_backend()
         )
         key = base64.urlsafe_b64encode(kdf.derive(password))
-        
+
         return Fernet(key)
-    
+
     def store_credential(self, service: str, username: str, password: str) -> None:
         """
         Store a credential securely.
@@ -127,38 +128,38 @@ class SecureCredentialManager:
         """
         if not service or not username:
             raise ValueError("Service and username cannot be empty")
-        
+
         if not password:
             logger.warning(f"Storing empty password for {service}:{username}")
-        
+
         with self._lock:
             try:
                 # Load existing credentials
                 credentials = self._load_credentials()
-                
+
                 # Store new credential (overwrites if exists)
                 credential_key = f"{service}:{username}"
                 encrypted_password = self._fernet.encrypt(password.encode('utf-8'))
                 credentials[credential_key] = base64.b64encode(encrypted_password).decode('utf-8')
-                
+
                 # Save updated credentials
                 self._save_credentials(credentials)
-                
+
                 logger.info(f"Credential stored for {service}:{username}")
-                
+
             except (OSError, PermissionError) as e:
-                logger.error(f"File operation failed for {service}:{username}", 
+                logger.error(f"File operation failed for {service}:{username}",
                            extra={'error_type': 'file_io', 'error': str(e)})
                 raise CredentialError(f"Failed to store credential due to file system error: {e}")
             except (UnicodeEncodeError, UnicodeDecodeError) as e:
-                logger.error(f"Encoding error for {service}:{username}", 
+                logger.error(f"Encoding error for {service}:{username}",
                            extra={'error_type': 'encoding', 'error': str(e)})
                 raise CredentialError(f"Failed to store credential due to encoding error: {e}")
             except Exception as e:
-                logger.error(f"Unexpected error storing credential for {service}:{username}", 
+                logger.error(f"Unexpected error storing credential for {service}:{username}",
                            extra={'error_type': 'unexpected', 'error': str(e)}, exc_info=True)
                 raise CredentialError(f"Failed to store credential: {e}")
-    
+
     def get_credential(self, service: str, username: str) -> str:
         """
         Retrieve a credential securely.
@@ -177,34 +178,34 @@ class SecureCredentialManager:
             try:
                 # Load credentials
                 credentials = self._load_credentials()
-                
+
                 # Find credential
                 credential_key = f"{service}:{username}"
                 if credential_key not in credentials:
                     raise CredentialError(f"Credential not found for {service}:{username}")
-                
+
                 # Decrypt password
                 encrypted_data = base64.b64decode(credentials[credential_key].encode('utf-8'))
                 decrypted_password = self._fernet.decrypt(encrypted_data).decode('utf-8')
-                
+
                 logger.debug(f"Credential retrieved for {service}:{username}")
                 return decrypted_password
-                
+
             except CredentialError:
                 raise
             except (OSError, PermissionError) as e:
-                logger.error(f"File access failed for {service}:{username}", 
+                logger.error(f"File access failed for {service}:{username}",
                            extra={'error_type': 'file_access', 'error': str(e)})
                 raise CredentialError(f"Failed to retrieve credential due to file access error: {e}")
             except (ValueError, base64.binascii.Error) as e:
-                logger.error(f"Credential decoding failed for {service}:{username}", 
+                logger.error(f"Credential decoding failed for {service}:{username}",
                            extra={'error_type': 'decoding', 'error': str(e)})
                 raise CredentialError(f"Failed to retrieve credential due to data corruption: {e}")
             except Exception as e:
-                logger.error(f"Unexpected error retrieving credential for {service}:{username}", 
+                logger.error(f"Unexpected error retrieving credential for {service}:{username}",
                            extra={'error_type': 'unexpected', 'error': str(e)}, exc_info=True)
                 raise CredentialError(f"Failed to retrieve credential: {e}")
-    
+
     def delete_credential(self, service: str, username: str) -> None:
         """
         Delete a stored credential.
@@ -220,25 +221,25 @@ class SecureCredentialManager:
             try:
                 # Load credentials
                 credentials = self._load_credentials()
-                
+
                 # Remove credential
                 credential_key = f"{service}:{username}"
                 if credential_key not in credentials:
                     raise CredentialError(f"Credential not found for {service}:{username}")
-                
+
                 del credentials[credential_key]
-                
+
                 # Save updated credentials
                 self._save_credentials(credentials)
-                
+
                 logger.info(f"Credential deleted for {service}:{username}")
-                
+
             except CredentialError:
                 raise
             except Exception as e:
                 logger.error(f"Failed to delete credential for {service}:{username}: {e}")
                 raise CredentialError(f"Failed to delete credential: {e}")
-    
+
     def list_credentials(self) -> List[Tuple[str, str]]:
         """
         List all stored credentials (service, username pairs only).
@@ -252,19 +253,19 @@ class SecureCredentialManager:
         with self._lock:
             try:
                 credentials = self._load_credentials()
-                
+
                 result = []
                 for credential_key in credentials.keys():
                     if ':' in credential_key:
                         service, username = credential_key.split(':', 1)
                         result.append((service, username))
-                
+
                 return result
-                
+
             except Exception as e:
                 logger.error(f"Failed to list credentials: {e}")
                 raise CredentialError(f"Failed to list credentials: {e}")
-    
+
     def credential_exists(self, service: str, username: str) -> bool:
         """
         Check if a credential exists.
@@ -281,7 +282,7 @@ class SecureCredentialManager:
             return True
         except CredentialError:
             return False
-    
+
     def _load_credentials(self) -> Dict[str, str]:
         """
         Load credentials from encrypted storage.
@@ -291,25 +292,25 @@ class SecureCredentialManager:
         """
         if not self._keyring_file.exists():
             return {}
-        
+
         try:
             with open(self._keyring_file, 'rb') as f:
                 encrypted_data = f.read()
-            
+
             if not encrypted_data:
                 return {}
-            
+
             # Decrypt and parse JSON
             decrypted_data = self._fernet.decrypt(encrypted_data)
             credentials = json.loads(decrypted_data.decode('utf-8'))
-            
+
             return credentials
-            
+
         except Exception as e:
             logger.error(f"Failed to load credentials from {self._keyring_file}: {e}")
             # Return empty dict rather than failing - allows recovery
             return {}
-    
+
     def _save_credentials(self, credentials: Dict[str, str]) -> None:
         """
         Save credentials to encrypted storage.
@@ -321,26 +322,26 @@ class SecureCredentialManager:
             # Serialize and encrypt
             json_data = json.dumps(credentials, separators=(',', ':')).encode('utf-8')
             encrypted_data = self._fernet.encrypt(json_data)
-            
+
             # Write to temporary file first for atomic operation
             with tempfile.NamedTemporaryFile(
-                mode='wb', 
-                dir=self._keyring_file.parent, 
+                mode='wb',
+                dir=self._keyring_file.parent,
                 delete=False
             ) as tmp_file:
                 tmp_file.write(encrypted_data)
                 tmp_file.flush()
                 os.fsync(tmp_file.fileno())
                 temp_path = tmp_file.name
-            
+
             # Set secure permissions
             os.chmod(temp_path, 0o600)
-            
+
             # Atomic move to final location
             os.rename(temp_path, self._keyring_file)
-            
+
             logger.debug(f"Credentials saved to {self._keyring_file}")
-            
+
         except Exception as e:
             # Clean up temporary file if it exists
             try:
@@ -349,7 +350,7 @@ class SecureCredentialManager:
             except (OSError, FileNotFoundError):
                 # Ignore cleanup errors - temp file may already be deleted or inaccessible
                 pass
-            
+
             logger.error(f"Failed to save credentials to {self._keyring_file}: {e}")
             raise CredentialError(f"Failed to save credentials: {e}")
 

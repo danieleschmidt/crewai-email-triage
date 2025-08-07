@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import re
 import email
 import logging
-from typing import Dict, List, Optional, Tuple, Any, Union
+import re
 from dataclasses import dataclass, field
 from enum import Enum
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -25,14 +23,14 @@ class ValidationSeverity(Enum):
 @dataclass
 class ValidationIssue:
     """Represents a validation issue found in input."""
-    
+
     field: str
     message: str
     severity: ValidationSeverity
     code: str
     value: Optional[str] = None
     suggestions: List[str] = field(default_factory=list)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {
@@ -48,27 +46,27 @@ class ValidationIssue:
 @dataclass
 class ValidationResult:
     """Result of input validation."""
-    
+
     is_valid: bool
     issues: List[ValidationIssue] = field(default_factory=list)
     sanitized_input: Optional[str] = None
     confidence_score: float = 1.0
-    
+
     @property
     def has_errors(self) -> bool:
         """Check if there are any error-level issues."""
-        return any(issue.severity in (ValidationSeverity.ERROR, ValidationSeverity.CRITICAL) 
+        return any(issue.severity in (ValidationSeverity.ERROR, ValidationSeverity.CRITICAL)
                   for issue in self.issues)
-    
+
     @property
     def has_warnings(self) -> bool:
         """Check if there are any warning-level issues."""
         return any(issue.severity == ValidationSeverity.WARNING for issue in self.issues)
-    
+
     def get_issues_by_severity(self, severity: ValidationSeverity) -> List[ValidationIssue]:
         """Get issues filtered by severity level."""
         return [issue for issue in self.issues if issue.severity == severity]
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {
@@ -83,7 +81,7 @@ class ValidationResult:
 
 class EmailValidator:
     """Comprehensive email content validator."""
-    
+
     def __init__(self):
         # Common email patterns
         self.email_patterns = {
@@ -95,7 +93,7 @@ class EmailValidator:
             'money': re.compile(r'\$\d+(?:,\d{3})*(?:\.\d{2})?'),
             'ip_address': re.compile(r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b'),
         }
-        
+
         # Suspicious patterns that might indicate security issues
         self.security_patterns = {
             'script_tag': re.compile(r'<script[^>]*>.*?</script>', re.IGNORECASE | re.DOTALL),
@@ -104,7 +102,7 @@ class EmailValidator:
             'data_uri': re.compile(r'data:[^;]+;base64,', re.IGNORECASE),
             'suspicious_headers': re.compile(r'x-(?:forwarded|real)-ip|x-originating-ip', re.IGNORECASE),
         }
-        
+
         # Business logic patterns
         self.priority_keywords = {
             'urgent': ['urgent', 'asap', 'immediately', 'critical', 'emergency', 'rush'],
@@ -113,7 +111,7 @@ class EmailValidator:
             'approval': ['approve', 'review', 'sign off', 'authorize', 'confirm'],
             'financial': ['invoice', 'payment', 'budget', 'cost', 'expense', 'purchase'],
         }
-    
+
     def validate_content(self, content: str) -> ValidationResult:
         """Validate email content comprehensively."""
         if not isinstance(content, str):
@@ -126,46 +124,46 @@ class EmailValidator:
                     code="INVALID_TYPE"
                 )]
             )
-        
+
         issues = []
         sanitized_content = content
         confidence_score = 1.0
-        
+
         # Basic validation
         issues.extend(self._validate_basic_properties(content))
-        
+
         # Structure validation
         issues.extend(self._validate_structure(content))
-        
+
         # Security validation
         security_issues = self._validate_security(content)
         issues.extend(security_issues)
-        
+
         # Content analysis
         issues.extend(self._analyze_content_quality(content))
-        
+
         # Business logic validation
         issues.extend(self._validate_business_logic(content))
-        
+
         # Calculate confidence score based on issues
         error_count = len([i for i in issues if i.severity in (ValidationSeverity.ERROR, ValidationSeverity.CRITICAL)])
         warning_count = len([i for i in issues if i.severity == ValidationSeverity.WARNING])
         confidence_score = max(0.0, 1.0 - (error_count * 0.3) - (warning_count * 0.1))
-        
+
         # Determine if valid (no critical errors)
         is_valid = not any(issue.severity == ValidationSeverity.CRITICAL for issue in issues)
-        
+
         return ValidationResult(
             is_valid=is_valid,
             issues=issues,
             sanitized_input=sanitized_content,
             confidence_score=confidence_score
         )
-    
+
     def _validate_basic_properties(self, content: str) -> List[ValidationIssue]:
         """Validate basic content properties."""
         issues = []
-        
+
         # Length checks
         if len(content) == 0:
             issues.append(ValidationIssue(
@@ -190,7 +188,7 @@ class EmailValidator:
                 code="LONG_CONTENT",
                 suggestions=["Consider summarizing or breaking into smaller messages"]
             ))
-        
+
         # Encoding checks
         try:
             content.encode('utf-8')
@@ -201,7 +199,7 @@ class EmailValidator:
                 severity=ValidationSeverity.ERROR,
                 code="INVALID_ENCODING"
             ))
-        
+
         # Control character checks
         control_chars = [c for c in content if ord(c) < 32 and c not in '\t\n\r']
         if control_chars:
@@ -212,13 +210,13 @@ class EmailValidator:
                 code="CONTROL_CHARACTERS",
                 suggestions=["Remove or replace control characters"]
             ))
-        
+
         return issues
-    
+
     def _validate_structure(self, content: str) -> List[ValidationIssue]:
         """Validate email structure and format."""
         issues = []
-        
+
         # Check if it looks like an email
         has_email_indicators = any([
             'from:' in content.lower(),
@@ -229,7 +227,7 @@ class EmailValidator:
             'sincerely' in content.lower(),
             'best regards' in content.lower(),
         ])
-        
+
         if not has_email_indicators:
             issues.append(ValidationIssue(
                 field="content",
@@ -238,7 +236,7 @@ class EmailValidator:
                 code="NOT_EMAIL_LIKE",
                 suggestions=["Ensure content is actual email content"]
             ))
-        
+
         # Try parsing as email message
         try:
             msg = email.message_from_string(content)
@@ -252,7 +250,7 @@ class EmailValidator:
         except Exception:
             # Content might not be in email format, which is fine
             pass
-        
+
         # Check for excessive HTML
         html_tags = re.findall(r'<[^>]+>', content)
         if len(html_tags) > 50:
@@ -263,13 +261,13 @@ class EmailValidator:
                 code="HTML_HEAVY",
                 suggestions=["Consider extracting plain text for better processing"]
             ))
-        
+
         return issues
-    
+
     def _validate_security(self, content: str) -> List[ValidationIssue]:
         """Validate content for security issues."""
         issues = []
-        
+
         # Check for suspicious patterns
         for pattern_name, pattern in self.security_patterns.items():
             matches = pattern.findall(content)
@@ -283,21 +281,21 @@ class EmailValidator:
                     value=matches[0][:100] if matches else None,
                     suggestions=["Content should be sanitized before processing"]
                 ))
-        
+
         # Check for suspicious URLs
         urls = self.email_patterns['url'].findall(content)
         suspicious_domains = ['bit.ly', 'tinyurl.com', 'goo.gl', 't.co']
         for url in urls:
             if any(domain in url.lower() for domain in suspicious_domains):
                 issues.append(ValidationIssue(
-                    field="content", 
+                    field="content",
                     message="Content contains shortened URLs",
                     severity=ValidationSeverity.WARNING,
                     code="SHORTENED_URL",
                     value=url,
                     suggestions=["Be cautious with shortened URLs"]
                 ))
-        
+
         # Check for excessive special characters (possible obfuscation)
         special_char_ratio = len([c for c in content if not c.isalnum() and not c.isspace()]) / len(content)
         if special_char_ratio > 0.3:
@@ -308,17 +306,17 @@ class EmailValidator:
                 code="HIGH_SPECIAL_CHARS",
                 suggestions=["Verify content is not obfuscated"]
             ))
-        
+
         return issues
-    
+
     def _analyze_content_quality(self, content: str) -> List[ValidationIssue]:
         """Analyze content quality and structure."""
         issues = []
-        
+
         # Readability checks
         sentences = re.split(r'[.!?]+', content)
         sentences = [s.strip() for s in sentences if s.strip()]
-        
+
         if sentences:
             avg_sentence_length = sum(len(s.split()) for s in sentences) / len(sentences)
             if avg_sentence_length > 40:
@@ -329,7 +327,7 @@ class EmailValidator:
                     code="LONG_SENTENCES",
                     suggestions=["Consider breaking long sentences for better readability"]
                 ))
-        
+
         # Language detection (basic)
         words = re.findall(r'\b[a-zA-Z]+\b', content.lower())
         if words:
@@ -337,7 +335,7 @@ class EmailValidator:
             english_indicators = ['the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by']
             english_word_count = sum(1 for word in words if word in english_indicators)
             english_ratio = english_word_count / len(words)
-            
+
             if english_ratio < 0.05:
                 issues.append(ValidationIssue(
                     field="content",
@@ -346,13 +344,13 @@ class EmailValidator:
                     code="NON_ENGLISH",
                     suggestions=["Verify language requirements for processing"]
                 ))
-        
+
         # Repetition check
         word_freq = {}
         for word in words:
             if len(word) > 3:  # Only check words longer than 3 characters
                 word_freq[word] = word_freq.get(word, 0) + 1
-        
+
         repeated_words = [(word, count) for word, count in word_freq.items() if count > 10]
         if repeated_words:
             issues.append(ValidationIssue(
@@ -362,21 +360,21 @@ class EmailValidator:
                 code="HIGH_REPETITION",
                 suggestions=["Check for spam or automated content"]
             ))
-        
+
         return issues
-    
+
     def _validate_business_logic(self, content: str) -> List[ValidationIssue]:
         """Validate business logic and context."""
         issues = []
         content_lower = content.lower()
-        
+
         # Check for conflicting priorities
         priority_matches = {}
         for priority, keywords in self.priority_keywords.items():
             matches = [kw for kw in keywords if kw in content_lower]
             if matches:
                 priority_matches[priority] = matches
-        
+
         if len(priority_matches) > 3:
             issues.append(ValidationIssue(
                 field="content",
@@ -386,7 +384,7 @@ class EmailValidator:
                 value=str(list(priority_matches.keys())),
                 suggestions=["Clarify the main priority or urgency level"]
             ))
-        
+
         # Check for incomplete information
         question_words = ['what', 'when', 'where', 'who', 'why', 'how']
         questions = [qw for qw in question_words if f"{qw} " in content_lower or f"{qw}?" in content_lower]
@@ -398,7 +396,7 @@ class EmailValidator:
                 code="MANY_QUESTIONS",
                 suggestions=["Provide more background information"]
             ))
-        
+
         # Check for financial information
         money_matches = self.email_patterns['money'].findall(content)
         if money_matches:
@@ -410,7 +408,7 @@ class EmailValidator:
                 value=str(money_matches[:3]),
                 suggestions=["Ensure proper handling of financial data"]
             ))
-        
+
         return issues
 
 
@@ -434,12 +432,12 @@ def validate_email_content(content: str) -> ValidationResult:
 
 class ConfigValidator:
     """Validator for configuration files and parameters."""
-    
+
     @staticmethod
     def validate_config_dict(config: Dict[str, Any]) -> ValidationResult:
         """Validate configuration dictionary."""
         issues = []
-        
+
         # Check required sections
         required_sections = ['classifier', 'priority', 'summarizer', 'response']
         for section in required_sections:
@@ -450,7 +448,7 @@ class ConfigValidator:
                     severity=ValidationSeverity.ERROR,
                     code="MISSING_CONFIG_SECTION"
                 ))
-        
+
         # Validate classifier config
         if 'classifier' in config:
             classifier_config = config['classifier']
@@ -471,7 +469,7 @@ class ConfigValidator:
                             severity=ValidationSeverity.WARNING,
                             code="EMPTY_KEYWORD_LIST"
                         ))
-        
+
         # Validate priority config
         if 'priority' in config:
             priority_config = config['priority']
@@ -484,9 +482,9 @@ class ConfigValidator:
                             severity=ValidationSeverity.ERROR,
                             code="INVALID_PRIORITY_SCORE"
                         ))
-        
+
         is_valid = not any(issue.severity == ValidationSeverity.CRITICAL for issue in issues)
-        
+
         return ValidationResult(
             is_valid=is_valid,
             issues=issues,

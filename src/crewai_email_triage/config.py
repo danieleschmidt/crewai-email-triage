@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import Any, Dict
-import hashlib
 
 from .logging_utils import get_logger
 
@@ -38,7 +38,7 @@ def _get_config_stats(config: Dict[str, Any]) -> Dict[str, Any]:
         'sections': list(config.keys()),
         'section_count': len(config)
     }
-    
+
     if 'classifier' in config:
         classifier_config = config['classifier']
         if isinstance(classifier_config, dict):
@@ -47,7 +47,7 @@ def _get_config_stats(config: Dict[str, Any]) -> Dict[str, Any]:
                 len(keywords) if isinstance(keywords, list) else 0
                 for keywords in classifier_config.values()
             )
-    
+
     if 'priority' in config:
         priority_config = config['priority']
         if isinstance(priority_config, dict):
@@ -55,7 +55,7 @@ def _get_config_stats(config: Dict[str, Any]) -> Dict[str, Any]:
             medium_kw = priority_config.get('medium_keywords', [])
             stats['priority_high_keywords'] = len(high_kw) if isinstance(high_kw, list) else 0
             stats['priority_medium_keywords'] = len(medium_kw) if isinstance(medium_kw, list) else 0
-    
+
     return stats
 
 
@@ -68,7 +68,7 @@ def load_config(path: str | None = None) -> Dict[str, Any]:
     app_config = get_app_config()
     env_path = app_config.config_path
     cfg_path = Path(path or env_path) if (path or env_path) else _DEF_PATH
-    
+
     # Log configuration loading attempt
     logger.info("Loading configuration", extra={
         'operation': 'config_load',
@@ -76,7 +76,7 @@ def load_config(path: str | None = None) -> Dict[str, Any]:
         'is_default_path': cfg_path == _DEF_PATH,
         'source': 'parameter' if path else ('environment' if env_path else 'default')
     })
-    
+
     try:
         if not cfg_path.exists():
             logger.warning("Config file not found, using fallback configuration", extra={
@@ -87,12 +87,12 @@ def load_config(path: str | None = None) -> Dict[str, Any]:
                 **_get_config_stats(_FALLBACK_CONFIG)
             })
             return _FALLBACK_CONFIG.copy()
-            
+
         with cfg_path.open("r", encoding="utf-8") as fh:
             config = json.load(fh)
-        
+
         file_size = cfg_path.stat().st_size
-        
+
         # Validate required sections
         if not isinstance(config, dict):
             logger.error("Config validation failed: must be JSON object, using fallback", extra={
@@ -103,7 +103,7 @@ def load_config(path: str | None = None) -> Dict[str, Any]:
                 'fallback_reason': 'validation_failed'
             })
             return _FALLBACK_CONFIG.copy()
-            
+
         if "classifier" not in config or "priority" not in config:
             logger.warning("Config missing required sections, merging with fallback", extra={
                 'operation': 'config_load',
@@ -114,7 +114,7 @@ def load_config(path: str | None = None) -> Dict[str, Any]:
             })
             merged = _FALLBACK_CONFIG.copy()
             merged.update(config)
-            
+
             logger.info("Configuration successfully loaded with fallback merge", extra={
                 'operation': 'config_load',
                 'config_path': str(cfg_path),
@@ -124,7 +124,7 @@ def load_config(path: str | None = None) -> Dict[str, Any]:
                 **_get_config_stats(merged)
             })
             return merged
-        
+
         # Successful load
         logger.info("Configuration successfully loaded", extra={
             'operation': 'config_load',
@@ -135,7 +135,7 @@ def load_config(path: str | None = None) -> Dict[str, Any]:
             **_get_config_stats(config)
         })
         return config
-        
+
     except (json.JSONDecodeError, OSError, UnicodeDecodeError) as e:
         logger.error("Failed to load configuration, using fallback", extra={
             'operation': 'config_load',
@@ -160,21 +160,21 @@ def load_config(path: str | None = None) -> Dict[str, Any]:
 def set_config(path: str) -> None:
     """Load configuration from ``path`` and store globally."""
     global CONFIG
-    
+
     # Store previous config for change detection
     previous_config = CONFIG
     previous_hash = _calculate_config_hash(previous_config)
-    
+
     logger.info("Setting new global configuration", extra={
         'operation': 'config_change',
         'previous_config_hash': previous_hash,
         'new_config_path': path,
         'action': 'global_config_update'
     })
-    
+
     new_config = load_config(path)
     new_hash = _calculate_config_hash(new_config)
-    
+
     # Log configuration change details
     if previous_hash != new_hash:
         logger.info("Global configuration changed", extra={
@@ -192,7 +192,7 @@ def set_config(path: str) -> None:
             'config_changed': False,
             'change_trigger': 'set_config'
         })
-    
+
     CONFIG = new_config
 
 

@@ -9,6 +9,7 @@ import sys
 import time
 
 from crewai_email_triage.pipeline import get_legacy_metrics, triage_batch
+from crewai_email_triage.scalability import benchmark_performance, process_batch_with_scaling
 
 from crewai_email_triage import __version__, triage_email, GmailProvider
 from crewai_email_triage.pipeline import triage_email_enhanced
@@ -58,6 +59,9 @@ def build_parser() -> argparse.ArgumentParser:
     group.add_argument(
         "--cache-stats", action="store_true", help="Show cache statistics"
     )
+    group.add_argument(
+        "--benchmark", action="store_true", help="Run comprehensive performance benchmark"
+    )
     parser.add_argument(
         "--output", type=argparse.FileType("w"), help="Write JSON result to the given file"
     )
@@ -82,6 +86,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--health-checks", nargs='+', metavar='CHECK', 
                        help="Specific health checks to run (memory, cpu, disk, agents, metrics, rate_limiter)")
     parser.add_argument("--start-monitor", action="store_true", help="Start continuous health monitoring")
+    
+    parser.add_argument("--adaptive", action="store_true", help="Use adaptive scaling processor for optimal performance")
     parser.add_argument("--monitor-interval", type=float, default=30.0, help="Health monitoring interval in seconds (default: 30)")
     parser.add_argument("--enable-perf-monitoring", action="store_true", help="Enable performance monitoring")
     parser.add_argument("--enable-caching", action="store_true", help="Enable intelligent caching")
@@ -336,6 +342,37 @@ def main() -> None:
         cache = get_smart_cache()
         cache.clear_all()
         print("All caches cleared")
+        return
+        
+    if args.benchmark:
+        print("Running comprehensive performance benchmark...")
+        benchmark_results = benchmark_performance()
+        
+        if args.output_format == 'json':
+            output = json.dumps(benchmark_results, indent=2 if args.pretty else None)
+        else:
+            lines = ["=" * 60, "Performance Benchmark Results", "=" * 60]
+            for config_name, results in benchmark_results.items():
+                if config_name != 'summary':
+                    throughput = results['throughput_items_per_second']
+                    avg_time = results['avg_time_seconds']
+                    lines.extend([
+                        f"{config_name}:",
+                        f"  Throughput: {throughput:.1f} items/sec",
+                        f"  Avg Time: {avg_time:.3f}s",
+                        ""
+                    ])
+            
+            summary = benchmark_results['summary']
+            lines.extend([
+                f"🏆 Winner: {summary['best_configuration']}",
+                f"📈 Best Throughput: {summary['best_throughput']:.1f} items/sec",
+                f"📊 Test Messages: {summary['test_message_count']}",
+                "=" * 60
+            ])
+            output = "\n".join(lines)
+            
+        print(output)
         return
 
     if args.interactive:

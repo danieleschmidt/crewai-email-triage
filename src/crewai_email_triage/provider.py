@@ -8,8 +8,8 @@ from email import message_from_bytes
 from email.message import Message
 from typing import List
 
-from .retry_utils import retry_with_backoff, RetryConfig
-from .secure_credentials import SecureCredentialManager, CredentialError
+from .retry_utils import RetryConfig, retry_with_backoff
+from .secure_credentials import CredentialError, SecureCredentialManager
 
 logger = logging.getLogger(__name__)
 
@@ -34,13 +34,13 @@ class GmailProvider:
         self.server = server
         self.retry_config = RetryConfig.from_env()
         self._credential_manager = SecureCredentialManager()
-        
+
         # Handle password securely
         if password is not None:
             # Store password securely and clear from memory
             self._credential_manager.store_credential("gmail", username, password)
             password = None  # Clear from local variable
-        
+
         # Verify we can access the credential
         if not self._credential_manager.credential_exists("gmail", username):
             # Try to get from environment as fallback
@@ -64,7 +64,7 @@ class GmailProvider:
         return self._credential_manager.get_credential("gmail", self.username)
 
     @classmethod
-    def from_env(cls, server: str = "imap.gmail.com") -> "GmailProvider":
+    def from_env(cls, server: str = "imap.gmail.com") -> GmailProvider:
         """Return a provider using ``GMAIL_USER`` and ``GMAIL_PASSWORD`` env vars.
 
         Raises ``RuntimeError`` if GMAIL_USER is missing. GMAIL_PASSWORD is optional
@@ -75,14 +75,14 @@ class GmailProvider:
         user = provider_config.gmail_user
         if not user:
             raise RuntimeError("GMAIL_USER must be set")
-        
+
         # Create provider - it will handle password retrieval/migration automatically
         return cls(user, server=server)
 
     def _connect_and_authenticate(self) -> imaplib.IMAP4_SSL:
         """Connect to IMAP server and authenticate. This method has retry logic."""
         mail = imaplib.IMAP4_SSL(self.server)
-        
+
         # Retrieve password securely
         try:
             password = self._credential_manager.get_credential("gmail", self.username)
@@ -94,12 +94,12 @@ class GmailProvider:
                 'operation': 'connect_and_authenticate'
             })
             raise RuntimeError(f"No valid password found for {self.username}")
-        
+
         mail.login(self.username, password)
-        
+
         # Clear password from local variable immediately
         password = None
-        
+
         mail.select("INBOX")
         return mail
 
@@ -113,7 +113,7 @@ class GmailProvider:
                 'operation': 'search_unread_messages'
             })
             return []
-        
+
         message_nums = data[0].split()[:max_messages]
         total_available = len(data[0].split())
         logger.info("Found unread messages for processing", extra={
@@ -136,7 +136,7 @@ class GmailProvider:
                 'error_type': 'empty_message_data'
             })
             return ""
-            
+
         # Safely parse the email message
         raw_email = msg_data[0][1]
         if not raw_email:
@@ -147,7 +147,7 @@ class GmailProvider:
                 'error_type': 'no_raw_content'
             })
             return ""
-            
+
         email_msg = message_from_bytes(raw_email)
         if not isinstance(email_msg, Message):
             logger.warning("Failed to parse email message", extra={
@@ -158,7 +158,7 @@ class GmailProvider:
                 'actual_type': type(email_msg).__name__
             })
             return ""
-        
+
         # Extract payload with proper error handling
         payload = email_msg.get_payload(decode=True)
         if payload is None:
@@ -182,7 +182,7 @@ class GmailProvider:
                         logger.warning("Used 'replace' error handling for message %s encoding", message_num)
             else:
                 content = str(payload)
-        
+
         if content and content.strip():
             return content.strip()
         else:
@@ -197,22 +197,22 @@ class GmailProvider:
         """
         messages: List[str] = []
         mail = None
-        
+
         try:
             # Connect and authenticate with retry logic
             connect_with_retry = retry_with_backoff(self.retry_config)(self._connect_and_authenticate)
             mail = connect_with_retry()
-            
+
             # Search for unread messages with retry logic
             search_with_retry = retry_with_backoff(self.retry_config)(self._search_unread_messages)
             message_nums = search_with_retry(mail, max_messages)
-            
+
             if not message_nums:
                 return messages
-            
+
             # Fetch each message with individual retry logic
             fetch_with_retry = retry_with_backoff(self.retry_config)(self._fetch_message_content)
-            
+
             for num in message_nums:
                 try:
                     content = fetch_with_retry(mail, num)
@@ -221,7 +221,7 @@ class GmailProvider:
                 except Exception as e:
                     logger.error("Error processing message %s after retries: %s", num, str(e))
                     continue
-                    
+
         except imaplib.IMAP4.error as e:
             logger.error("IMAP error during email fetch", extra={
                 'error': str(e),
