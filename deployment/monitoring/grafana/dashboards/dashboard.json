@@ -1,0 +1,216 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "CrewAI Email Triage Dashboard",
+    "tags": ["crewai", "email-triage", "monitoring"],
+    "style": "dark",
+    "timezone": "browser",
+    "refresh": "30s",
+    "schemaVersion": 27,
+    "version": 1,
+    "panels": [
+      {
+        "id": 1,
+        "title": "Processing Throughput",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(emails_processed[5m])",
+            "legendFormat": "Emails/sec"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 1},
+                {"color": "green", "value": 10}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Response Time (95th percentile)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(processing_time_ms_bucket[5m]))",
+            "legendFormat": "P95 Latency"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 1000},
+                {"color": "red", "value": 5000}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Error Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(email_processing_errors[5m]) / rate(emails_processed[5m]) * 100",
+            "legendFormat": "Error Rate %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 1},
+                {"color": "red", "value": 5}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0}
+      },
+      {
+        "id": 4,
+        "title": "Active Workers",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "adaptive_worker_count",
+            "legendFormat": "Workers"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {
+              "mode": "palette-classic"
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0}
+      },
+      {
+        "id": 5,
+        "title": "Processing Volume Over Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(emails_processed[1m])",
+            "legendFormat": "Emails Processed/min"
+          },
+          {
+            "expr": "rate(email_processing_errors[1m])",
+            "legendFormat": "Processing Errors/min"
+          }
+        ],
+        "xAxis": {
+          "mode": "time"
+        },
+        "yAxes": [
+          {
+            "unit": "ops"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "id": 6,
+        "title": "Security Threats Detection",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(security_threats_detected[5m])",
+            "legendFormat": "Threats Detected/min"
+          },
+          {
+            "expr": "rate(security_scans[5m])",
+            "legendFormat": "Security Scans/min"
+          }
+        ],
+        "yAxes": [
+          {
+            "unit": "ops"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      },
+      {
+        "id": 7,
+        "title": "AI Analysis Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "ai_analysis_confidence",
+            "legendFormat": "Average Confidence"
+          },
+          {
+            "expr": "rate(ai_analysis_operations[5m])",
+            "legendFormat": "AI Operations/min"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+      },
+      {
+        "id": 8,
+        "title": "Resource Utilization",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "processing_cpu_percent",
+            "legendFormat": "CPU Usage %"
+          },
+          {
+            "expr": "processing_memory_mb",
+            "legendFormat": "Memory Usage MB"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+      },
+      {
+        "id": 9,
+        "title": "Compliance Status",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "compliance_gdpr_compliant",
+            "legendFormat": "GDPR Compliance"
+          },
+          {
+            "expr": "compliance_ccpa_compliant",
+            "legendFormat": "CCPA Compliance"
+          },
+          {
+            "expr": "compliance_violations",
+            "legendFormat": "Violations"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 24}
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    }
+  }
+}

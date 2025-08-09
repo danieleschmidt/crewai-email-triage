@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: email-triage-sa
+  namespace: crewai-email-triage
+  labels:
+    app: email-triage
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: crewai-email-triage
+  name: email-triage-role
+rules:
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: email-triage-rolebinding
+  namespace: crewai-email-triage
+subjects:
+- kind: ServiceAccount
+  name: email-triage-sa
+  namespace: crewai-email-triage
+roleRef:
+  kind: Role
+  name: email-triage-role
+  apiGroup: rbac.authorization.k8s.io

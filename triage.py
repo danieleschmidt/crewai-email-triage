@@ -21,6 +21,7 @@ from crewai_email_triage.logging_utils import setup_structured_logging, LoggingC
 from crewai_email_triage.metrics_export import (
     get_metrics_collector, PrometheusExporter, MetricsEndpoint, MetricsConfig
 )
+from crewai_email_triage.cli_enhancements import AdvancedCLIProcessor, run_async_cli_function
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -62,6 +63,22 @@ def build_parser() -> argparse.ArgumentParser:
     group.add_argument(
         "--benchmark", action="store_true", help="Run comprehensive performance benchmark"
     )
+    # Security and resilience commands
+    group.add_argument(
+        "--security-scan", action="store_true", help="Run security scan (requires --message, --stdin, --file, or uses default test message)"
+    )
+    group.add_argument(
+        "--resilience-status", action="store_true", help="Show system resilience status"
+    )
+    group.add_argument(
+        "--system-health", action="store_true", help="Show comprehensive system health"
+    )
+    group.add_argument(
+        "--performance-insights", action="store_true", help="Show advanced performance insights and recommendations"
+    )
+    group.add_argument(
+        "--optimize-performance", action="store_true", help="Run automatic performance optimization"
+    )
     parser.add_argument(
         "--output", type=argparse.FileType("w"), help="Write JSON result to the given file"
     )
@@ -92,6 +109,19 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--enable-perf-monitoring", action="store_true", help="Enable performance monitoring")
     parser.add_argument("--enable-caching", action="store_true", help="Enable intelligent caching")
     parser.add_argument("--cache-clear", action="store_true", help="Clear all caches")
+    
+    # AI Enhancement Features
+    parser.add_argument("--ai-enhanced", action="store_true", help="Enable AI-enhanced intelligent triage")
+    parser.add_argument("--ai-format", choices=['json', 'detailed', 'executive', 'actions'], default='json',
+                       help="AI output format (default: json)")
+    parser.add_argument("--show-insights", action="store_true", help="Show AI insights and context analysis")
+    parser.add_argument("--batch-report", choices=['summary', 'detailed', 'analytics'], default='summary',
+                       help="Batch processing report format (default: summary)")
+    
+    # Security Features
+    parser.add_argument("--security-report", action="store_true", help="Generate detailed security report")
+    parser.add_argument("--quarantine-risky", action="store_true", help="Quarantine high-risk emails")
+    
     return parser
 
 
@@ -374,6 +404,193 @@ def main() -> None:
             
         print(output)
         return
+    
+    if args.security_scan or args.security_report:
+        from crewai_email_triage.advanced_security import perform_security_scan
+        
+        # Get test message for security scanning
+        if args.message:
+            message = args.message
+        elif args.stdin:
+            message = sys.stdin.read()
+        elif args.file:
+            with args.file as fh:
+                message = fh.read()
+        else:
+            message = "This is a test message for security scanning"
+        
+        # Perform security scan
+        security_result = perform_security_scan(message, config=config_dict)
+        
+        if args.output_format == 'json' or args.security_report:
+            output = json.dumps(security_result.to_dict(), indent=2 if args.pretty else None)
+        else:
+            lines = [
+                "🔒 SECURITY SCAN RESULTS",
+                "=" * 50,
+                f"Risk Score: {security_result.risk_score:.2f}/1.0",
+                f"Status: {'SAFE' if security_result.is_safe else 'THREATS DETECTED'}",
+                f"Quarantine Recommended: {'Yes' if security_result.quarantine_recommended else 'No'}",
+                f"Scan Time: {security_result.analysis_time_ms:.2f}ms",
+                "",
+            ]
+            
+            if security_result.threats:
+                lines.append("🚨 DETECTED THREATS:")
+                for i, threat in enumerate(security_result.threats, 1):
+                    lines.extend([
+                        f"{i}. {threat.threat_type.upper()} ({threat.severity})",
+                        f"   Description: {threat.description}",
+                        f"   Evidence: {threat.evidence}",
+                        f"   Mitigation: {threat.mitigation}",
+                        f"   Confidence: {threat.confidence:.0%}",
+                        ""
+                    ])
+            else:
+                lines.append("✅ No threats detected")
+            
+            lines.append("=" * 50)
+            output = "\n".join(lines)
+        
+        print(output)
+        return
+    
+    if args.resilience_status:
+        from crewai_email_triage.resilience import resilience
+        
+        status = resilience.get_resilience_status()
+        
+        if args.output_format == 'json':
+            output = json.dumps(status, indent=2 if args.pretty else None)
+        else:
+            lines = [
+                "💪 SYSTEM RESILIENCE STATUS",
+                "=" * 50,
+                f"Success Rate: {status['metrics']['success_rate']:.1%}",
+                f"Total Operations: {status['metrics']['total_attempts']}",
+                f"Failed Operations: {status['metrics']['failed_attempts']}",
+                f"Retries: {status['metrics']['retries']}",
+                f"Avg Response Time: {status['metrics']['average_response_time_ms']:.2f}ms",
+                "",
+                "🏗️  BULKHEAD STATUS:",
+                f"   Active Operations: {status['bulkhead']['active_operations']}/{status['bulkhead']['max_concurrent']}",
+                f"   Utilization: {status['bulkhead']['utilization']:.1%}",
+                f"   Timeout: {status['bulkhead']['timeout']}s",
+                "",
+                f"📉 Degradation Level: {status['degradation_level']}/5",
+                "",
+                f"💚 Overall Health: {status['health']['overall_status'].upper()}",
+                "=" * 50
+            ]
+            output = "\n".join(lines)
+        
+        print(output)
+        return
+    
+    if args.system_health:
+        from crewai_email_triage.resilience import resilience
+        
+        health = resilience.health_check.get_overall_health()
+        
+        if args.output_format == 'json':
+            output = json.dumps(health, indent=2 if args.pretty else None)
+        else:
+            lines = [
+                "🏥 COMPREHENSIVE SYSTEM HEALTH",
+                "=" * 60,
+                f"Overall Status: {health['overall_status'].upper()}",
+                "",
+                "📊 COMPONENT STATUS:"
+            ]
+            
+            for component in health['components']:
+                status_icon = {
+                    'healthy': '✅',
+                    'degraded': '⚠️',
+                    'unhealthy': '❌',
+                    'unknown': '❓'
+                }.get(component['status'], '❓')
+                
+                lines.append(f"{status_icon} {component['component'].title()}: {component['status'].upper()}")
+                
+                if component['issues']:
+                    for issue in component['issues']:
+                        lines.append(f"    - {issue}")
+                
+                lines.append("")
+            
+            lines.extend([
+                "📈 SUMMARY:",
+                f"   Total Components: {health['summary']['total_components']}",
+                f"   Healthy: {health['summary']['healthy']}",
+                f"   Degraded: {health['summary']['degraded']}",
+                f"   Unhealthy: {health['summary']['unhealthy']}",
+                "",
+                f"🕐 Last Updated: {health['timestamp']}",
+                "=" * 60
+            ])
+            output = "\n".join(lines)
+        
+        print(output)
+        return
+    
+    if args.performance_insights:
+        from crewai_email_triage.advanced_scaling import get_performance_insights
+        
+        insights = get_performance_insights()
+        
+        if args.output_format == 'json':
+            output = json.dumps(insights, indent=2 if args.pretty else None)
+        else:
+            lines = [
+                "🚀 ADVANCED PERFORMANCE INSIGHTS",
+                "=" * 60,
+                "",
+                "📈 THROUGHPUT METRICS:",
+                f"   Current: {insights['metrics']['throughput']['current_mps']:.1f} msg/s",
+                f"   Peak: {insights['metrics']['throughput']['peak_mps']:.1f} msg/s",
+                f"   Average: {insights['metrics']['throughput']['average_mps']:.1f} msg/s",
+                "",
+                "⚡ LATENCY METRICS:",
+                f"   P50: {insights['metrics']['latency']['p50_ms']:.2f}ms",
+                f"   P95: {insights['metrics']['latency']['p95_ms']:.2f}ms",
+                f"   P99: {insights['metrics']['latency']['p99_ms']:.2f}ms",
+                "",
+                "💻 RESOURCE UTILIZATION:",
+                f"   CPU: {insights['metrics']['resources']['cpu_percent']:.1f}%",
+                f"   Memory: {insights['metrics']['resources']['memory_mb']:.1f}MB ({insights['metrics']['resources']['memory_percent']:.1f}%)",
+                "",
+                "👷 WORKER METRICS:",
+                f"   Active: {insights['metrics']['concurrency']['active_workers']}/{insights['metrics']['concurrency']['max_workers']}",
+                f"   Utilization: {insights['metrics']['concurrency']['worker_utilization']:.1%}",
+                "",
+                "💾 CACHE PERFORMANCE:",
+                f"   Enabled: {'Yes' if insights['cache_stats']['enabled'] else 'No'}",
+                f"   Size: {insights['cache_stats']['cache_size']} entries",
+                f"   Hit Rate: {insights['cache_stats']['hit_rate']:.1%}",
+                "",
+                "⚙️  CONFIGURATION:",
+                f"   Batch Size: {insights['configuration']['batch_size']}",
+                f"   Prefetch: {insights['configuration']['prefetch_count']}",
+                f"   Caching: {'Enabled' if insights['configuration']['enable_caching'] else 'Disabled'}",
+                f"   Vectorization: {'Enabled' if insights['configuration']['enable_vectorization'] else 'Disabled'}",
+                "",
+                f"🕐 Report Generated: {insights['timestamp']}",
+                "=" * 60
+            ]
+            output = "\n".join(lines)
+        
+        print(output)
+        return
+    
+    if args.optimize_performance:
+        from crewai_email_triage.advanced_scaling import optimize_system_performance
+        
+        print("🔧 Running automatic performance optimization...")
+        optimize_system_performance()
+        print("✅ Performance optimization completed!")
+        print("   Check --performance-insights to see updated configuration")
+        return
 
     if args.interactive:
         _run_interactive(args.pretty, config_dict, args.enhanced, args.output_format, 
@@ -383,9 +600,23 @@ def main() -> None:
         return
 
     with LoggingContext(operation="cli_operation"):
+        # Initialize AI processor if needed
+        ai_processor = None
+        if args.ai_enhanced:
+            ai_processor = AdvancedCLIProcessor(config_dict)
+        
         if args.gmail:
             messages = _read_gmail(args.max_messages)
-            if args.enhanced:
+            if args.ai_enhanced:
+                # AI-enhanced batch processing
+                results = run_async_cli_function(
+                    ai_processor.process_batch_intelligent,
+                    messages,
+                    parallel=args.parallel,
+                    max_workers=args.max_workers
+                )
+                output = ai_processor.format_batch_report(results, args.batch_report)
+            elif args.enhanced:
                 results = [triage_email_enhanced(msg, config_dict=config_dict) for msg in messages]
                 if args.output_format == 'json':
                     output = json.dumps([r.to_dict() if args.show_metadata else {
@@ -400,7 +631,16 @@ def main() -> None:
         elif args.batch_file:
             with args.batch_file as fh:
                 messages = [line.strip() for line in fh if line.strip()]
-            if args.enhanced:
+            if args.ai_enhanced:
+                # AI-enhanced batch processing
+                results = run_async_cli_function(
+                    ai_processor.process_batch_intelligent,
+                    messages,
+                    parallel=args.parallel,
+                    max_workers=args.max_workers
+                )
+                output = ai_processor.format_batch_report(results, args.batch_report)
+            elif args.enhanced:
                 results = [triage_email_enhanced(msg, config_dict=config_dict) for msg in messages]
                 if args.output_format == 'json':
                     output = json.dumps([r.to_dict() if args.show_metadata else {
@@ -414,7 +654,16 @@ def main() -> None:
                 output = _dump(batch_result, args.pretty)
         else:
             message = _read_single_message(args)
-            if args.enhanced:
+            if args.ai_enhanced:
+                # AI-enhanced single message processing
+                output = run_async_cli_function(
+                    ai_processor.process_intelligent_triage,
+                    message,
+                    None,  # No headers for single message
+                    args.ai_format,
+                    args.show_insights
+                )
+            elif args.enhanced:
                 result = triage_email_enhanced(message, config_dict=config_dict)
                 output = _format_output(result, args.output_format, args.show_timing, args.show_metadata)
             else:
