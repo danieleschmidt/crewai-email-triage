@@ -1,0 +1,84 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: triage-config
+  namespace: crewai-email-triage
+data:
+  # Regional deployment configuration
+  region: "us-east-1"
+  timezone: "America/New_York"
+  language: "en"
+  currency: "USD"
+  
+  # Compliance settings
+  compliance_standards: "ccpa,sox"
+  data_residency_required: "false"
+  
+  # Performance settings
+  max_workers: "16"
+  batch_size: "50"
+  cache_enabled: "true"
+  
+  # Security settings
+  security_scan_enabled: "true"
+  threat_detection_level: "medium"
+  
+  # Logging configuration
+  log_level: "INFO"
+  log_format: "json"
+  
+  # Metrics configuration
+  metrics_enabled: "true"
+  prometheus_port: "8001"
+  
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: triage-config-eu
+  namespace: crewai-email-triage
+data:
+  # European deployment configuration
+  region: "eu-west-1"
+  timezone: "Europe/London"
+  language: "en"
+  currency: "EUR"
+  
+  # GDPR compliance
+  compliance_standards: "gdpr,iso-27001"
+  data_residency_required: "true"
+  
+  # Performance settings
+  max_workers: "12"
+  batch_size: "40"
+  cache_enabled: "true"
+  
+  # Security settings
+  security_scan_enabled: "true"
+  threat_detection_level: "high"
+  
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: triage-config-asia
+  namespace: crewai-email-triage
+data:
+  # Asia-Pacific deployment configuration
+  region: "ap-southeast-1"
+  timezone: "Asia/Singapore"
+  language: "en"
+  currency: "SGD"
+  
+  # PDPA compliance
+  compliance_standards: "pdpa"
+  data_residency_required: "true"
+  
+  # Performance settings
+  max_workers: "10"
+  batch_size: "30"
+  cache_enabled: "true"
+  
+  # Security settings
+  security_scan_enabled: "true"
+  threat_detection_level: "medium"

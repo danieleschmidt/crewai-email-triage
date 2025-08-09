@@ -64,6 +64,41 @@ from .scalability import (
     get_adaptive_processor,
     process_batch_with_scaling,
 )
+from .ai_enhancements import (
+    EmailContext,
+    IntelligentTriageResult,
+    AdvancedEmailAnalyzer,
+    SmartResponseGenerator,
+    intelligent_triage_email,
+)
+from .cli_enhancements import (
+    AdvancedCLIProcessor,
+    run_async_cli_function,
+)
+from .advanced_security import (
+    SecurityThreat,
+    SecurityAnalysisResult,
+    AdvancedSecurityScanner,
+    SecurityAuditLogger,
+    perform_security_scan,
+)
+from .resilience import (
+    BulkheadIsolation,
+    GracefulDegradation,
+    AdaptiveRetry,
+    HealthCheck,
+    ResilienceOrchestrator,
+    resilience,
+)
+from .advanced_scaling import (
+    ScalingMetrics,
+    AdaptiveLoadBalancer,
+    HighPerformanceProcessor,
+    process_batch_high_performance,
+    get_performance_insights,
+    optimize_system_performance,
+    high_performance_processor,
+)
 
 
 def _read_version_from_pyproject() -> str:
@@ -141,5 +176,30 @@ __all__ = [
     "benchmark_performance",
     "get_adaptive_processor",
     "process_batch_with_scaling",
+    "EmailContext",
+    "IntelligentTriageResult",
+    "AdvancedEmailAnalyzer",
+    "SmartResponseGenerator",
+    "intelligent_triage_email",
+    "AdvancedCLIProcessor",
+    "run_async_cli_function",
+    "SecurityThreat",
+    "SecurityAnalysisResult",
+    "AdvancedSecurityScanner",
+    "SecurityAuditLogger",
+    "perform_security_scan",
+    "BulkheadIsolation",
+    "GracefulDegradation",
+    "AdaptiveRetry",
+    "HealthCheck",
+    "ResilienceOrchestrator",
+    "resilience",
+    "ScalingMetrics",
+    "AdaptiveLoadBalancer",
+    "HighPerformanceProcessor",
+    "process_batch_high_performance",
+    "get_performance_insights",
+    "optimize_system_performance",
+    "high_performance_processor",
     "__version__",
 ]

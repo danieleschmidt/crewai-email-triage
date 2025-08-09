@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  email-triage:
+    build:
+      context: ../../
+      dockerfile: deployment/docker/Dockerfile
+    container_name: crewai-email-triage
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - METRICS_ENABLED=true
+      - PROMETHEUS_PORT=8001
+      - GLOBAL_REGION=us-east-1
+      - COMPLIANCE_STANDARDS=ccpa,sox
+    ports:
+      - "8000:8000"
+      - "8001:8001"  # Prometheus metrics
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./metrics:/app/metrics
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.path.insert(0, '/app/src'); from crewai_email_triage.resilience import resilience; exit(0 if resilience.health_check.get_overall_health()['overall_status'] in ['healthy', 'degraded'] else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - triage-network
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:v2.40.0
+    container_name: prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    restart: unless-stopped
+    networks:
+      - triage-network
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:9.5.0
+    container_name: grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    restart: unless-stopped
+    networks:
+      - triage-network
+
+  # Redis for caching (optional)
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - triage-network
+
+networks:
+  triage-network:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  redis_data:

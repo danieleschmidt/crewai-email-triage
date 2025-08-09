@@ -1,0 +1,148 @@
+groups:
+  - name: email-triage.rules
+    rules:
+      # High error rate
+      - alert: EmailTriageHighErrorRate
+        expr: rate(email_processing_errors[5m]) / rate(emails_processed[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+          service: email-triage
+        annotations:
+          summary: "High error rate in email triage processing"
+          description: "Error rate is {{ $value | humanizePercentage }} for email triage service"
+
+      # High response time
+      - alert: EmailTriageHighLatency
+        expr: histogram_quantile(0.95, rate(processing_time_ms_bucket[5m])) > 5000
+        for: 5m
+        labels:
+          severity: warning
+          service: email-triage
+        annotations:
+          summary: "High latency in email triage processing"
+          description: "95th percentile latency is {{ $value }}ms for email triage service"
+
+      # Low throughput
+      - alert: EmailTriageLowThroughput
+        expr: rate(emails_processed[5m]) < 1
+        for: 10m
+        labels:
+          severity: warning
+          service: email-triage
+        annotations:
+          summary: "Low throughput in email triage processing"
+          description: "Processing rate is {{ $value }} emails/second for email triage service"
+
+      # Security threats detected
+      - alert: SecurityThreatsDetected
+        expr: increase(security_threats_detected[5m]) > 10
+        for: 1m
+        labels:
+          severity: critical
+          service: email-triage
+          category: security
+        annotations:
+          summary: "High number of security threats detected"
+          description: "{{ $value }} security threats detected in the last 5 minutes"
+
+      # AI analysis failures
+      - alert: AIAnalysisFailures
+        expr: rate(ai_analysis_errors[5m]) / rate(ai_analysis_operations[5m]) > 0.05
+        for: 3m
+        labels:
+          severity: warning
+          service: email-triage
+          category: ai
+        annotations:
+          summary: "High AI analysis failure rate"
+          description: "AI analysis failure rate is {{ $value | humanizePercentage }}"
+
+      # Memory usage high
+      - alert: EmailTriageHighMemoryUsage
+        expr: processing_memory_mb > 800
+        for: 5m
+        labels:
+          severity: warning
+          service: email-triage
+        annotations:
+          summary: "High memory usage in email triage"
+          description: "Memory usage is {{ $value }}MB"
+
+      # CPU usage high
+      - alert: EmailTriageHighCPUUsage
+        expr: processing_cpu_percent > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: email-triage
+        annotations:
+          summary: "High CPU usage in email triage"
+          description: "CPU usage is {{ $value }}%"
+
+      # Circuit breaker open
+      - alert: CircuitBreakerOpen
+        expr: circuit_breaker_state == 1
+        for: 1m
+        labels:
+          severity: critical
+          service: email-triage
+        annotations:
+          summary: "Circuit breaker is open"
+          description: "Circuit breaker has opened, indicating service degradation"
+
+      # Compliance violations
+      - alert: ComplianceViolations
+        expr: increase(compliance_violations[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          service: email-triage
+          category: compliance
+        annotations:
+          summary: "Compliance violations detected"
+          description: "{{ $value }} compliance violations detected in the last 5 minutes"
+
+      # Service unavailable
+      - alert: EmailTriageServiceDown
+        expr: up{job="email-triage"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: email-triage
+        annotations:
+          summary: "Email triage service is down"
+          description: "Email triage service has been down for more than 1 minute"
+
+      # Health check failures
+      - alert: HealthCheckFailures
+        expr: increase(health_check_failures[5m]) > 3
+        for: 2m
+        labels:
+          severity: warning
+          service: email-triage
+        annotations:
+          summary: "Multiple health check failures"
+          description: "{{ $value }} health check failures in the last 5 minutes"
+
+      # Bulk processing errors
+      - alert: BulkProcessingErrors
+        expr: increase(batch_processing_errors[5m]) > 5
+        for: 3m
+        labels:
+          severity: warning
+          service: email-triage
+        annotations:
+          summary: "Multiple bulk processing errors"
+          description: "{{ $value }} batch processing errors in the last 5 minutes"
+
+      # Scaling events (informational)
+      - alert: AutoScalingEvent
+        expr: increase(adaptive_scaling_events[5m]) > 0
+        for: 0m
+        labels:
+          severity: info
+          service: email-triage
+        annotations:
+          summary: "Auto-scaling event occurred"
+          description: "Auto-scaling event detected - system is adapting to load"
