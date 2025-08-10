@@ -1,0 +1,35 @@
+{
+  "processing": {
+    "max_content_length": 100000,
+    "enable_validation": true,
+    "enable_logging": true,
+    "enable_monitoring": true,
+    "enable_caching": true,
+    "enable_security": true
+  },
+  "scaling": {
+    "min_workers": 4,
+    "max_workers": 20,
+    "auto_scaling_enabled": true,
+    "target_cpu_percent": 70.0,
+    "target_response_time_ms": 200.0
+  },
+  "security": {
+    "enable_content_sanitization": true,
+    "sanitization_level": "strict",
+    "enable_threat_detection": true,
+    "quarantine_high_risk": true
+  },
+  "monitoring": {
+    "enable_health_checks": true,
+    "health_check_interval": 30,
+    "enable_metrics_export": true,
+    "metrics_port": 8080,
+    "log_level": "INFO"
+  },
+  "caching": {
+    "default_ttl": 300,
+    "max_cache_size": 5000,
+    "cache_strategy": "adaptive"
+  }
+}
