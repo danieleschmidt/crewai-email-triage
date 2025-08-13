@@ -138,7 +138,7 @@ def test_cli_requires_message():
     last_line = result.stderr.strip().splitlines()[-1]
     assert (
         last_line
-        == "triage.py: error: one of the arguments --message --stdin --file --batch-file --interactive --gmail is required"
+        == "triage.py: error: one of the arguments --message --stdin --file --batch-file --interactive --gmail --health --performance --cache-stats --benchmark --security-scan --resilience-status --system-health --performance-insights --optimize-performance is required"
     )
 
 

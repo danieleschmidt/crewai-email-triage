@@ -1,6 +1,7 @@
 """Core functionality for CrewAI Email Triage."""
 
 from __future__ import annotations
+
 import logging
 
 # Setup basic logging
@@ -25,10 +26,10 @@ def process_email(content: str | None) -> str:
     # Enhanced error handling
     if content is None:
         return ""
-    
+
     if not isinstance(content, str):
         raise TypeError(f"Expected str or None, got {type(content)}")
-    
+
     if len(content.strip()) == 0:
         return "Processed: [Empty message]"
     result = f"Processed: {content.strip()}"

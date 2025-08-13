@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import asyncio
-import functools
 import random
 import time
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
-from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from enum import Enum
+from typing import Any, Callable, Dict, Optional, TypeVar
 
 from .logging_utils import get_logger
 from .metrics_export import get_metrics_collector
@@ -34,7 +33,7 @@ class FailureMode(Enum):
 @dataclass
 class ResilienceMetrics:
     """Metrics for resilience operations."""
-    
+
     total_attempts: int = 0
     successful_attempts: int = 0
     failed_attempts: int = 0
@@ -42,13 +41,13 @@ class ResilienceMetrics:
     circuit_breaker_trips: int = 0
     fallback_invocations: int = 0
     average_response_time_ms: float = 0.0
-    
+
     def success_rate(self) -> float:
         """Calculate success rate."""
         if self.total_attempts == 0:
             return 0.0
         return self.successful_attempts / self.total_attempts
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -65,7 +64,7 @@ class ResilienceMetrics:
 
 class BulkheadIsolation:
     """Bulkhead pattern implementation for resource isolation."""
-    
+
     def __init__(self, max_concurrent: int = 10, timeout: float = 30.0):
         """Initialize bulkhead isolation.
         
@@ -78,16 +77,16 @@ class BulkheadIsolation:
         self.semaphore = asyncio.Semaphore(max_concurrent)
         self.executor = ThreadPoolExecutor(max_workers=max_concurrent)
         self.active_operations = 0
-        
+
         logger.info(f"BulkheadIsolation initialized with max_concurrent={max_concurrent}")
-    
+
     async def execute(self, operation: Callable[[], T]) -> T:
         """Execute operation with bulkhead isolation."""
-        
+
         async with self.semaphore:
             self.active_operations += 1
             _metrics_collector.set_gauge("bulkhead_active_operations", self.active_operations)
-            
+
             try:
                 # Run the operation in thread pool with timeout
                 loop = asyncio.get_event_loop()
@@ -95,25 +94,25 @@ class BulkheadIsolation:
                     loop.run_in_executor(self.executor, operation),
                     timeout=self.timeout
                 )
-                
+
                 _metrics_collector.increment_counter("bulkhead_successful_operations")
                 return result
-                
+
             except asyncio.TimeoutError:
                 _metrics_collector.increment_counter("bulkhead_timeout_errors")
                 raise TimeoutError(f"Operation timed out after {self.timeout}s")
-            except Exception as e:
+            except Exception:
                 _metrics_collector.increment_counter("bulkhead_operation_errors")
                 raise
             finally:
                 self.active_operations -= 1
                 _metrics_collector.set_gauge("bulkhead_active_operations", self.active_operations)
-    
+
     def get_status(self) -> Dict[str, Any]:
         """Get current bulkhead status."""
         available_permits = self.semaphore._value
         utilization = (self.max_concurrent - available_permits) / self.max_concurrent
-        
+
         return {
             "max_concurrent": self.max_concurrent,
             "active_operations": self.active_operations,
@@ -125,7 +124,7 @@ class BulkheadIsolation:
 
 class GracefulDegradation:
     """Implements graceful degradation patterns."""
-    
+
     def __init__(self, fallback_strategies: Dict[str, Callable] = None):
         """Initialize graceful degradation.
         
@@ -135,16 +134,16 @@ class GracefulDegradation:
         self.fallback_strategies = fallback_strategies or {}
         self.degradation_level = 0  # 0 = normal, higher = more degraded
         self.max_degradation_level = 5
-        
+
         logger.info("GracefulDegradation initialized")
-    
+
     def set_degradation_level(self, level: int):
         """Set system degradation level."""
         self.degradation_level = max(0, min(level, self.max_degradation_level))
         _metrics_collector.set_gauge("system_degradation_level", self.degradation_level)
-        
+
         logger.info(f"System degradation level set to {self.degradation_level}")
-    
+
     def execute_with_fallback(
         self,
         primary_operation: Callable[[], T],
@@ -152,9 +151,9 @@ class GracefulDegradation:
         fallback_operation: Optional[Callable[[], T]] = None
     ) -> T:
         """Execute operation with fallback strategy."""
-        
+
         start_time = time.perf_counter()
-        
+
         try:
             # Skip expensive operations at high degradation levels
             if self.degradation_level >= 4 and operation_name in ['ai_analysis', 'complex_processing']:
@@ -164,21 +163,21 @@ class GracefulDegradation:
                     return fallback_operation()
                 else:
                     raise Exception("Operation skipped due to degradation")
-            
+
             # Execute primary operation
             result = primary_operation()
-            
+
             processing_time = (time.perf_counter() - start_time) * 1000
             _metrics_collector.record_histogram(f"operation_{operation_name}_time_ms", processing_time)
-            
+
             return result
-            
+
         except Exception as e:
             processing_time = (time.perf_counter() - start_time) * 1000
             _metrics_collector.increment_counter(f"operation_{operation_name}_failures")
-            
+
             logger.warning(f"Primary operation {operation_name} failed: {e}")
-            
+
             # Try registered fallback strategy
             fallback = fallback_operation or self.fallback_strategies.get(operation_name)
             if fallback:
@@ -189,10 +188,10 @@ class GracefulDegradation:
                 except Exception as fallback_error:
                     logger.error(f"Fallback for {operation_name} also failed: {fallback_error}")
                     _metrics_collector.increment_counter("graceful_degradation_fallback_failures")
-            
+
             # Re-raise original exception if no fallback available
             raise
-    
+
     def register_fallback(self, operation_name: str, fallback_func: Callable):
         """Register a fallback function for an operation."""
         self.fallback_strategies[operation_name] = fallback_func
@@ -201,7 +200,7 @@ class GracefulDegradation:
 
 class AdaptiveRetry:
     """Adaptive retry mechanism with intelligent backoff."""
-    
+
     def __init__(
         self,
         max_attempts: int = 3,
@@ -225,9 +224,9 @@ class AdaptiveRetry:
         self.exponential_base = exponential_base
         self.jitter = jitter
         self.failure_counts = {}  # Track failures per operation type
-        
+
         logger.info(f"AdaptiveRetry initialized with max_attempts={max_attempts}")
-    
+
     def execute_with_retry(
         self,
         operation: Callable[[], T],
@@ -235,80 +234,80 @@ class AdaptiveRetry:
         retryable_exceptions: tuple = (Exception,)
     ) -> T:
         """Execute operation with adaptive retry."""
-        
+
         last_exception = None
-        
+
         for attempt in range(1, self.max_attempts + 1):
             try:
                 start_time = time.perf_counter()
                 result = operation()
-                
+
                 processing_time = (time.perf_counter() - start_time) * 1000
                 _metrics_collector.record_histogram(f"retry_operation_{operation_name}_time_ms", processing_time)
-                
+
                 # Reset failure count on success
                 if operation_name in self.failure_counts:
                     del self.failure_counts[operation_name]
-                
+
                 if attempt > 1:
                     logger.info(f"Operation {operation_name} succeeded on attempt {attempt}")
                     _metrics_collector.increment_counter(f"retry_operation_{operation_name}_success_after_retry")
-                
+
                 return result
-                
+
             except Exception as e:
                 last_exception = e
-                
+
                 # Check if exception is retryable
                 if not isinstance(e, retryable_exceptions):
                     logger.error(f"Non-retryable exception for {operation_name}: {e}")
                     _metrics_collector.increment_counter(f"retry_operation_{operation_name}_non_retryable")
                     raise
-                
+
                 # Track failure
                 self.failure_counts[operation_name] = self.failure_counts.get(operation_name, 0) + 1
-                
+
                 if attempt == self.max_attempts:
                     logger.error(f"Operation {operation_name} failed after {attempt} attempts: {e}")
                     _metrics_collector.increment_counter(f"retry_operation_{operation_name}_max_attempts_exceeded")
                     raise
-                
+
                 # Calculate delay for next attempt
                 delay = self._calculate_delay(attempt, operation_name)
-                
+
                 logger.warning(f"Operation {operation_name} failed on attempt {attempt}, retrying in {delay:.2f}s: {e}")
                 _metrics_collector.increment_counter(f"retry_operation_{operation_name}_attempt_{attempt}")
-                
+
                 time.sleep(delay)
-        
+
         # This should never be reached, but just in case
         raise last_exception
-    
+
     def _calculate_delay(self, attempt: int, operation_name: str) -> float:
         """Calculate adaptive delay based on attempt and failure history."""
-        
+
         # Base exponential backoff
         delay = self.base_delay * (self.exponential_base ** (attempt - 1))
-        
+
         # Adaptive adjustment based on failure history
         failure_count = self.failure_counts.get(operation_name, 0)
         if failure_count > 5:
             delay *= 1.5  # Increase delay for frequently failing operations
-        
+
         # Cap at maximum delay
         delay = min(delay, self.max_delay)
-        
+
         # Add jitter to prevent thundering herd
         if self.jitter:
             jitter_range = delay * 0.1
             delay += random.uniform(-jitter_range, jitter_range)
-        
+
         return max(0.1, delay)  # Ensure minimum delay
 
 
 class HealthCheck:
     """Advanced health check system for components."""
-    
+
     def __init__(self):
         """Initialize health check system."""
         self.component_health = {}
@@ -318,14 +317,14 @@ class HealthCheck:
             'memory_usage_mb': 1000,
             'cpu_usage_percent': 80,
         }
-        
+
         logger.info("HealthCheck system initialized")
-    
+
     def check_component_health(self, component_name: str) -> Dict[str, Any]:
         """Check health of a specific component."""
-        
+
         start_time = time.perf_counter()
-        
+
         try:
             # Component-specific health checks
             if component_name == "email_processor":
@@ -336,48 +335,48 @@ class HealthCheck:
                 health = self._check_security_scanner_health()
             else:
                 health = self._check_generic_component_health(component_name)
-            
+
             check_time = (time.perf_counter() - start_time) * 1000
             health['check_time_ms'] = check_time
-            
+
             # Update component health cache
             self.component_health[component_name] = health
-            
+
             _metrics_collector.record_histogram(f"health_check_{component_name}_time_ms", check_time)
-            
+
             return health
-            
+
         except Exception as e:
             logger.error(f"Health check failed for {component_name}: {e}")
             _metrics_collector.increment_counter(f"health_check_{component_name}_failures")
-            
+
             return {
                 'status': 'unhealthy',
                 'error': str(e),
                 'check_time_ms': (time.perf_counter() - start_time) * 1000
             }
-    
+
     def _check_email_processor_health(self) -> Dict[str, Any]:
         """Check email processor component health."""
-        
+
         # Check recent processing metrics
         recent_emails = _metrics_collector.get_counter("emails_processed")
         recent_errors = _metrics_collector.get_counter("email_processing_errors")
-        
+
         error_rate = recent_errors / max(1, recent_emails)
         avg_response_time = _metrics_collector.get_gauge("avg_processing_time_ms")
-        
+
         status = "healthy"
         issues = []
-        
+
         if error_rate > self.health_thresholds['error_rate']:
             status = "unhealthy"
             issues.append(f"High error rate: {error_rate:.2%}")
-        
+
         if avg_response_time > self.health_thresholds['response_time_ms']:
             status = "degraded" if status == "healthy" else status
             issues.append(f"High response time: {avg_response_time:.2f}ms")
-        
+
         return {
             'status': status,
             'error_rate': error_rate,
@@ -388,27 +387,27 @@ class HealthCheck:
                 'processing_errors': recent_errors,
             }
         }
-    
+
     def _check_ai_analyzer_health(self) -> Dict[str, Any]:
         """Check AI analyzer component health."""
-        
+
         analysis_count = _metrics_collector.get_counter("ai_analysis_operations")
         analysis_errors = _metrics_collector.get_counter("ai_analysis_errors")
-        
+
         error_rate = analysis_errors / max(1, analysis_count)
         avg_confidence = _metrics_collector.get_gauge("ai_analysis_confidence")
-        
+
         status = "healthy"
         issues = []
-        
+
         if error_rate > 0.05:  # 5% error rate threshold for AI
             status = "unhealthy"
             issues.append(f"High AI error rate: {error_rate:.2%}")
-        
+
         if avg_confidence < 0.6:  # Low confidence threshold
             status = "degraded" if status == "healthy" else status
             issues.append(f"Low AI confidence: {avg_confidence:.2f}")
-        
+
         return {
             'status': status,
             'error_rate': error_rate,
@@ -419,28 +418,28 @@ class HealthCheck:
                 'analysis_errors': analysis_errors,
             }
         }
-    
+
     def _check_security_scanner_health(self) -> Dict[str, Any]:
         """Check security scanner component health."""
-        
+
         scan_count = _metrics_collector.get_counter("security_scans")
         scan_errors = _metrics_collector.get_counter("security_scan_errors")
         threat_count = _metrics_collector.get_counter("security_threats_detected")
-        
+
         error_rate = scan_errors / max(1, scan_count)
         threat_rate = threat_count / max(1, scan_count)
-        
+
         status = "healthy"
         issues = []
-        
+
         if error_rate > 0.02:  # 2% error rate threshold for security
             status = "unhealthy"
             issues.append(f"High security scan error rate: {error_rate:.2%}")
-        
+
         if threat_rate > 0.5:  # More than 50% threat detection might indicate overly sensitive rules
             status = "degraded" if status == "healthy" else status
             issues.append(f"High threat detection rate: {threat_rate:.2%}")
-        
+
         return {
             'status': status,
             'error_rate': error_rate,
@@ -452,23 +451,23 @@ class HealthCheck:
                 'threats_detected': threat_count,
             }
         }
-    
+
     def _check_generic_component_health(self, component_name: str) -> Dict[str, Any]:
         """Generic health check for unknown components."""
-        
+
         return {
             'status': 'unknown',
             'message': f"No specific health check implemented for {component_name}",
             'metrics': {}
         }
-    
+
     def get_overall_health(self) -> Dict[str, Any]:
         """Get overall system health."""
-        
+
         component_statuses = []
         unhealthy_count = 0
         degraded_count = 0
-        
+
         # Check all known components
         for component in ["email_processor", "ai_analyzer", "security_scanner"]:
             health = self.check_component_health(component)
@@ -477,12 +476,12 @@ class HealthCheck:
                 'status': health['status'],
                 'issues': health.get('issues', [])
             })
-            
+
             if health['status'] == 'unhealthy':
                 unhealthy_count += 1
             elif health['status'] == 'degraded':
                 degraded_count += 1
-        
+
         # Determine overall status
         if unhealthy_count > 0:
             overall_status = "unhealthy"
@@ -490,7 +489,7 @@ class HealthCheck:
             overall_status = "degraded"
         else:
             overall_status = "healthy"
-        
+
         return {
             'overall_status': overall_status,
             'components': component_statuses,
@@ -506,35 +505,35 @@ class HealthCheck:
 
 class ResilienceOrchestrator:
     """Orchestrates all resilience mechanisms."""
-    
+
     def __init__(self, config: Optional[Dict] = None):
         """Initialize resilience orchestrator."""
         self.config = config or {}
-        
+
         # Initialize resilience components
         self.bulkhead = BulkheadIsolation(
             max_concurrent=self.config.get('max_concurrent', 10),
             timeout=self.config.get('operation_timeout', 30.0)
         )
-        
+
         self.degradation = GracefulDegradation()
         self.retry = AdaptiveRetry(
             max_attempts=self.config.get('max_retry_attempts', 3),
             base_delay=self.config.get('retry_base_delay', 1.0),
             max_delay=self.config.get('retry_max_delay', 60.0)
         )
-        
+
         self.health_check = HealthCheck()
         self.metrics = ResilienceMetrics()
-        
+
         # Register default fallback strategies
         self._register_default_fallbacks()
-        
+
         logger.info("ResilienceOrchestrator initialized")
-    
+
     def _register_default_fallbacks(self):
         """Register default fallback strategies."""
-        
+
         def simple_triage_fallback():
             """Simple fallback for email triage."""
             return {
@@ -543,7 +542,7 @@ class ResilienceOrchestrator:
                 "summary": "Email received - requires manual review",
                 "response": "Thank you for your message. We will review it and respond shortly."
             }
-        
+
         def basic_ai_analysis_fallback():
             """Basic fallback for AI analysis."""
             return {
@@ -553,10 +552,10 @@ class ResilienceOrchestrator:
                 "entities": [],
                 "confidence": 0.1
             }
-        
+
         self.degradation.register_fallback("email_triage", simple_triage_fallback)
         self.degradation.register_fallback("ai_analysis", basic_ai_analysis_fallback)
-    
+
     async def execute_resilient_operation(
         self,
         operation: Callable[[], T],
@@ -565,10 +564,10 @@ class ResilienceOrchestrator:
         retryable_exceptions: tuple = (Exception,)
     ) -> T:
         """Execute operation with full resilience mechanisms."""
-        
+
         start_time = time.perf_counter()
         self.metrics.total_attempts += 1
-        
+
         try:
             # Execute with bulkhead isolation and graceful degradation
             result = await self.bulkhead.execute(
@@ -582,27 +581,27 @@ class ResilienceOrchestrator:
                     fallback_operation=fallback_operation
                 )
             )
-            
+
             self.metrics.successful_attempts += 1
-            
+
             # Update average response time
             response_time = (time.perf_counter() - start_time) * 1000
             total_time = self.metrics.average_response_time_ms * (self.metrics.successful_attempts - 1)
             self.metrics.average_response_time_ms = (total_time + response_time) / self.metrics.successful_attempts
-            
+
             return result
-            
+
         except Exception as e:
             self.metrics.failed_attempts += 1
-            
+
             logger.error(f"Resilient operation {operation_name} failed: {e}")
             _metrics_collector.increment_counter(f"resilient_operation_{operation_name}_failures")
-            
+
             raise
-    
+
     def get_resilience_status(self) -> Dict[str, Any]:
         """Get comprehensive resilience status."""
-        
+
         return {
             'metrics': self.metrics.to_dict(),
             'bulkhead': self.bulkhead.get_status(),

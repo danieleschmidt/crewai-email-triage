@@ -15,7 +15,7 @@ TRANSLATIONS = {
     "en": {
         "categories": {
             "urgent": "urgent",
-            "work": "work", 
+            "work": "work",
             "spam": "spam",
             "general": "general",
             "empty": "empty",
@@ -30,7 +30,7 @@ TRANSLATIONS = {
         },
         "errors": {
             "processing_failed": "Processing failed",
-            "unable_to_process": "Unable to process message", 
+            "unable_to_process": "Unable to process message",
             "validation_failed": "validation_failed",
             "sanitization_failed": "sanitization_failed"
         }
@@ -39,7 +39,7 @@ TRANSLATIONS = {
         "categories": {
             "urgent": "urgente",
             "work": "trabajo",
-            "spam": "spam", 
+            "spam": "spam",
             "general": "general",
             "empty": "vacío",
             "unknown": "desconocido"
@@ -63,7 +63,7 @@ TRANSLATIONS = {
             "urgent": "urgent",
             "work": "travail",
             "spam": "spam",
-            "general": "général", 
+            "general": "général",
             "empty": "vide",
             "unknown": "inconnu"
         },
@@ -87,7 +87,7 @@ TRANSLATIONS = {
             "work": "arbeit",
             "spam": "spam",
             "general": "allgemein",
-            "empty": "leer", 
+            "empty": "leer",
             "unknown": "unbekannt"
         },
         "responses": {
@@ -155,86 +155,86 @@ TRANSLATIONS = {
 
 class I18nManager:
     """Internationalization and localization manager."""
-    
+
     def __init__(self, default_language: str = "en"):
         self.default_language = default_language
         self.current_language = default_language
         self.translations = TRANSLATIONS.copy()
-        
+
         # Try to load from environment
         env_lang = os.environ.get('TRIAGE_LANGUAGE', '').lower()
         if env_lang and env_lang in self.translations:
             self.current_language = env_lang
-            
-        logger.info(f"I18n manager initialized", 
+
+        logger.info("I18n manager initialized",
                    extra={'default_language': default_language,
                          'current_language': self.current_language,
                          'available_languages': list(self.translations.keys())})
-    
+
     def set_language(self, language: str) -> bool:
         """Set the current language."""
         if language not in self.translations:
             logger.warning(f"Language '{language}' not supported, using '{self.current_language}'")
             return False
-            
+
         self.current_language = language
         logger.info(f"Language changed to: {language}")
         return True
-    
+
     def get_category_translation(self, category: str) -> str:
         """Get translated category name."""
         lang_dict = self.translations.get(self.current_language, {})
         categories = lang_dict.get("categories", {})
         return categories.get(category, category)
-    
+
     def get_response_translation(self, response_type: str = "default", category: str = None) -> str:
         """Get translated response text."""
         lang_dict = self.translations.get(self.current_language, {})
         responses = lang_dict.get("responses", {})
-        
+
         # Try category-specific response first
         if category and category in responses:
             return responses[category]
-            
+
         # Fall back to response type
         return responses.get(response_type, responses.get("default", "Thanks for your email"))
-    
+
     def get_error_translation(self, error_type: str) -> str:
         """Get translated error message."""
         lang_dict = self.translations.get(self.current_language, {})
         errors = lang_dict.get("errors", {})
         return errors.get(error_type, error_type)
-    
+
     def add_custom_translations(self, language: str, translations: Dict[str, Dict[str, str]]) -> None:
         """Add custom translations for a language."""
         if language not in self.translations:
             self.translations[language] = {"categories": {}, "responses": {}, "errors": {}}
-            
+
         for category, trans_dict in translations.items():
             if category in self.translations[language]:
                 self.translations[language][category].update(trans_dict)
             else:
                 self.translations[language][category] = trans_dict
-                
-        logger.info(f"Added custom translations for '{language}'", 
+
+        logger.info(f"Added custom translations for '{language}'",
                    extra={'categories_added': len(translations.keys())})
-    
+
     def get_available_languages(self) -> list[str]:
         """Get list of available languages."""
         return list(self.translations.keys())
-    
+
     def load_translations_from_file(self, file_path: str) -> bool:
         """Load translations from JSON file."""
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding='utf-8') as f:
                 translations = json.load(f)
-                
+
             for language, trans_dict in translations.items():
                 self.add_custom_translations(language, trans_dict)
-                
+
             logger.info(f"Loaded translations from {file_path}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to load translations from {file_path}: {e}")
             return False
@@ -281,14 +281,14 @@ def detect_language_from_content(content: str) -> str:
     """Simple language detection based on common patterns."""
     if not content:
         return "en"
-        
+
     content_lower = content.lower()
-    
+
     # Simple heuristics for language detection
     if any(word in content_lower for word in ['gracias', 'señor', 'correo', 'mensaje']):
         return "es"
     elif any(word in content_lower for word in ['merci', 'monsieur', 'madame', 'bonjour']):
-        return "fr"  
+        return "fr"
     elif any(word in content_lower for word in ['danke', 'herr', 'frau', 'guten']):
         return "de"
     elif any(char in content for char in '你好谢谢请问'):
