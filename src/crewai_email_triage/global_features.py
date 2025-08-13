@@ -2,20 +2,14 @@
 
 from __future__ import annotations
 
-import json
 import re
 import time
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set, Tuple, Any
 from enum import Enum
-import locale
-import gettext
-import os
-from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from .logging_utils import get_logger
 from .metrics_export import get_metrics_collector
-from .advanced_security import SecurityThreat
 
 logger = get_logger(__name__)
 _metrics_collector = get_metrics_collector()
@@ -23,9 +17,9 @@ _metrics_collector = get_metrics_collector()
 
 class Region(Enum):
     """Supported regions for global deployment."""
-    
+
     US_EAST = "us-east-1"
-    US_WEST = "us-west-2" 
+    US_WEST = "us-west-2"
     EU_WEST = "eu-west-1"
     EU_CENTRAL = "eu-central-1"
     ASIA_PACIFIC = "ap-southeast-1"
@@ -38,7 +32,7 @@ class Region(Enum):
 
 class Language(Enum):
     """Supported languages for internationalization."""
-    
+
     ENGLISH = "en"
     SPANISH = "es"
     FRENCH = "fr"
@@ -55,7 +49,7 @@ class Language(Enum):
 
 class ComplianceStandard(Enum):
     """Supported compliance standards."""
-    
+
     GDPR = "gdpr"          # EU General Data Protection Regulation
     CCPA = "ccpa"          # California Consumer Privacy Act
     PDPA = "pdpa"          # Personal Data Protection Act (Singapore)
@@ -69,13 +63,13 @@ class ComplianceStandard(Enum):
 @dataclass
 class ComplianceCheck:
     """Represents a compliance validation result."""
-    
+
     standard: ComplianceStandard
     compliant: bool
     issues: List[str] = field(default_factory=list)
     recommendations: List[str] = field(default_factory=list)
     confidence: float = 0.0
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
@@ -90,14 +84,14 @@ class ComplianceCheck:
 @dataclass
 class GlobalContext:
     """Global context for processing emails."""
-    
+
     region: Region = Region.US_EAST
     language: Language = Language.ENGLISH
     timezone: str = "UTC"
     currency: str = "USD"
     compliance_standards: List[ComplianceStandard] = field(default_factory=list)
     data_residency_required: bool = False
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
@@ -112,7 +106,7 @@ class GlobalContext:
 
 class InternationalizationManager:
     """Manages internationalization and localization."""
-    
+
     def __init__(self, default_language: Language = Language.ENGLISH):
         """Initialize internationalization manager."""
         self.default_language = default_language
@@ -120,70 +114,70 @@ class InternationalizationManager:
         self.translations = self._load_translations()
         self.date_formats = self._load_date_formats()
         self.currency_formats = self._load_currency_formats()
-        
+
         logger.info(f"InternationalizationManager initialized with language: {default_language.value}")
-    
+
     def set_language(self, language: Language):
         """Set the current language."""
         self.current_language = language
         _metrics_collector.increment_counter(f"i18n_language_set_{language.value}")
         logger.debug(f"Language set to: {language.value}")
-    
+
     def translate(self, key: str, language: Optional[Language] = None, **kwargs) -> str:
         """Translate a key to the specified language."""
-        
+
         target_language = language or self.current_language
-        
+
         # Get translation from dictionary
         translation = self.translations.get(target_language, {}).get(key, key)
-        
+
         # Handle parameter substitution
         try:
             if kwargs:
                 translation = translation.format(**kwargs)
         except KeyError as e:
             logger.warning(f"Translation parameter missing for key '{key}': {e}")
-        
+
         _metrics_collector.increment_counter("i18n_translations")
-        
+
         return translation
-    
+
     def format_date(self, timestamp: float, language: Optional[Language] = None) -> str:
         """Format a timestamp according to language conventions."""
-        
+
         target_language = language or self.current_language
         date_format = self.date_formats.get(target_language, "%Y-%m-%d %H:%M:%S")
-        
+
         import datetime
         dt = datetime.datetime.fromtimestamp(timestamp)
-        
+
         return dt.strftime(date_format)
-    
+
     def format_currency(self, amount: float, currency: str = "USD", language: Optional[Language] = None) -> str:
         """Format currency according to language conventions."""
-        
+
         target_language = language or self.current_language
         format_info = self.currency_formats.get(target_language, {})
-        
+
         symbol = format_info.get("symbol", "$")
         decimals = format_info.get("decimals", 2)
         separator = format_info.get("separator", ",")
         decimal_point = format_info.get("decimal_point", ".")
-        
+
         # Format amount with proper decimal places
         formatted_amount = f"{amount:.{decimals}f}"
-        
+
         # Add thousands separator
         if separator:
             parts = formatted_amount.split(".")
             parts[0] = f"{int(parts[0]):,}".replace(",", separator)
             formatted_amount = decimal_point.join(parts)
-        
+
         return f"{symbol}{formatted_amount}"
-    
+
     def detect_language(self, text: str) -> Language:
         """Detect the language of the given text."""
-        
+
         # Simple language detection based on common words
         language_indicators = {
             Language.ENGLISH: ["the", "and", "you", "that", "was", "for", "are"],
@@ -193,35 +187,35 @@ class InternationalizationManager:
             Language.PORTUGUESE: ["o", "de", "a", "e", "do", "da", "em"],
             Language.ITALIAN: ["il", "di", "a", "e", "che", "in", "con"],
         }
-        
+
         text_lower = text.lower()
         language_scores = {}
-        
+
         for language, indicators in language_indicators.items():
             score = 0
             for indicator in indicators:
                 score += text_lower.count(f" {indicator} ")
             language_scores[language] = score
-        
+
         # Return language with highest score, or default if no clear winner
         best_language = max(language_scores.items(), key=lambda x: x[1])
-        
+
         if best_language[1] > 0:
             detected = best_language[0]
             _metrics_collector.increment_counter(f"i18n_language_detected_{detected.value}")
             return detected
-        
+
         return self.default_language
-    
+
     def _load_translations(self) -> Dict[Language, Dict[str, str]]:
         """Load translation dictionaries for all supported languages."""
-        
+
         return {
             Language.ENGLISH: {
                 "email_processed": "Email processed successfully",
                 "high_priority": "High Priority",
                 "urgent_message": "Urgent Message",
-                "complaint_detected": "Complaint Detected", 
+                "complaint_detected": "Complaint Detected",
                 "security_threat": "Security Threat",
                 "processing_failed": "Processing Failed",
                 "thank_you": "Thank you for your message",
@@ -278,10 +272,10 @@ class InternationalizationManager:
                 "escalated": "上級チームにエスカレート",
             },
         }
-    
+
     def _load_date_formats(self) -> Dict[Language, str]:
         """Load date format patterns for different languages."""
-        
+
         return {
             Language.ENGLISH: "%B %d, %Y at %I:%M %p",
             Language.SPANISH: "%d de %B de %Y a las %H:%M",
@@ -292,10 +286,10 @@ class InternationalizationManager:
             Language.PORTUGUESE: "%d de %B de %Y às %H:%M",
             Language.ITALIAN: "%d %B %Y alle %H:%M",
         }
-    
+
     def _load_currency_formats(self) -> Dict[Language, Dict[str, Any]]:
         """Load currency formatting rules for different languages."""
-        
+
         return {
             Language.ENGLISH: {"symbol": "$", "decimals": 2, "separator": ",", "decimal_point": "."},
             Language.SPANISH: {"symbol": "€", "decimals": 2, "separator": ".", "decimal_point": ","},
@@ -306,7 +300,7 @@ class InternationalizationManager:
             Language.PORTUGUESE: {"symbol": "R$", "decimals": 2, "separator": ".", "decimal_point": ","},
             Language.ITALIAN: {"symbol": "€", "decimals": 2, "separator": ".", "decimal_point": ","},
         }
-    
+
     def get_supported_languages(self) -> List[str]:
         """Get list of supported language codes."""
         return [lang.value for lang in self.translations.keys()]
@@ -314,175 +308,175 @@ class InternationalizationManager:
 
 class ComplianceManager:
     """Manages compliance with international regulations."""
-    
+
     def __init__(self):
         """Initialize compliance manager."""
         self.compliance_rules = self._load_compliance_rules()
         self.sensitive_data_patterns = self._load_sensitive_data_patterns()
-        
+
         logger.info("ComplianceManager initialized")
-    
+
     def validate_compliance(
-        self, 
-        content: str, 
+        self,
+        content: str,
         standards: List[ComplianceStandard],
         context: GlobalContext
     ) -> List[ComplianceCheck]:
         """Validate content against compliance standards."""
-        
+
         results = []
-        
+
         for standard in standards:
             check = self._validate_single_standard(content, standard, context)
             results.append(check)
-            
+
             # Update metrics
             status = "compliant" if check.compliant else "non_compliant"
             _metrics_collector.increment_counter(f"compliance_{standard.value}_{status}")
-        
+
         return results
-    
+
     def _validate_single_standard(
-        self, 
-        content: str, 
-        standard: ComplianceStandard, 
+        self,
+        content: str,
+        standard: ComplianceStandard,
         context: GlobalContext
     ) -> ComplianceCheck:
         """Validate content against a single compliance standard."""
-        
+
         rules = self.compliance_rules.get(standard, {})
         check = ComplianceCheck(standard=standard, compliant=True)
-        
+
         # Check for sensitive data
         sensitive_matches = self._detect_sensitive_data(content, standard)
         if sensitive_matches:
             check.compliant = False
             check.issues.extend([f"Sensitive data detected: {match}" for match in sensitive_matches])
-        
+
         # GDPR specific checks
         if standard == ComplianceStandard.GDPR:
             check = self._validate_gdpr(content, context, check)
-        
+
         # CCPA specific checks
         elif standard == ComplianceStandard.CCPA:
             check = self._validate_ccpa(content, context, check)
-        
+
         # HIPAA specific checks
         elif standard == ComplianceStandard.HIPAA:
             check = self._validate_hipaa(content, context, check)
-        
+
         # PCI-DSS specific checks
         elif standard == ComplianceStandard.PCI_DSS:
             check = self._validate_pci_dss(content, context, check)
-        
+
         # Set confidence based on number of checks performed
         check.confidence = 0.8 if check.issues else 0.9
-        
+
         logger.debug(f"Compliance check for {standard.value}: {'PASS' if check.compliant else 'FAIL'}")
-        
+
         return check
-    
+
     def _detect_sensitive_data(self, content: str, standard: ComplianceStandard) -> List[str]:
         """Detect sensitive data patterns in content."""
-        
+
         patterns = self.sensitive_data_patterns.get(standard, {})
         matches = []
-        
+
         for data_type, pattern in patterns.items():
             if re.search(pattern, content, re.IGNORECASE):
                 matches.append(data_type)
-        
+
         return matches
-    
+
     def _validate_gdpr(self, content: str, context: GlobalContext, check: ComplianceCheck) -> ComplianceCheck:
         """Validate GDPR compliance."""
-        
+
         # Check for EU region processing
         eu_regions = [Region.EU_WEST, Region.EU_CENTRAL]
         if context.region not in eu_regions and context.data_residency_required:
             check.compliant = False
             check.issues.append("Data processed outside EU without proper safeguards")
             check.recommendations.append("Ensure adequate data protection measures for cross-border transfers")
-        
+
         # Check for consent language
         consent_keywords = ["consent", "agree", "opt-in", "permission"]
         has_consent_language = any(keyword in content.lower() for keyword in consent_keywords)
-        
+
         if not has_consent_language and "personal" in content.lower():
             check.recommendations.append("Consider adding explicit consent language for personal data processing")
-        
+
         # Check for data subject rights mention
         rights_keywords = ["right to access", "right to deletion", "data portability", "withdraw consent"]
         has_rights_mention = any(keyword in content.lower() for keyword in rights_keywords)
-        
+
         if not has_rights_mention:
             check.recommendations.append("Consider informing data subjects of their rights under GDPR")
-        
+
         return check
-    
+
     def _validate_ccpa(self, content: str, context: GlobalContext, check: ComplianceCheck) -> ComplianceCheck:
         """Validate CCPA compliance."""
-        
+
         # Check for California resident data
         if "california" in content.lower() or "ca resident" in content.lower():
-            
+
             # Check for opt-out language
             opt_out_keywords = ["do not sell", "opt out", "privacy choices"]
             has_opt_out = any(keyword in content.lower() for keyword in opt_out_keywords)
-            
+
             if not has_opt_out:
                 check.recommendations.append("Consider adding opt-out options for California residents")
-            
+
             # Check for data categories disclosure
             disclosure_keywords = ["categories of information", "sources of information", "business purposes"]
             has_disclosure = any(keyword in content.lower() for keyword in disclosure_keywords)
-            
+
             if not has_disclosure:
                 check.recommendations.append("Consider disclosing categories of personal information collected")
-        
+
         return check
-    
+
     def _validate_hipaa(self, content: str, context: GlobalContext, check: ComplianceCheck) -> ComplianceCheck:
         """Validate HIPAA compliance."""
-        
+
         # Check for protected health information (PHI)
         phi_indicators = ["medical", "health", "diagnosis", "treatment", "patient", "doctor", "hospital"]
         has_phi = any(indicator in content.lower() for indicator in phi_indicators)
-        
+
         if has_phi:
             # Check for proper safeguards language
             safeguards_keywords = ["encrypted", "secure", "confidential", "hipaa compliant"]
             has_safeguards = any(keyword in content.lower() for keyword in safeguards_keywords)
-            
+
             if not has_safeguards:
                 check.compliant = False
                 check.issues.append("PHI detected without proper safeguards language")
                 check.recommendations.append("Ensure PHI is properly protected with encryption and access controls")
-        
+
         return check
-    
+
     def _validate_pci_dss(self, content: str, context: GlobalContext, check: ComplianceCheck) -> ComplianceCheck:
         """Validate PCI-DSS compliance."""
-        
+
         # Check for credit card data
         card_pattern = r'\b(?:\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4})\b'
         if re.search(card_pattern, content):
             check.compliant = False
             check.issues.append("Credit card numbers detected in plaintext")
             check.recommendations.append("Never store or transmit credit card data in plaintext")
-        
+
         # Check for CVV codes
         cvv_pattern = r'\b(?:cvv|cvc|security code)[\s:]*\d{3,4}\b'
         if re.search(cvv_pattern, content, re.IGNORECASE):
             check.compliant = False
             check.issues.append("CVV/CVC codes detected")
             check.recommendations.append("CVV/CVC codes must never be stored after authorization")
-        
+
         return check
-    
+
     def _load_compliance_rules(self) -> Dict[ComplianceStandard, Dict]:
         """Load compliance rules configuration."""
-        
+
         return {
             ComplianceStandard.GDPR: {
                 "requires_consent": True,
@@ -506,10 +500,10 @@ class ComplianceManager:
                 "network_security": True,
             },
         }
-    
+
     def _load_sensitive_data_patterns(self) -> Dict[ComplianceStandard, Dict[str, str]]:
         """Load sensitive data detection patterns."""
-        
+
         return {
             ComplianceStandard.GDPR: {
                 "email": r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
@@ -533,13 +527,13 @@ class ComplianceManager:
                 "account_number": r'\b(?:account|acct)[\s#:]*\d{8,}\b',
             },
         }
-    
+
     def get_compliance_report(self, checks: List[ComplianceCheck]) -> Dict[str, Any]:
         """Generate comprehensive compliance report."""
-        
+
         total_checks = len(checks)
         compliant_checks = len([c for c in checks if c.compliant])
-        
+
         report = {
             "overall_compliance": compliant_checks == total_checks,
             "compliance_score": compliant_checks / total_checks if total_checks > 0 else 0.0,
@@ -553,64 +547,65 @@ class ComplianceManager:
             },
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
         }
-        
+
         # Collect high-risk issues and recommendations
         for check in checks:
             if not check.compliant:
                 report["summary"]["high_risk_issues"].extend(check.issues)
             report["summary"]["recommendations"].extend(check.recommendations)
-        
+
         # Remove duplicates
         report["summary"]["high_risk_issues"] = list(set(report["summary"]["high_risk_issues"]))
         report["summary"]["recommendations"] = list(set(report["summary"]["recommendations"]))
-        
+
         return report
 
 
 class GlobalEmailProcessor:
     """Global email processor with i18n and compliance features."""
-    
+
     def __init__(self, context: GlobalContext):
         """Initialize global email processor."""
         self.context = context
         self.i18n = InternationalizationManager(context.language)
         self.compliance = ComplianceManager()
-        
+
         logger.info(f"GlobalEmailProcessor initialized for region {context.region.value}")
-    
+
     def process_email_global(self, content: str, headers: Optional[Dict] = None) -> Dict[str, Any]:
         """Process email with global features."""
-        
+
         start_time = time.perf_counter()
-        
+
         # Detect language if not specified
         detected_language = self.i18n.detect_language(content)
         if detected_language != self.context.language:
             self.i18n.set_language(detected_language)
             logger.info(f"Language auto-detected and switched to: {detected_language.value}")
-        
+
         # Perform compliance validation
         compliance_checks = []
         if self.context.compliance_standards:
             compliance_checks = self.compliance.validate_compliance(
                 content, self.context.compliance_standards, self.context
             )
-        
+
         # Process with standard triage (import here to avoid circular imports)
-        from .ai_enhancements import intelligent_triage_email
         import asyncio
-        
+
+        from .ai_enhancements import intelligent_triage_email
+
         # Run async function in sync context
         triage_result = asyncio.run(intelligent_triage_email(content, headers))
-        
+
         # Localize the response
         localized_response = self._localize_response(triage_result, detected_language)
-        
+
         # Generate compliance report
         compliance_report = None
         if compliance_checks:
             compliance_report = self.compliance.get_compliance_report(compliance_checks)
-        
+
         # Create global result
         global_result = {
             "triage": localized_response.to_dict(),
@@ -621,25 +616,25 @@ class GlobalEmailProcessor:
             "processing_time_ms": (time.perf_counter() - start_time) * 1000,
             "timestamp": self.i18n.format_date(time.time(), detected_language),
         }
-        
+
         # Update metrics
         _metrics_collector.increment_counter(f"global_processing_{self.context.region.value}")
         _metrics_collector.increment_counter(f"language_processing_{detected_language.value}")
-        
+
         if compliance_report and not compliance_report["overall_compliance"]:
             _metrics_collector.increment_counter("compliance_violations")
-        
+
         return global_result
-    
+
     def _localize_response(self, triage_result, language: Language):
         """Localize triage response based on detected language."""
-        
+
         # Localize category
         category_key = f"category_{triage_result.category.lower()}"
         localized_category = self.i18n.translate(category_key, language)
         if localized_category == category_key:  # No translation found
             localized_category = triage_result.category
-        
+
         # Localize priority description
         if triage_result.priority >= 8:
             priority_desc = self.i18n.translate("high_priority", language)
@@ -647,34 +642,34 @@ class GlobalEmailProcessor:
             priority_desc = self.i18n.translate("medium_priority", language)
         else:
             priority_desc = self.i18n.translate("low_priority", language)
-        
+
         # Enhance response with localized elements
         base_response = triage_result.response
-        
+
         # Add localized greeting/closing based on language and priority
         if triage_result.priority >= 7:
             urgency_note = self.i18n.translate("urgent_attention", language)
             base_response = f"{urgency_note}\n\n{base_response}"
-        
+
         # Add thank you in appropriate language
         thank_you = self.i18n.translate("thank_you", language)
         response_promise = self.i18n.translate("we_will_respond", language)
-        
+
         enhanced_response = f"{base_response}\n\n{thank_you}. {response_promise}."
-        
+
         # Update the result with localized content
         triage_result.category = localized_category
         triage_result.response = enhanced_response
-        
+
         # Add priority description to summary
         original_summary = triage_result.summary
         triage_result.summary = f"[{priority_desc}] {original_summary}"
-        
+
         return triage_result
-    
+
     def get_region_status(self) -> Dict[str, Any]:
         """Get status of current region."""
-        
+
         return {
             "region": self.context.region.value,
             "language": self.context.language.value,
@@ -690,7 +685,7 @@ class GlobalEmailProcessor:
 # Global instances for different regions
 def create_regional_processor(region: Region, compliance_standards: List[ComplianceStandard] = None) -> GlobalEmailProcessor:
     """Create a regional email processor with appropriate settings."""
-    
+
     # Regional defaults
     regional_settings = {
         Region.US_EAST: {
@@ -701,14 +696,14 @@ def create_regional_processor(region: Region, compliance_standards: List[Complia
         },
         Region.EU_WEST: {
             "language": Language.ENGLISH,
-            "timezone": "Europe/London", 
+            "timezone": "Europe/London",
             "currency": "EUR",
             "compliance": [ComplianceStandard.GDPR, ComplianceStandard.ISO_27001],
         },
         Region.EU_CENTRAL: {
             "language": Language.GERMAN,
             "timezone": "Europe/Berlin",
-            "currency": "EUR", 
+            "currency": "EUR",
             "compliance": [ComplianceStandard.GDPR, ComplianceStandard.ISO_27001],
         },
         Region.ASIA_PACIFIC: {
@@ -724,14 +719,14 @@ def create_regional_processor(region: Region, compliance_standards: List[Complia
             "compliance": [],
         },
     }
-    
+
     settings = regional_settings.get(region, {
         "language": Language.ENGLISH,
-        "timezone": "UTC", 
+        "timezone": "UTC",
         "currency": "USD",
         "compliance": [],
     })
-    
+
     context = GlobalContext(
         region=region,
         language=settings["language"],
@@ -740,7 +735,7 @@ def create_regional_processor(region: Region, compliance_standards: List[Complia
         compliance_standards=compliance_standards or settings["compliance"],
         data_residency_required=region in [Region.EU_WEST, Region.EU_CENTRAL],
     )
-    
+
     return GlobalEmailProcessor(context)
 
 
@@ -749,10 +744,10 @@ def get_eu_processor() -> GlobalEmailProcessor:
     """Get EU-compliant processor with GDPR."""
     return create_regional_processor(Region.EU_WEST, [ComplianceStandard.GDPR])
 
-def get_us_processor() -> GlobalEmailProcessor: 
+def get_us_processor() -> GlobalEmailProcessor:
     """Get US processor with CCPA compliance."""
     return create_regional_processor(Region.US_EAST, [ComplianceStandard.CCPA])
 
 def get_asia_processor() -> GlobalEmailProcessor:
-    """Get Asia-Pacific processor with PDPA compliance.""" 
+    """Get Asia-Pacific processor with PDPA compliance."""
     return create_regional_processor(Region.ASIA_PACIFIC, [ComplianceStandard.PDPA])

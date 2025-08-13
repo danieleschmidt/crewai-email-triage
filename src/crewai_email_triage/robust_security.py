@@ -142,7 +142,7 @@ class ContentSanitizer:
         content = re.sub(r'<script[^>]*>.*?</script>', '', content, flags=re.IGNORECASE | re.DOTALL)
         
         # Remove dangerous attributes
-        content = re.sub(r'on\w+\s*=\s*["'][^"']*["']', '', content, flags=re.IGNORECASE)
+        content = re.sub(r'on\w+\s*=\s*["\'][^"\']*["\']', '', content, flags=re.IGNORECASE)
         content = re.sub(r'javascript:', '', content, flags=re.IGNORECASE)
         content = re.sub(r'vbscript:', '', content, flags=re.IGNORECASE)
         

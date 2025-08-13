@@ -739,7 +739,7 @@ def _process_message_sequential_with_rate_limiting_enhanced(
         if delay > 0:
             _metrics_collector.increment_counter("rate_limit_delays")
             _metrics_collector.record_histogram("rate_limit_delay_seconds", delay)
-            
+
         return _triage_single(content, classifier, prioritizer, summarizer, responder)
 
 

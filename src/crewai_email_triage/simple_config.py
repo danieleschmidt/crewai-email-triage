@@ -3,18 +3,19 @@
 import json
 import os
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
+
 
 class SimpleConfig:
     """Simple configuration manager."""
-    
+
     def __init__(self, config_path: str = None):
         self.config_path = config_path or os.getenv('EMAIL_TRIAGE_CONFIG')
         self._config = self._load_default_config()
-        
+
         if self.config_path and Path(self.config_path).exists():
             self._load_config_file()
-    
+
     def _load_default_config(self) -> Dict[str, Any]:
         """Load default configuration."""
         return {
@@ -38,18 +39,18 @@ class SimpleConfig:
                 "default_format": "text"
             }
         }
-    
+
     def _load_config_file(self):
         """Load configuration from file."""
         try:
             with open(self.config_path) as f:
                 file_config = json.load(f)
-            
+
             # Merge with defaults
             self._merge_config(self._config, file_config)
         except Exception as e:
             print(f"Warning: Failed to load config file {self.config_path}: {e}")
-    
+
     def _merge_config(self, default: Dict, override: Dict):
         """Recursively merge configuration dictionaries."""
         for key, value in override.items():
@@ -57,20 +58,20 @@ class SimpleConfig:
                 self._merge_config(default[key], value)
             else:
                 default[key] = value
-    
+
     def get(self, key: str, default: Any = None) -> Any:
         """Get configuration value using dot notation."""
         keys = key.split('.')
         value = self._config
-        
+
         for k in keys:
             if isinstance(value, dict) and k in value:
                 value = value[k]
             else:
                 return default
-        
+
         return value
-    
+
     def get_all(self) -> Dict[str, Any]:
         """Get all configuration."""
         return self._config.copy()
