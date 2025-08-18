@@ -22,10 +22,10 @@ class TestErrorHandling:
             ResponseAgent()
         )
         
-        assert result["category"] == "unknown"
-        assert result["priority"] == 0
-        assert result["summary"] == "Processing failed"
-        assert result["response"] == "Unable to process message"
+        assert result.category == "unknown"
+        assert result.priority == 0
+        assert result.summary == "Processing failed"
+        assert result.response == "Unable to process message"
 
     def test_empty_string_handling(self):
         """Test that empty string input is handled gracefully."""
@@ -37,10 +37,10 @@ class TestErrorHandling:
             ResponseAgent()
         )
         
-        assert result["category"] == "empty"
-        assert result["priority"] == 0
-        assert result["summary"] == "Empty message"
-        assert result["response"] == "No content to process"
+        assert result.category == "empty"
+        assert result.priority == 0
+        assert result.summary == "Empty message"
+        assert result.response == "No content to process"
 
     def test_whitespace_only_handling(self):
         """Test that whitespace-only input is handled gracefully."""
@@ -52,7 +52,7 @@ class TestErrorHandling:
             ResponseAgent()
         )
         
-        assert result["category"] == "empty"
+        assert result.category == "empty"
 
     def test_agent_exception_handling(self):
         """Test that agent exceptions are caught and handled."""
@@ -68,10 +68,10 @@ class TestErrorHandling:
             ResponseAgent()
         )
         
-        assert result["category"] == "classification_error"
-        assert isinstance(result["priority"], int)
-        assert isinstance(result["summary"], str)
-        assert isinstance(result["response"], str)
+        assert result.category == "unknown"
+        assert isinstance(result.priority, int)
+        assert isinstance(result.summary, str)
+        assert isinstance(result.response, str)
 
     def test_invalid_priority_score_handling(self):
         """Test that invalid priority scores are handled."""
@@ -87,7 +87,7 @@ class TestErrorHandling:
             ResponseAgent()
         )
         
-        assert result["priority"] == 0
+        assert result.priority == 0
 
     def test_priority_score_range_validation(self):
         """Test that priority scores are capped to valid range."""
@@ -103,7 +103,7 @@ class TestErrorHandling:
             ResponseAgent()
         )
         
-        assert 0 <= result["priority"] <= 10
+        assert 0 <= result.priority <= 10
 
     def test_long_summary_truncation(self):
         """Test that very long summaries are truncated."""
@@ -118,8 +118,8 @@ class TestErrorHandling:
             ResponseAgent()
         )
         
-        assert len(result["summary"]) <= 500
-        assert result["summary"].endswith("...")
+        assert len(result.summary) <= 500
+        assert result.summary.endswith("...")
 
     def test_long_response_truncation(self):
         """Test that very long responses are truncated."""
@@ -134,8 +134,8 @@ class TestErrorHandling:
             long_responder
         )
         
-        assert len(result["response"]) <= 1000
-        assert result["response"].endswith("...")
+        assert len(result.response) <= 1000
+        assert result.response.endswith("...")
 
     def test_triage_email_error_handling(self):
         """Test that triage_email handles errors gracefully."""
@@ -202,8 +202,8 @@ class TestInputValidation:
                 ResponseAgent()
             )
             
-            assert result["category"] == "unknown"
-            assert result["priority"] == 0
+            assert result.category == "unknown"
+            assert result.priority == 0
 
     def test_unicode_handling(self):
         """Test that unicode content is handled properly."""
