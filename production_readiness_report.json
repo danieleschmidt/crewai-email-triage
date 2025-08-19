@@ -1,0 +1,143 @@
+{
+  "timestamp": 1755636277.351701,
+  "overall_score": 92.85714285714286,
+  "deployment_ready": true,
+  "recommendation": "READY FOR PRODUCTION DEPLOYMENT",
+  "component_scores": {
+    "deployment_artifacts": 1.0,
+    "security_compliance": 1.0,
+    "monitoring_observability": 0.5,
+    "performance_scaling": 1.0,
+    "internationalization": 1.0,
+    "data_persistence": 1.0,
+    "testing_coverage": 1.0
+  },
+  "validations": {
+    "deployment_artifacts": {
+      "dockerfile": {
+        "exists": true,
+        "path": "Dockerfile",
+        "size": 6948
+      },
+      "docker_compose": {
+        "exists": true,
+        "path": "docker-compose.yml",
+        "size": 9491
+      },
+      "deployment_manifest": {
+        "exists": true,
+        "path": "deployment/deployment_manifest.json",
+        "size": 6028
+      },
+      "global_orchestrator": {
+        "exists": true,
+        "path": "global_deployment_orchestrator.py",
+        "size": 25316
+      },
+      "quality_gates": {
+        "exists": true,
+        "path": "simple_quality_gates.py",
+        "size": 5861
+      },
+      "monitoring_config": {
+        "exists": true,
+        "path": "monitoring",
+        "size": 4096
+      },
+      "kubernetes_config": {
+        "exists": true,
+        "path": "deployment/kubernetes",
+        "size": 4096
+      }
+    },
+    "configuration_management": {
+      "deployment/regions/us-east-1": {
+        "directory_exists": true,
+        "app_config_exists": true,
+        "i18n_config_exists": true,
+        "config_files": [
+          "deployment/regions/us-east-1/app_config.json",
+          "deployment/regions/us-east-1/i18n_config.json"
+        ]
+      },
+      "deployment/regions/eu-west-1": {
+        "directory_exists": true,
+        "app_config_exists": true,
+        "i18n_config_exists": true,
+        "config_files": [
+          "deployment/regions/eu-west-1/app_config.json",
+          "deployment/regions/eu-west-1/i18n_config.json"
+        ]
+      },
+      "deployment/regions/ap-southeast-1": {
+        "directory_exists": true,
+        "app_config_exists": true,
+        "i18n_config_exists": true,
+        "config_files": [
+          "deployment/regions/ap-southeast-1/app_config.json",
+          "deployment/regions/ap-southeast-1/i18n_config.json"
+        ]
+      }
+    },
+    "security_compliance": {
+      "src/crewai_email_triage/enhanced_security_framework.py": true,
+      "src/crewai_email_triage/autonomous_resilience.py": true,
+      "src/crewai_email_triage/secure_credentials.py": true,
+      "compliance_frameworks": [
+        "pdpa",
+        "gdpr",
+        "soc2",
+        "ccpa"
+      ],
+      "security_ready": true
+    },
+    "monitoring_observability": {
+      "monitoring/prometheus.yml": false,
+      "monitoring/grafana/": true,
+      "deployment/kubernetes/service.yml": true,
+      "src/crewai_email_triage/metrics_export.py": true,
+      "monitoring_ready": false
+    },
+    "performance_scaling": {
+      "src/crewai_email_triage/quantum_performance_optimizer.py": true,
+      "src/crewai_email_triage/advanced_scaling.py": true,
+      "src/crewai_email_triage/scalability.py": true,
+      "deployment/kubernetes/hpa.yml": true,
+      "scaling_ready": true
+    },
+    "internationalization": {
+      "src/crewai_email_triage/i18n.py": true,
+      "src/crewai_email_triage/global_features.py": true,
+      "i18n_ready": true,
+      "regions_configured": 3
+    },
+    "data_persistence": {
+      "deployment/kubernetes/pvc.yml": true,
+      "scripts/init-db.sql": true,
+      "db_ready": true,
+      "backup_ready": true
+    },
+    "testing_coverage": {
+      "tests/": {
+        "exists": true,
+        "test_files": 38
+      },
+      "tests/integration/": {
+        "exists": true,
+        "test_files": 1
+      },
+      "tests/performance/": {
+        "exists": true,
+        "test_files": 1
+      },
+      "tests/e2e/": {
+        "exists": true,
+        "test_files": 1
+      },
+      "tests_ready": true
+    }
+  },
+  "critical_issues": [],
+  "warnings": [],
+  "validation_time_seconds": 0.002479076385498047
+}

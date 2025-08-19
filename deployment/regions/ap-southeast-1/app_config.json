@@ -1,0 +1,58 @@
+{
+  "region": "ap-southeast-1",
+  "supported_languages": [
+    "en",
+    "zh"
+  ],
+  "compliance": {
+    "frameworks": [
+      "pdpa",
+      "gdpr",
+      "soc2",
+      "ccpa"
+    ],
+    "requirements": {
+      "consent_management": true,
+      "data_protection": true,
+      "notification_requirements": true,
+      "data_breach_response": true,
+      "audit_logging": true,
+      "data_encryption": true,
+      "data_minimization": true,
+      "right_to_erasure": true,
+      "data_portability": true,
+      "data_protection_officer": true,
+      "privacy_by_design": true,
+      "security": true,
+      "availability": true,
+      "processing_integrity": true,
+      "confidentiality": true,
+      "privacy": true,
+      "monitoring": true,
+      "incident_response": true,
+      "data_transparency": true,
+      "consumer_rights": true,
+      "data_sale_opt_out": true,
+      "non_discrimination": true,
+      "security_measures": true
+    },
+    "audit_enabled": true,
+    "encryption_required": true,
+    "consent_required": true,
+    "data_retention_policies": {
+      "default_retention_days": 2555,
+      "email_content_days": 2555,
+      "user_data_days": 1095,
+      "log_data_days": 2555,
+      "analytics_data_days": 1095,
+      "consent_expiry_days": 730
+    }
+  },
+  "encryption": {
+    "at_rest": true,
+    "in_transit": true
+  },
+  "monitoring": true,
+  "auto_scaling": true,
+  "data_residency": true
+}

@@ -1,0 +1,27 @@
+{
+  "default_language": "en",
+  "supported_languages": [
+    "en",
+    "zh"
+  ],
+  "translations": {
+    "en": {
+      "welcome": "Welcome to Email Triage",
+      "processing": "Processing your email...",
+      "category_urgent": "Urgent",
+      "category_normal": "Normal",
+      "category_low": "Low Priority",
+      "error_processing": "Error processing email",
+      "success_processed": "Email processed successfully"
+    },
+    "zh": {
+      "welcome": "\u6b22\u8fce\u4f7f\u7528\u90ae\u4ef6\u5206\u7c7b",
+      "processing": "\u6b63\u5728\u5904\u7406\u60a8\u7684\u90ae\u4ef6...",
+      "category_urgent": "\u7d27\u6025",
+      "category_normal": "\u6b63\u5e38",
+      "category_low": "\u4f4e\u4f18\u5148\u7ea7",
+      "error_processing": "\u90ae\u4ef6\u5904\u7406\u9519\u8bef",
+      "success_processed": "\u90ae\u4ef6\u5904\u7406\u6210\u529f"
+    }
+  }
+}

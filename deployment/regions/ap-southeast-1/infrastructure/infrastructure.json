@@ -1,0 +1,18 @@
+{
+  "vpc_cidr": "10.0.0.0/16",
+  "subnets": [
+    "10.0.1.0/24",
+    "10.0.2.0/24"
+  ],
+  "load_balancer": true,
+  "database": {
+    "encrypted": true,
+    "backup_enabled": true,
+    "multi_az": true
+  },
+  "auto_scaling_group": {
+    "min_size": 2,
+    "max_size": 10,
+    "desired_capacity": 3
+  }
+}
