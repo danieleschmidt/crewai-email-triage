@@ -1,0 +1,30 @@
+{
+  "prometheus": {
+    "enabled": true,
+    "retention": "30d",
+    "scrape_interval": "15s"
+  },
+  "grafana": {
+    "enabled": true,
+    "dashboards": [
+      "application",
+      "infrastructure",
+      "business"
+    ]
+  },
+  "alerting": {
+    "enabled": true,
+    "rules": [
+      {
+        "name": "high_error_rate",
+        "condition": "error_rate > 0.05",
+        "severity": "warning"
+      },
+      {
+        "name": "high_latency",
+        "condition": "p95_latency > 1000ms",
+        "severity": "critical"
+      }
+    ]
+  }
+}

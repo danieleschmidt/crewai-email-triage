@@ -1,0 +1,213 @@
+{
+  "version": "2.0.0",
+  "timestamp": 1755636225.9841735,
+  "regions": [
+    {
+      "region": "DeploymentRegion.US_EAST",
+      "compliance_frameworks": [
+        "ComplianceFramework.CCPA",
+        "ComplianceFramework.SOC2"
+      ],
+      "supported_languages": [
+        "en",
+        "es"
+      ],
+      "data_residency_required": false,
+      "encryption_at_rest": true,
+      "encryption_in_transit": true,
+      "monitoring_enabled": true,
+      "auto_scaling_enabled": true
+    },
+    {
+      "region": "DeploymentRegion.EU_WEST",
+      "compliance_frameworks": [
+        "ComplianceFramework.GDPR",
+        "ComplianceFramework.SOC2"
+      ],
+      "supported_languages": [
+        "en",
+        "fr",
+        "de"
+      ],
+      "data_residency_required": true,
+      "encryption_at_rest": true,
+      "encryption_in_transit": true,
+      "monitoring_enabled": true,
+      "auto_scaling_enabled": true
+    },
+    {
+      "region": "DeploymentRegion.ASIA_PACIFIC",
+      "compliance_frameworks": [
+        "ComplianceFramework.PDPA",
+        "ComplianceFramework.SOC2"
+      ],
+      "supported_languages": [
+        "en",
+        "zh"
+      ],
+      "data_residency_required": true,
+      "encryption_at_rest": true,
+      "encryption_in_transit": true,
+      "monitoring_enabled": true,
+      "auto_scaling_enabled": true
+    }
+  ],
+  "global_features": {
+    "load_balancing": true,
+    "cdn_enabled": true,
+    "health_checks": true,
+    "auto_failover": true,
+    "cross_region_replication": true
+  },
+  "compliance_config": {
+    "frameworks": [
+      "pdpa",
+      "gdpr",
+      "soc2",
+      "ccpa"
+    ],
+    "requirements": {
+      "consent_management": true,
+      "data_protection": true,
+      "notification_requirements": true,
+      "data_breach_response": true,
+      "audit_logging": true,
+      "data_encryption": true,
+      "data_minimization": true,
+      "right_to_erasure": true,
+      "data_portability": true,
+      "data_protection_officer": true,
+      "privacy_by_design": true,
+      "security": true,
+      "availability": true,
+      "processing_integrity": true,
+      "confidentiality": true,
+      "privacy": true,
+      "monitoring": true,
+      "incident_response": true,
+      "data_transparency": true,
+      "consumer_rights": true,
+      "data_sale_opt_out": true,
+      "non_discrimination": true,
+      "security_measures": true
+    },
+    "audit_enabled": true,
+    "encryption_required": true,
+    "consent_required": true,
+    "data_retention_policies": {
+      "default_retention_days": 2555,
+      "email_content_days": 2555,
+      "user_data_days": 1095,
+      "log_data_days": 2555,
+      "analytics_data_days": 1095,
+      "consent_expiry_days": 730
+    }
+  },
+  "i18n_config": {
+    "supported_languages": [
+      "en",
+      "es",
+      "fr",
+      "de",
+      "ja",
+      "zh",
+      "pt",
+      "it",
+      "ru",
+      "ko"
+    ],
+    "default_language": "en",
+    "fallback_language": "en",
+    "translations": {
+      "en": {
+        "welcome": "Welcome to Email Triage",
+        "processing": "Processing your email...",
+        "category_urgent": "Urgent",
+        "category_normal": "Normal",
+        "category_low": "Low Priority",
+        "error_processing": "Error processing email",
+        "success_processed": "Email processed successfully"
+      },
+      "es": {
+        "welcome": "Bienvenido a Email Triage",
+        "processing": "Procesando su correo...",
+        "category_urgent": "Urgente",
+        "category_normal": "Normal",
+        "category_low": "Baja Prioridad",
+        "error_processing": "Error al procesar el correo",
+        "success_processed": "Correo procesado exitosamente"
+      },
+      "fr": {
+        "welcome": "Bienvenue \u00e0 Email Triage",
+        "processing": "Traitement de votre email...",
+        "category_urgent": "Urgent",
+        "category_normal": "Normal",
+        "category_low": "Faible Priorit\u00e9",
+        "error_processing": "Erreur lors du traitement de l'email",
+        "success_processed": "Email trait\u00e9 avec succ\u00e8s"
+      },
+      "de": {
+        "welcome": "Willkommen bei Email Triage",
+        "processing": "E-Mail wird verarbeitet...",
+        "category_urgent": "Dringend",
+        "category_normal": "Normal",
+        "category_low": "Niedrige Priorit\u00e4t",
+        "error_processing": "Fehler beim Verarbeiten der E-Mail",
+        "success_processed": "E-Mail erfolgreich verarbeitet"
+      },
+      "ja": {
+        "welcome": "\u30e1\u30fc\u30eb\u30c8\u30ea\u30a2\u30fc\u30b8\u3078\u3088\u3046\u3053\u305d",
+        "processing": "\u30e1\u30fc\u30eb\u3092\u51e6\u7406\u4e2d...",
+        "category_urgent": "\u7dca\u6025",
+        "category_normal": "\u901a\u5e38",
+        "category_low": "\u4f4e\u512a\u5148\u5ea6",
+        "error_processing": "\u30e1\u30fc\u30eb\u51e6\u7406\u30a8\u30e9\u30fc",
+        "success_processed": "\u30e1\u30fc\u30eb\u304c\u6b63\u5e38\u306b\u51e6\u7406\u3055\u308c\u307e\u3057\u305f"
+      },
+      "zh": {
+        "welcome": "\u6b22\u8fce\u4f7f\u7528\u90ae\u4ef6\u5206\u7c7b",
+        "processing": "\u6b63\u5728\u5904\u7406\u60a8\u7684\u90ae\u4ef6...",
+        "category_urgent": "\u7d27\u6025",
+        "category_normal": "\u6b63\u5e38",
+        "category_low": "\u4f4e\u4f18\u5148\u7ea7",
+        "error_processing": "\u90ae\u4ef6\u5904\u7406\u9519\u8bef",
+        "success_processed": "\u90ae\u4ef6\u5904\u7406\u6210\u529f"
+      }
+    },
+    "region_language_map": {
+      "us-east-1": [
+        "en",
+        "es"
+      ],
+      "us-west-2": [
+        "en",
+        "es"
+      ],
+      "eu-west-1": [
+        "en",
+        "fr",
+        "de"
+      ],
+      "eu-central-1": [
+        "de",
+        "en"
+      ],
+      "ap-southeast-1": [
+        "en",
+        "zh"
+      ],
+      "ap-northeast-1": [
+        "ja",
+        "ko",
+        "en"
+      ]
+    }
+  },
+  "monitoring_config": {
+    "metrics_enabled": true,
+    "logging_enabled": true,
+    "tracing_enabled": true,
+    "alerting_enabled": true,
+    "dashboards_enabled": true
+  }
+}

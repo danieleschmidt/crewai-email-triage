@@ -1,0 +1,27 @@
+{
+  "default_language": "en",
+  "supported_languages": [
+    "en",
+    "es"
+  ],
+  "translations": {
+    "en": {
+      "welcome": "Welcome to Email Triage",
+      "processing": "Processing your email...",
+      "category_urgent": "Urgent",
+      "category_normal": "Normal",
+      "category_low": "Low Priority",
+      "error_processing": "Error processing email",
+      "success_processed": "Email processed successfully"
+    },
+    "es": {
+      "welcome": "Bienvenido a Email Triage",
+      "processing": "Procesando su correo...",
+      "category_urgent": "Urgente",
+      "category_normal": "Normal",
+      "category_low": "Baja Prioridad",
+      "error_processing": "Error al procesar el correo",
+      "success_processed": "Correo procesado exitosamente"
+    }
+  }
+}
