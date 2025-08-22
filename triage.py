@@ -22,6 +22,11 @@ from crewai_email_triage.metrics_export import (
     get_metrics_collector, PrometheusExporter, MetricsEndpoint, MetricsConfig
 )
 from crewai_email_triage.cli_enhancements import AdvancedCLIProcessor, run_async_cli_function
+from crewai_email_triage.realtime_intelligence import (
+    get_realtime_status, start_realtime_system, stop_realtime_system,
+    submit_email_for_processing, FlowPriority
+)
+from crewai_email_triage.advanced_error_recovery import get_system_health_report
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -79,6 +84,13 @@ def build_parser() -> argparse.ArgumentParser:
     group.add_argument(
         "--optimize-performance", action="store_true", help="Run automatic performance optimization"
     )
+    # Real-time Intelligence Features
+    group.add_argument("--start-realtime", action="store_true", help="Start real-time email processing intelligence")
+    group.add_argument("--stop-realtime", action="store_true", help="Stop real-time email processing")
+    group.add_argument("--realtime-status", action="store_true", help="Show real-time processing status")
+    group.add_argument("--submit-realtime", action="store_true", help="Submit email for real-time processing")
+    group.add_argument("--recovery-status", action="store_true", help="Show self-healing recovery status")
+    
     parser.add_argument(
         "--output", type=argparse.FileType("w"), help="Write JSON result to the given file"
     )
@@ -590,6 +602,108 @@ def main() -> None:
         optimize_system_performance()
         print("✅ Performance optimization completed!")
         print("   Check --performance-insights to see updated configuration")
+        return
+    
+    if args.start_realtime:
+        print("🚀 Starting real-time email intelligence system...")
+        start_realtime_system()
+        print("✅ Real-time system started! Use --realtime-status to monitor.")
+        return
+    
+    if args.stop_realtime:
+        print("🛑 Stopping real-time email intelligence system...")
+        stop_realtime_system()
+        print("✅ Real-time system stopped")
+        return
+    
+    if args.realtime_status:
+        status = get_realtime_status()
+        
+        if args.output_format == 'json':
+            output = json.dumps(status, indent=2 if args.pretty else None)
+        else:
+            lines = [
+                "⚡ REAL-TIME INTELLIGENCE STATUS",
+                "=" * 60,
+                f"System Running: {'Yes' if status['realtime_processor']['running'] else 'No'}",
+                f"Active Processors: {status['realtime_processor']['active_processors']}/{status['realtime_processor']['max_workers']}",
+                "",
+                "📊 QUEUE DEPTHS:",
+            ]
+            
+            for queue_name, depth in status['realtime_processor']['queue_depths'].items():
+                lines.append(f"   {queue_name}: {depth} emails")
+            
+            metrics = status['realtime_processor']['metrics']
+            lines.extend([
+                "",
+                "📈 PERFORMANCE METRICS:",
+                f"   Total Processed: {metrics['total_processed']}",
+                f"   Avg Processing Time: {metrics['avg_processing_time_ms']:.2f}ms",
+                f"   Throughput: {metrics['throughput_per_minute']:.1f} emails/min",
+                "",
+                "🏥 SYSTEM HEALTH:",
+                f"   Status: {status['system_health']['status'].upper()}",
+                f"   Response Time: {status['system_health']['response_time_ms']:.2f}ms",
+                f"   Healthy Components: {status['system_health']['healthy_checks']}",
+                "",
+                f"🕐 Last Updated: {status['timestamp']}",
+                "=" * 60
+            ])
+            output = "\n".join(lines)
+        
+        print(output)
+        return
+    
+    if args.submit_realtime:
+        message = _read_single_message(args)
+        
+        try:
+            event_id = submit_email_for_processing(
+                message, 
+                priority=FlowPriority.HIGH if 'urgent' in message.lower() else FlowPriority.MEDIUM
+            )
+            print(f"✅ Email submitted for real-time processing: {event_id}")
+        except Exception as e:
+            print(f"❌ Failed to submit email: {e}")
+        return
+    
+    if args.recovery_status:
+        health_report = get_system_health_report()
+        
+        if args.output_format == 'json':
+            output = json.dumps(health_report, indent=2 if args.pretty else None)
+        else:
+            lines = [
+                "🔧 SELF-HEALING RECOVERY STATUS",
+                "=" * 60,
+                f"Failures (Last Hour): {health_report['total_failures_last_hour']}",
+                f"Resolved Failures: {health_report['resolved_failures']}",
+                f"Resolution Rate: {health_report['resolution_rate']:.1%}",
+                f"Active Recoveries: {health_report['active_recoveries']}",
+                "",
+                "📊 FAILURE TYPES:",
+            ]
+            
+            for failure_type, count in health_report['failure_types'].items():
+                lines.append(f"   {failure_type}: {count}")
+            
+            if health_report['pattern_frequency']:
+                lines.extend([
+                    "",
+                    "🔍 ERROR PATTERNS:",
+                ])
+                for pattern, frequency in health_report['pattern_frequency'].items():
+                    lines.append(f"   {pattern}: {frequency} occurrences")
+            
+            lines.extend([
+                "",
+                f"🕐 Report Generated: {health_report['timestamp']}",
+                "=" * 60
+            ])
+            output = "\n".join(lines)
+        
+        print(output)
         return
 
     if args.interactive:
