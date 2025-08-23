@@ -7,23 +7,20 @@
   ],
   "compliance": {
     "frameworks": [
-      "pdpa",
       "gdpr",
       "soc2",
-      "ccpa"
+      "ccpa",
+      "pdpa"
     ],
     "requirements": {
-      "consent_management": true,
-      "data_protection": true,
-      "notification_requirements": true,
-      "data_breach_response": true,
-      "audit_logging": true,
       "data_encryption": true,
       "data_minimization": true,
       "right_to_erasure": true,
       "data_portability": true,
+      "consent_management": true,
       "data_protection_officer": true,
       "privacy_by_design": true,
+      "audit_logging": true,
       "security": true,
       "availability": true,
       "processing_integrity": true,
@@ -35,7 +32,10 @@
       "consumer_rights": true,
       "data_sale_opt_out": true,
       "non_discrimination": true,
-      "security_measures": true
+      "security_measures": true,
+      "data_protection": true,
+      "notification_requirements": true,
+      "data_breach_response": true
     },
     "audit_enabled": true,
     "encryption_required": true,
