@@ -26,7 +26,7 @@ class SecurityScanner:
             (r'pickle\.loads?\s*\(', 'Pickle deserialization - code execution risk', 'HIGH'),
             (r'yaml\.load\s*\(', 'Unsafe YAML loading - code execution risk', 'MEDIUM'),
             (r'input\s*\(.*\)', 'User input without validation', 'LOW'),
-            (r'password.*=.*["']\w+["']', 'Hardcoded password detected', 'HIGH'),
+            (r'password.*=.*["\'][\\w]+["\']', 'Hardcoded password detected', 'HIGH'),
             (r'secret.*=.*["']\w+["']', 'Hardcoded secret detected', 'HIGH'),
             (r'key.*=.*["']\w+["']', 'Hardcoded key detected', 'HIGH'),
         ]

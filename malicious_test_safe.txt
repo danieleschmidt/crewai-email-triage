@@ -1,0 +1,1 @@
+This is a test email with potential security concerns like <script>alert('xss')</script> and suspicious links http://phishing-site.com/download.exe but should be handled safely by our security framework.
