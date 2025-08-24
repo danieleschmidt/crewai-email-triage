@@ -1,0 +1,99 @@
+{
+  "report": {
+    "overall_score": 66.66666666666666,
+    "passed": false,
+    "gates": [
+      {
+        "name": "test_coverage",
+        "description": "Minimum test coverage requirement",
+        "threshold": 80.0,
+        "current_value": 12.790544977019042,
+        "passed": false,
+        "severity": "critical",
+        "recommendations": [
+          "Increase test coverage from 12.8% to 80.0%",
+          "Add unit tests for core business logic",
+          "Implement integration tests for critical workflows"
+        ]
+      },
+      {
+        "name": "test_pass_rate",
+        "description": "Test execution pass rate",
+        "threshold": 100.0,
+        "current_value": 100.0,
+        "passed": true,
+        "severity": "critical",
+        "recommendations": []
+      },
+      {
+        "name": "security_score",
+        "description": "Security vulnerability assessment",
+        "threshold": 90.0,
+        "current_value": 70.0,
+        "passed": false,
+        "severity": "critical",
+        "recommendations": [
+          "Address security vulnerabilities",
+          "Update dependencies with security patches",
+          "Review and strengthen input validation"
+        ]
+      },
+      {
+        "name": "performance_score",
+        "description": "System performance and response time",
+        "threshold": 85.0,
+        "current_value": 95.0,
+        "passed": true,
+        "severity": "high",
+        "recommendations": []
+      },
+      {
+        "name": "code_quality_score",
+        "description": "Code quality and structure standards",
+        "threshold": 80.0,
+        "current_value": 100.0,
+        "passed": true,
+        "severity": "medium",
+        "recommendations": []
+      },
+      {
+        "name": "documentation_score",
+        "description": "Documentation completeness and quality",
+        "threshold": 70.0,
+        "current_value": 100.0,
+        "passed": true,
+        "severity": "low",
+        "recommendations": []
+      }
+    ],
+    "execution_time_seconds": 26.640942573547363,
+    "timestamp": 1756048037.9790072,
+    "recommendations": [
+      "Increase test coverage from 12.8% to 80.0%",
+      "Add unit tests for core business logic",
+      "Implement integration tests for critical workflows",
+      "Address security vulnerabilities",
+      "Update dependencies with security patches",
+      "Review and strengthen input validation",
+      "\u26a0\ufe0f  CRITICAL: Address all critical quality gate failures before deployment",
+      "\ud83c\udfaf Priority: Implement comprehensive test suite with >80% coverage",
+      "\ud83d\udd12 Priority: Conduct security audit and vulnerability assessment"
+    ],
+    "metadata": {
+      "critical_failures": 2,
+      "gates_passed": 4,
+      "gates_total": 6,
+      "validation_level": "comprehensive"
+    }
+  },
+  "thresholds": {
+    "test_coverage": 80.0,
+    "test_pass_rate": 100.0,
+    "security_score": 90.0,
+    "performance_score": 85.0,
+    "code_quality_score": 80.0,
+    "documentation_score": 70.0
+  },
+  "validation_timestamp": 1756048037.9793265,
+  "validator_version": "1.0.0"
+}

@@ -1,0 +1,152 @@
+{
+  "generation": 4,
+  "processor_type": "quantum_intelligence",
+  "results": [
+    {
+      "category": "urgent",
+      "priority": 10,
+      "summary": "URGENT: Critical system failure requires immediate attention!",
+      "response": "I'll prioritize this urgent matter and respond as soon as possible. Thank you for flagging this as critical.",
+      "confidence_score": 0.52675,
+      "quantum_coherence": 0.7010000000000001,
+      "processing_time_ms": 0.05125999450683594,
+      "intelligence_level": "competent",
+      "metadata": {
+        "quantum_state": {
+          "coherence_level": 0.95,
+          "entanglement_strength": 0.87,
+          "superposition_factor": 0.92
+        },
+        "neural_networks": {
+          "classification": 0.96,
+          "prioritization": 0.94,
+          "summarization": 0.91,
+          "response_generation": 0.89
+        },
+        "processing_stage": "generation_4",
+        "timestamp": 1756047912.2944624,
+        "input_metadata": {}
+      }
+    },
+    {
+      "category": "meeting",
+      "priority": 7,
+      "summary": "Meeting scheduled for tomorrow at 3pm to discuss project deliverables",
+      "response": "Thank you for the meeting information. I'll review my calendar and confirm my availability shortly.",
+      "confidence_score": 0.53075,
+      "quantum_coherence": 0.71,
+      "processing_time_ms": 0.06747245788574219,
+      "intelligence_level": "competent",
+      "metadata": {
+        "quantum_state": {
+          "coherence_level": 0.95,
+          "entanglement_strength": 0.87,
+          "superposition_factor": 0.92
+        },
+        "neural_networks": {
+          "classification": 0.96,
+          "prioritization": 0.94,
+          "summarization": 0.91,
+          "response_generation": 0.89
+        },
+        "processing_stage": "generation_4",
+        "timestamp": 1756047912.2946222,
+        "input_metadata": {}
+      }
+    },
+    {
+      "category": "support",
+      "priority": 5,
+      "summary": "Hi, I need help with a technical issue in the application",
+      "response": "I understand you need assistance. Let me look into this issue and get back to you with a solution.",
+      "confidence_score": 0.52475,
+      "quantum_coherence": 0.7130000000000001,
+      "processing_time_ms": 0.09012222290039062,
+      "intelligence_level": "competent",
+      "metadata": {
+        "quantum_state": {
+          "coherence_level": 0.95,
+          "entanglement_strength": 0.87,
+          "superposition_factor": 0.92
+        },
+        "neural_networks": {
+          "classification": 0.96,
+          "prioritization": 0.94,
+          "summarization": 0.91,
+          "response_generation": 0.89
+        },
+        "processing_stage": "generation_4",
+        "timestamp": 1756047912.2947762,
+        "input_metadata": {}
+      }
+    },
+    {
+      "category": "project",
+      "priority": 6,
+      "summary": "Weekly status update: All milestones are on track for Q4 delivery",
+      "response": "I've noted the project details. I'll review the requirements and provide an update on progress.",
+      "confidence_score": 0.52875,
+      "quantum_coherence": 0.7130000000000001,
+      "processing_time_ms": 0.03147125244140625,
+      "intelligence_level": "competent",
+      "metadata": {
+        "quantum_state": {
+          "coherence_level": 0.95,
+          "entanglement_strength": 0.87,
+          "superposition_factor": 0.92
+        },
+        "neural_networks": {
+          "classification": 0.96,
+          "prioritization": 0.94,
+          "summarization": 0.91,
+          "response_generation": 0.89
+        },
+        "processing_stage": "generation_4",
+        "timestamp": 1756047912.2948797,
+        "input_metadata": {}
+      }
+    },
+    {
+      "category": "spam",
+      "priority": 1,
+      "summary": "Special discount offer - 50% off premium services this week only!",
+      "response": "This appears to be promotional content. No response needed.",
+      "confidence_score": 0.52875,
+      "quantum_coherence": 0.7130000000000001,
+      "processing_time_ms": 0.03218650817871094,
+      "intelligence_level": "competent",
+      "metadata": {
+        "quantum_state": {
+          "coherence_level": 0.95,
+          "entanglement_strength": 0.87,
+          "superposition_factor": 0.92
+        },
+        "neural_networks": {
+          "classification": 0.96,
+          "prioritization": 0.94,
+          "summarization": 0.91,
+          "response_generation": 0.89
+        },
+        "processing_stage": "generation_4",
+        "timestamp": 1756047912.2949836,
+        "input_metadata": {}
+      }
+    }
+  ],
+  "timestamp": 1756047912.2950816,
+  "summary": {
+    "total_processed": 5,
+    "avg_processing_time_ms": 0.05450248718261719,
+    "avg_confidence": 0.52795,
+    "categories_detected": [
+      "spam",
+      "project",
+      "meeting",
+      "support",
+      "urgent"
+    ],
+    "intelligence_levels": [
+      "competent"
+    ]
+  }
+}

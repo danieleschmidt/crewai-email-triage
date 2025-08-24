@@ -1,0 +1,164 @@
+{
+  "deployment_type": "autonomous_production",
+  "timestamp": 1756047923.2629974,
+  "environments": [
+    "development",
+    "staging",
+    "production"
+  ],
+  "results": {
+    "development": {
+      "success": true,
+      "environment": "development",
+      "regions_deployed": [
+        "us-east-1"
+      ],
+      "deployment_time_seconds": 0.50193190574646,
+      "health_check_results": {
+        "us-east-1": true
+      },
+      "monitoring_endpoints": [],
+      "errors": [],
+      "metadata": {
+        "config": {
+          "environment": "development",
+          "regions": [
+            "us-east-1"
+          ],
+          "version": "latest",
+          "replicas": 1,
+          "health_check_enabled": true,
+          "monitoring_enabled": false,
+          "auto_scaling": false,
+          "backup_enabled": false
+        },
+        "timestamp": 1756047920.750012,
+        "deployment_id": "deploy-1756047920"
+      }
+    },
+    "staging": {
+      "success": true,
+      "environment": "staging",
+      "regions_deployed": [
+        "us-east-1",
+        "eu-west-1"
+      ],
+      "deployment_time_seconds": 1.005474328994751,
+      "health_check_results": {
+        "us-east-1": true,
+        "eu-west-1": true
+      },
+      "monitoring_endpoints": [
+        "https://monitoring.us-east-1.crewai-email-triage.com/metrics",
+        "https://monitoring.eu-west-1.crewai-email-triage.com/metrics"
+      ],
+      "errors": [],
+      "metadata": {
+        "config": {
+          "environment": "staging",
+          "regions": [
+            "us-east-1",
+            "eu-west-1"
+          ],
+          "version": "stable",
+          "replicas": 2,
+          "health_check_enabled": true,
+          "monitoring_enabled": true,
+          "auto_scaling": false,
+          "backup_enabled": true
+        },
+        "timestamp": 1756047921.7556162,
+        "deployment_id": "deploy-1756047921"
+      }
+    },
+    "production": {
+      "success": true,
+      "environment": "production",
+      "regions_deployed": [
+        "us-east-1",
+        "eu-west-1",
+        "ap-southeast-1"
+      ],
+      "deployment_time_seconds": 1.5071635246276855,
+      "health_check_results": {
+        "us-east-1": true,
+        "eu-west-1": true,
+        "ap-southeast-1": true
+      },
+      "monitoring_endpoints": [
+        "https://monitoring.us-east-1.crewai-email-triage.com/metrics",
+        "https://monitoring.eu-west-1.crewai-email-triage.com/metrics",
+        "https://monitoring.ap-southeast-1.crewai-email-triage.com/metrics"
+      ],
+      "errors": [],
+      "metadata": {
+        "config": {
+          "environment": "production",
+          "regions": [
+            "us-east-1",
+            "eu-west-1",
+            "ap-southeast-1"
+          ],
+          "version": "release",
+          "replicas": 3,
+          "health_check_enabled": true,
+          "monitoring_enabled": true,
+          "auto_scaling": true,
+          "backup_enabled": true
+        },
+        "timestamp": 1756047923.2629135,
+        "deployment_id": "deploy-1756047923"
+      }
+    }
+  },
+  "summary": {
+    "total_environments": 3,
+    "successful_deployments": 3,
+    "total_regions_deployed": 6,
+    "total_deployment_time_seconds": 3.0145697593688965,
+    "success_rate": 1.0
+  },
+  "orchestrator_status": {
+    "orchestrator": {
+      "status": "operational",
+      "environments_configured": [
+        "development",
+        "staging",
+        "production"
+      ],
+      "last_deployment": "production",
+      "active_deployments": 3,
+      "total_deployments": 3
+    },
+    "deployment_history": [
+      {
+        "environment": "development",
+        "success": true,
+        "timestamp": 1756047920.7500284,
+        "regions": [
+          "us-east-1"
+        ]
+      },
+      {
+        "environment": "staging",
+        "success": true,
+        "timestamp": 1756047921.755633,
+        "regions": [
+          "us-east-1",
+          "eu-west-1"
+        ]
+      },
+      {
+        "environment": "production",
+        "success": true,
+        "timestamp": 1756047923.2629218,
+        "regions": [
+          "us-east-1",
+          "eu-west-1",
+          "ap-southeast-1"
+        ]
+      }
+    ],
+    "timestamp": 1756047923.2631056
+  }
+}

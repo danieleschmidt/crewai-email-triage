@@ -1,0 +1,8 @@
+{
+  "minReplicas": 2,
+  "maxReplicas": 9,
+  "targetCPUUtilizationPercentage": 70,
+  "targetMemoryUtilizationPercentage": 80,
+  "scaleUpStabilization": 60,
+  "scaleDownStabilization": 300
+}
