@@ -1,0 +1,69 @@
+{
+  "apiVersion": "apps/v1",
+  "kind": "Deployment",
+  "metadata": {
+    "name": "crewai-email-triage",
+    "labels": {
+      "app": "crewai-email-triage",
+      "version": "release",
+      "environment": "production"
+    }
+  },
+  "spec": {
+    "replicas": 3,
+    "selector": {
+      "matchLabels": {
+        "app": "crewai-email-triage"
+      }
+    },
+    "template": {
+      "metadata": {
+        "labels": {
+          "app": "crewai-email-triage",
+          "version": "release"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "crewai-email-triage",
+            "image": "crewai-email-triage:release",
+            "ports": [
+              {
+                "containerPort": 8080
+              }
+            ],
+            "env": [
+              {
+                "name": "ENVIRONMENT",
+                "value": "production"
+              },
+              {
+                "name": "LOG_LEVEL",
+                "value": "INFO"
+              }
+            ],
+            "resources": {
+              "limits": {
+                "cpu": "1000m",
+                "memory": "1Gi"
+              },
+              "requests": {
+                "cpu": "500m",
+                "memory": "512Mi"
+              }
+            },
+            "livenessProbe": {
+              "httpGet": {
+                "path": "/health",
+                "port": 8080
+              },
+              "initialDelaySeconds": 30,
+              "periodSeconds": 10
+            }
+          }
+        ]
+      }
+    }
+  }
+}

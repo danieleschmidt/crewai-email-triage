@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "schedule": "0 2 * * *",
+  "retention": {
+    "daily": 7,
+    "weekly": 4,
+    "monthly": 12
+  },
+  "storage": {
+    "type": "s3",
+    "encrypted": true,
+    "cross_region_replication": true
+  }
+}

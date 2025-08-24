@@ -110,6 +110,7 @@ markers = [
     "slow: Slow running tests",
     "network: Tests requiring network access",
     "e2e: End-to-end tests",
+    "asyncio: Async tests",
 ]
 filterwarnings = [
     "error",
