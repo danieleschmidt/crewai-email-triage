@@ -1,0 +1,45 @@
+{
+  "sentiment_analysis": {
+    "enabled": true,
+    "settings": {
+      "confidence_threshold": 0.7,
+      "enable_emotion_detection": true
+    },
+    "priority": 100
+  },
+  "complexity_analysis": {
+    "enabled": true,
+    "settings": {
+      "detailed_metrics": true,
+      "readability_algorithms": ["flesch", "coleman_liau"]
+    },
+    "priority": 200
+  },
+  "plugin_status_command": {
+    "enabled": true,
+    "settings": {},
+    "priority": 500
+  },
+  "analyze_with_plugins_command": {
+    "enabled": true,
+    "settings": {
+      "max_content_length": 10000
+    },
+    "priority": 500
+  },
+  "performance_benchmark_command": {
+    "enabled": true,
+    "settings": {
+      "default_iterations": 50,
+      "enable_concurrent_by_default": true
+    },
+    "priority": 600
+  },
+  "cache_management_command": {
+    "enabled": true,
+    "settings": {
+      "auto_optimize_cache": false
+    },
+    "priority": 600
+  }
+}

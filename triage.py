@@ -27,11 +27,16 @@ from crewai_email_triage.realtime_intelligence import (
     submit_email_for_processing, FlowPriority
 )
 from crewai_email_triage.advanced_error_recovery import get_system_health_report
+from crewai_email_triage.plugin_architecture import get_plugin_manager, CLICommandPlugin
 
 
 def build_parser() -> argparse.ArgumentParser:
     """Return the CLI argument parser."""
     parser = argparse.ArgumentParser(description="Run email triage")
+    
+    # Add plugin commands dynamically
+    plugin_manager = get_plugin_manager()
+    plugin_commands = plugin_manager.get_cli_commands()
     parser.add_argument(
         "--version",
         action="version",
@@ -90,6 +95,10 @@ def build_parser() -> argparse.ArgumentParser:
     group.add_argument("--realtime-status", action="store_true", help="Show real-time processing status")
     group.add_argument("--submit-realtime", action="store_true", help="Submit email for real-time processing")
     group.add_argument("--recovery-status", action="store_true", help="Show self-healing recovery status")
+    
+    # Add plugin commands dynamically
+    for command_name, plugin in plugin_commands.items():
+        group.add_argument(f"--{command_name}", action="store_true", help=plugin.get_command_help())
     
     parser.add_argument(
         "--output", type=argparse.FileType("w"), help="Write JSON result to the given file"
@@ -705,6 +714,33 @@ def main() -> None:
         
         print(output)
         return
+
+    # Check for plugin commands
+    plugin_manager = get_plugin_manager()
+    plugin_commands = plugin_manager.get_cli_commands()
+    
+    for command_name, plugin in plugin_commands.items():
+        if hasattr(args, command_name.replace('-', '_')) and getattr(args, command_name.replace('-', '_')):
+            try:
+                # Add plugin-specific arguments (this would need a more sophisticated approach in production)
+                result = plugin.execute_command(args)
+                
+                if args.output_format == 'json':
+                    output = json.dumps(result, indent=2 if args.pretty else None)
+                else:
+                    output = str(result)
+                
+                if args.output:
+                    with args.output as fh:
+                        fh.write(output + "\n")
+                else:
+                    print(output)
+                return
+                
+            except Exception as e:
+                logging.error(f"Plugin command {command_name} failed: {e}")
+                print(f"Error: Plugin command failed - {e}")
+                return
 
     if args.interactive:
         _run_interactive(args.pretty, config_dict, args.enhanced, args.output_format, 
