@@ -1,5 +1,5 @@
 {
-  "timestamp": 1755958733.8227189,
+  "timestamp": 1756179237.3824458,
   "overall_score": 92.85714285714286,
   "deployment_ready": true,
   "recommendation": "READY FOR PRODUCTION DEPLOYMENT",
@@ -27,7 +27,7 @@
       "deployment_manifest": {
         "exists": true,
         "path": "deployment/deployment_manifest.json",
-        "size": 6028
+        "size": 6027
       },
       "global_orchestrator": {
         "exists": true,
@@ -84,10 +84,10 @@
       "src/crewai_email_triage/autonomous_resilience.py": true,
       "src/crewai_email_triage/secure_credentials.py": true,
       "compliance_frameworks": [
-        "pdpa",
         "gdpr",
         "soc2",
-        "ccpa"
+        "ccpa",
+        "pdpa"
       ],
       "security_ready": true
     },
@@ -139,5 +139,5 @@
   },
   "critical_issues": [],
   "warnings": [],
-  "validation_time_seconds": 0.0022394657135009766
+  "validation_time_seconds": 0.0025510787963867188
 }

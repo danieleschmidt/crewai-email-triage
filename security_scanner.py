@@ -27,8 +27,8 @@ class SecurityScanner:
             (r'yaml\.load\s*\(', 'Unsafe YAML loading - code execution risk', 'MEDIUM'),
             (r'input\s*\(.*\)', 'User input without validation', 'LOW'),
             (r'password.*=.*["\'][\\w]+["\']', 'Hardcoded password detected', 'HIGH'),
-            (r'secret.*=.*["']\w+["']', 'Hardcoded secret detected', 'HIGH'),
-            (r'key.*=.*["']\w+["']', 'Hardcoded key detected', 'HIGH'),
+            (r'secret.*=.*["\'][\\w]+["\']', 'Hardcoded secret detected', 'HIGH'),
+            (r'key.*=.*["\'][\\w]+["\']', 'Hardcoded key detected', 'HIGH'),
         ]
     
     def scan_file(self, file_path: Path) -> list:
@@ -214,5 +214,3 @@ def main():
 if __name__ == "__main__":
     success = main()
     sys.exit(0 if success else 1)
-
-        self.repo_path = Path('/root/repo')
