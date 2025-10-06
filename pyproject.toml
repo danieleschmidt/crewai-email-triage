@@ -49,7 +49,7 @@ test = [
     "coverage[toml]~=7.10.2",
 ]
 dev = [
-    "ruff~=0.12.0",
+    "ruff~=0.13.3",
     "black~=25.1.0",
     "isort~=6.0.1",
     "mypy~=1.17.1",
