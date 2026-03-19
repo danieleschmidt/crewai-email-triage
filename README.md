@@ -1,83 +1,95 @@
-# CrewAI Email Triage
+# crewai-email-triage
 
-Smart assistant that classifies, prioritizes, summarizes and drafts replies for email messages.
+A multi-agent email triage system built with pure Python (stdlib only). Classifies, summarizes, and prioritizes emails using keyword matching and sender reputation rules — no LLM required.
 
-## Features
+## Architecture
 
-- **Multi-Agent Pipeline**: classifier, priority scorer, summarizer and response generator
-- **Configurable Keywords**: edit `default_config.json`, set `CREWAI_CONFIG`, or use `--config`
-- **Batch Processing**: reuse agents to handle multiple messages
-- **Parallel Batch**: ``triage_batch(messages, parallel=True)`` for concurrency
-- **Gmail Integration**: fetch unread messages via IMAP
-- **Verbose Metrics**: `--verbose` flag shows processing statistics
+Three specialized agents orchestrated by a pipeline:
+
+```
+EmailTriagePipeline
+├── TriageAgent      → classify into URGENT / ACTION_REQUIRED / INFO / NEWSLETTER / SPAM
+├── SummaryAgent     → generate 1-2 sentence body summary
+└── PriorityRanker   → score 0.0–10.0 (category + sender trust + recency + keyword intensity)
+```
+
+### Categories
+
+| Category | Description |
+|---|---|
+| `URGENT` | Outages, security alerts, critical deadlines |
+| `ACTION_REQUIRED` | Needs review, approval, or response |
+| `INFO` | Informational, no action needed |
+| `NEWSLETTER` | Mailing lists, digests, marketing |
+| `SPAM` | Junk, scams, phishing |
 
 ## Quick Start
 
 ```bash
-# Install in editable mode with test extras
-pip install -e .[test]
+# Run the demo (10 sample emails)
+python demo.py
 
-# Triage a single message
-python triage.py --message "Urgent meeting tomorrow!" --pretty
-
-# Process multiple messages from a file
-python triage.py --batch-file messages.txt
-
-# Process unread Gmail messages (requires $GMAIL_USER and $GMAIL_PASSWORD)
-python triage.py --gmail --max-messages 5
+# Run tests
+python -m pytest tests/ -v
 ```
 
-## Configuration
+## Usage
 
-The package ships with a `default_config.json` containing classifier keywords and priority scores.
-You can supply a custom JSON file via `--config /path/to/file` or set the environment variable `CREWAI_CONFIG`.
+```python
+from datetime import datetime, timezone
+from src.email_triage import Email, EmailTriagePipeline
 
-```bash
-# Example custom config
-echo '{"classifier": {"urgent": ["urgent", "asap"]}}' > mycfg.json
-python triage.py --message "ASAP reply needed" --config mycfg.json
+emails = [
+    Email(
+        id="001",
+        subject="URGENT: Production outage",
+        sender="pagerduty@pagerduty.com",
+        body="The payments service is down. Incident #INC-4821. Join war room immediately.",
+        timestamp=datetime.now(tz=timezone.utc),
+    ),
+    # ... more emails
+]
+
+pipeline = EmailTriagePipeline()
+report = pipeline.run(emails)
+pipeline.print_report(report)
 ```
 
-## Development
+### Sample Output
 
-### Test Setup
+```
+════════════════════════════════════════════════════════════════
+  EMAIL TRIAGE REPORT  —  2026-03-19 12:13:33
+════════════════════════════════════════════════════════════════
+  10 emails  |  ACTION_REQUIRED: 4  INFO: 2  NEWSLETTER: 1  SPAM: 1  URGENT: 2
 
-Install the package with test dependencies:
-
-```bash
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install with test dependencies
-pip install -e ".[test]"
+SCORE  CATEGORY          SUBJECT                              SUMMARY
+───────────────────────────────────────────────────────────────
+ 10.0  [URGENT        ]  URGENT: Production outage…           CRITICAL ALERT: The payments-service…
+ 10.0  [URGENT        ]  Security alert: new login…           We detected a sign-in to your GitHub…
+  6.7  [ACTION_REQUIRED]  Your AWS bill is due tomorrow        Your AWS account has an outstanding…
+  0.0  [SPAM          ]  Congratulations! You've won…         You have been selected as our lucky…
 ```
 
-### Running Tests
+## Project Structure
 
-```bash
-# Run all tests
-pytest
+```
+src/email_triage/
+├── __init__.py      # Public API
+├── models.py        # Email, TriageResult, TriageReport dataclasses
+├── agents.py        # TriageAgent, SummaryAgent, PriorityRanker
+└── pipeline.py      # EmailTriagePipeline orchestrator
 
-# Run tests in parallel for speed
-pytest -n auto -q
+tests/
+└── test_triage.py   # 30 tests covering all components
 
-# Run with coverage
-pytest --cov=src/crewai_email_triage
-
-# Run specific test file
-pytest tests/test_pipeline.py
+demo.py              # 10-email demo with mixed types
 ```
 
-### Pre-commit Hooks
+## No External Dependencies
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and commit guidelines.
-Install pre-commit hooks to catch lint and secret issues before committing:
-
-```bash
-pre-commit install
-```
+Pure stdlib — no pip installs, no LLM API keys, no cloud services. Runs anywhere Python 3.10+ is available.
 
 ## License
 
-Distributed under the MIT license. See [LICENSE](LICENSE) for details.
+MIT

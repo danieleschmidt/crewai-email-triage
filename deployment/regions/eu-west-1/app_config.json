@@ -1,8 +1,0 @@
-{
-  "region": "eu-west-1",
-  "environment": "production",
-  "version": "release",
-  "replicas": 3,
-  "deployment_time": 1756047922.2580986,
-  "status": "deployed"
-}
